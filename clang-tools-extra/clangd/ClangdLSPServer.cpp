@@ -973,6 +973,38 @@ void ClangdLSPServer::onReference(const ReferenceParams &Params,
                          CCOpts.Limit, std::move(Reply));
 }
 
+void ClangdLSPServer::onPrepareCommand(const PrepareCommandParams &Params,
+                                       Callback<llvm::json::Value> Reply) {
+  // Now enumerate the semantic code actions.
+  auto ConsumeActions =
+      [this](decltype(Reply) Reply, URIForFile File, std::string Code,
+             Range Selection, std::vector<CodeAction> FixIts,
+             llvm::Expected<std::vector<ClangdServer::TweakRef>> Tweaks) {
+        if (!Tweaks)
+          return Reply(Tweaks.takeError());
+
+        std::vector<CodeAction> Actions = std::move(FixIts);
+        Actions.reserve(Actions.size() + Tweaks->size());
+        for (const auto &T : *Tweaks)
+          Actions.push_back(toCodeAction(T, File, Selection));
+
+        if (SupportsCodeAction)
+          return Reply(llvm::json::Array(Actions));
+        std::vector<Command> Commands;
+        for (const auto &Action : Actions) {
+          if (auto Command = asCommand(Action))
+            Commands.push_back(std::move(*Command));
+        }
+        return Reply(llvm::json::Array(Commands));
+      };
+  URIForFile File = Params.textDocument.uri;
+  auto Code = DraftMgr.getDraft(File.file());
+  Server->enumerateTweaks(File.file(), Params.range,
+                          Bind(ConsumeActions, std::move(Reply), File,
+                               std::move(*Code), Params.range,
+                               std::move(FixIts)));
+}
+
 void ClangdLSPServer::onSymbolInfo(const TextDocumentPositionParams &Params,
                                    Callback<std::vector<SymbolDetails>> Reply) {
   Server->symbolInfo(Params.textDocument.uri.file(), Params.position,

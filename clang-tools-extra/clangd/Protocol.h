@@ -697,6 +697,14 @@ struct CodeActionParams {
 };
 bool fromJSON(const llvm::json::Value &, CodeActionParams &);
 
+struct PrepareCommandParams {
+    /// The document in which the command was invoked.
+  TextDocumentIdentifier textDocument;
+
+  /// The range for which the command was invoked.
+  Range range;
+};
+
 struct WorkspaceEdit {
   /// Holds changes to existing resources.
   llvm::Optional<std::map<std::string, std::vector<TextEdit>>> changes;

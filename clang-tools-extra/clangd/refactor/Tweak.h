@@ -52,10 +52,24 @@ public:
     // FIXME: provide a way to get sources and ASTs for other files.
   };
 
+  struct PrepareOutput {
+    llvm::Optional<Range> CursorRange;
+    llvm::Optional<std::vector<Range>> RelatedRanges;
+  };
+  /// Extra input for apply tweaks. This is usually user input.
+  struct ExtraInput {
+
+    /// For rename, 
+    llvm::Optional<std::string> Input; // The string input typed by users. E.g.
+    // for rename case, this is the new name.
+  };
+
   /// Output of a tweak.
   enum Intent {
     /// Apply changes that preserve the behavior of the code.
     Refactor,
+    /// The refactors that require extra-extra input.
+    RefactorWithInput,
     /// Provide information to the user.
     Info,
   };
