@@ -51,6 +51,8 @@ public:
   /// \return Whether we shut down cleanly with a 'shutdown' -> 'exit' sequence.
   bool run();
 
+  bool isDestructing() const { return Destructing; }
+
 private:
   // Implement DiagnosticsConsumer.
   void onDiagnosticsReady(PathRef File, std::vector<Diag> Diagnostics) override;
@@ -133,6 +135,8 @@ private:
   /// Language Server client.
   bool ShutdownRequestReceived = false;
 
+  std::atomic<bool> Destructing = {false};
+
   std::mutex FixItsMutex;
   typedef std::map<clangd::Diagnostic, std::vector<Fix>, LSPDiagnosticCompare>
       DiagnosticToReplacementMap;
@@ -148,7 +152,27 @@ private:
   std::unique_ptr<MessageHandler> MsgHandler;
   std::atomic<int> NextCallID = {0};
   std::mutex TranspWriter;
-  void call(StringRef Method, llvm::json::Value Params);
+
+  template <typename Response>
+  void call(StringRef Method, llvm::json::Value Params, Callback<Response> CB) {
+    // Wrap the callback with LSP conversion and error-handling.
+    auto Reply = [](decltype(CB) CB,
+                    llvm::Expected<llvm::json::Value> RawResponse) {
+      Response Rsp;
+      if (!RawResponse) {
+        CB(RawResponse.takeError());
+      } else if (fromJSON(*RawResponse, Rsp)) {
+        CB(std::move(Rsp));
+      } else {
+        elog("Failed to decode {0} response", *RawResponse);
+        CB(llvm::make_error<LSPError>("failed to decode reponse",
+                                      ErrorCode::InvalidParams));
+      }
+    };
+    callImpl(Method, std::move(Params), Bind(std::move(Reply), std::move(CB)));
+  }
+  void callImpl(StringRef Method, llvm::json::Value Params,
+                Callback<llvm::json::Value> CB);
   void notify(StringRef Method, llvm::json::Value Params);
 
   const FileSystemProvider &FSProvider;

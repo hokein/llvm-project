@@ -146,11 +146,46 @@ public:
   bool onReply(llvm::json::Value ID,
                llvm::Expected<llvm::json::Value> Result) override {
     WithContext HandlerContext(handlerContext());
-    // We ignore replies, just log them.
-    if (Result)
-      log("<-- reply({0})", ID);
-    else
-      log("<-- reply({0}) error: {1}", ID, llvm::toString(Result.takeError()));
+    // Log the reply and run the given callback.
+    auto LogAndRun = [&ID, &Result](Callback<llvm::json::Value> CB) {
+      if (Result) {
+        log("<-- reply({0})", ID);
+        CB(std::move(Result));
+      } else {
+        auto Err = Result.takeError();
+        log("<-- reply({0}) error: {1}", ID, Err);
+        CB(std::move(Err));
+      }
+    };
+
+    Callback<llvm::json::Value> FoundCB = nullptr;
+    if (auto IntID = ID.getAsInteger()) {
+      std::lock_guard<std::mutex> Mutex(ReplyCallbacksMutex);
+      // Find a corresponding callback for the request ID;
+      // We can't use binary search here as ReplyCallbacks is not guaranteed to
+      // be sorted in the multi-thread environment.
+      auto Found =
+          llvm::find_if(ReplyCallbacks, [&IntID](const ReplyCallback &RCB) {
+            return RCB.RequestID == *IntID;
+          });
+      if (Found != ReplyCallbacks.end()) {
+        FoundCB = std::move(Found->CB);
+        ReplyCallbacks.erase(Found); // remove the callback.
+      }
+    }
+
+    if (FoundCB) {
+      // Found a corresponding callback from the queue.
+      LogAndRun(std::move(FoundCB));
+      return true;
+    }
+
+    // No callback being found, run a default log callback.
+    LogAndRun([&ID](decltype(Result) Result) {
+      elog("received a reply with ID {0}, but there was no such call", ID);
+      if (!Result)
+        llvm::consumeError(Result.takeError());
+    });
     return true;
   }
 
@@ -169,6 +204,26 @@ public:
                                          ErrorCode::InvalidRequest));
       }
     };
+  }
+
+  // Bind a reply callback to a request.
+  // The callback will be invoked when clangd receives the reply from the LSP
+  // client.
+  void bindReply(int ID, Callback<llvm::json::Value> Reply) {
+    llvm::Optional<ReplyCallback> OldestCB;
+    {
+      std::lock_guard<std::mutex> Mutex(ReplyCallbacksMutex);
+      ReplyCallbacks.emplace_back(ID, std::move(Reply));
+      // take out and run the oldest pending callback if we overflow.
+      if (ReplyCallbacks.size() > MaxCallbacks) {
+        OldestCB = std::move(ReplyCallbacks.front());
+        ReplyCallbacks.pop_front();
+      }
+    }
+    if (OldestCB)
+      OldestCB->CB(
+          llvm::formatv("failed to receive a client reply for request ({0})",
+                        OldestCB->RequestID));
   }
 
   // Bind an LSP method name to a notification.
@@ -220,7 +275,7 @@ private:
     ReplyOnce &operator=(const ReplyOnce &) = delete;
 
     ~ReplyOnce() {
-      if (Server && !Replied) {
+      if (Server && !Server->isDestructing() && !Replied) {
         elog("No reply to message {0}({1})", Method, ID);
         assert(false && "must reply to all calls!");
         (*this)(llvm::make_error<LSPError>("server failed to reply",
@@ -255,6 +310,25 @@ private:
 
   llvm::StringMap<std::function<void(llvm::json::Value)>> Notifications;
   llvm::StringMap<std::function<void(llvm::json::Value, ReplyOnce)>> Calls;
+  // The maximum number of callbacks hold in clangd.
+  //
+  // We bound the maximum size to the pending queue to prevent memory leakage
+  // for cases where LSP clients don't reply for the request.
+  //
+  // If the queue overflows, we assume that the client didn't reply the
+  // oldest request, and run the corresponding callback which replies an Error
+  // to the client.
+  static constexpr int MaxCallbacks = 100;
+  mutable std::mutex ReplyCallbacksMutex;
+  // A callback that will be executed when clangd receives a client reply for
+  // a corresponding request.
+  struct ReplyCallback {
+    int RequestID;
+    Callback<llvm::json::Value> CB;
+    ReplyCallback(int ID, Callback<llvm::json::Value> CB)
+        : RequestID(ID), CB(std::move(CB)) {}
+  };
+  std::deque<ReplyCallback> ReplyCallbacks;
 
   // Method calls may be cancelled by ID, so keep track of their state.
   // This needs a mutex: handlers may finish on a different thread, and that's
@@ -310,10 +384,11 @@ private:
 };
 
 // call(), notify(), and reply() wrap the Transport, adding logging and locking.
-void ClangdLSPServer::call(llvm::StringRef Method, llvm::json::Value Params) {
+void ClangdLSPServer::callImpl(StringRef Method, llvm::json::Value Params,
+                               Callback<llvm::json::Value> CB) {
   auto ID = NextCallID++;
+  MsgHandler->bindReply(ID, std::move(CB));
   log("--> {0}({1})", Method, ID);
-  // We currently don't handle responses, so no need to store ID anywhere.
   std::lock_guard<std::mutex> Lock(TranspWriter);
   Transp.call(Method, std::move(Params), ID);
 }
@@ -496,13 +571,27 @@ void ClangdLSPServer::onFileEvent(const DidChangeWatchedFilesParams &Params) {
 
 void ClangdLSPServer::onCommand(const ExecuteCommandParams &Params,
                                 Callback<llvm::json::Value> Reply) {
-  auto ApplyEdit = [this](WorkspaceEdit WE) {
+  auto ApplyEdit = [this](WorkspaceEdit WE,
+                          Callback<ApplyWorkspaceEditResponse> Reply) {
     ApplyWorkspaceEditParams Edit;
     Edit.edit = std::move(WE);
-    // Ideally, we would wait for the response and if there is no error, we
-    // would reply success/failure to the original RPC.
-    call("workspace/applyEdit", Edit);
+    call("workspace/applyEdit", std::move(Edit), std::move(Reply));
   };
+  auto ReplyApplyEdit =
+      [](decltype(Reply) Reply,
+         llvm::Expected<ApplyWorkspaceEditResponse> Response) {
+        if (!Response)
+          return Reply(Response.takeError());
+        if (!Response->applied) {
+          std::string Reason = Response->failureReason
+                                   ? *Response->failureReason
+                                   : "unknown reason";
+          return Reply(llvm::createStringError(
+              llvm::inconvertibleErrorCode(),
+              ("edits fail to applied: " + Reason).c_str()));
+        }
+        return Reply("Fix applied.");
+      };
   if (Params.command == ExecuteCommandParams::CLANGD_APPLY_FIX_COMMAND &&
       Params.workspaceEdit) {
     // The flow for "apply-fix" :
@@ -511,11 +600,9 @@ void ClangdLSPServer::onCommand(const ExecuteCommandParams &Params,
     // 3. We send code actions, with the fixit embedded as context
     // 4. The user selects the fixit, the editor asks us to apply it
     // 5. We unwrap the changes and send them back to the editor
-    // 6. The editor applies the changes (applyEdit), and sends us a reply (but
-    // we ignore it)
-
-    Reply("Fix applied.");
-    ApplyEdit(*Params.workspaceEdit);
+    // 6. The editor applies the changes (applyEdit), and sends us a reply
+    // 7. We unwrap the reply and send a reply to the editor.
+    ApplyEdit(*Params.workspaceEdit, Bind(ReplyApplyEdit, std::move(Reply)));
   } else if (Params.command == ExecuteCommandParams::CLANGD_APPLY_TWEAK &&
              Params.tweakArgs) {
     auto Code = DraftMgr.getDraft(Params.tweakArgs->file.file());
@@ -524,9 +611,9 @@ void ClangdLSPServer::onCommand(const ExecuteCommandParams &Params,
           llvm::inconvertibleErrorCode(),
           "trying to apply a code action for a non-added file"));
 
-    auto Action = [this, ApplyEdit](decltype(Reply) Reply, URIForFile File,
-                                    std::string Code,
-                                    llvm::Expected<Tweak::Effect> R) {
+    auto Action = [this, ApplyEdit, ReplyApplyEdit](
+                      decltype(Reply) Reply, URIForFile File, std::string Code,
+                      llvm::Expected<Tweak::Effect> R) {
       if (!R)
         return Reply(R.takeError());
 
@@ -534,15 +621,15 @@ void ClangdLSPServer::onCommand(const ExecuteCommandParams &Params,
         WorkspaceEdit WE;
         WE.changes.emplace();
         (*WE.changes)[File.uri()] = replacementsToEdits(Code, *R->ApplyEdit);
-        ApplyEdit(std::move(WE));
+        ApplyEdit(std::move(WE), Bind(ReplyApplyEdit, std::move(Reply)));
       }
       if (R->ShowMessage) {
         ShowMessageParams Msg;
         Msg.message = *R->ShowMessage;
         Msg.type = MessageType::Info;
         notify("window/showMessage", Msg);
+        Reply("Tweak applied.");
       }
-      Reply("Tweak applied.");
     };
     Server->applyTweak(Params.tweakArgs->file.file(),
                        Params.tweakArgs->selection, Params.tweakArgs->tweakID,
@@ -1051,7 +1138,7 @@ ClangdLSPServer::ClangdLSPServer(
   // clang-format on
 }
 
-ClangdLSPServer::~ClangdLSPServer() = default;
+ClangdLSPServer::~ClangdLSPServer() { Destructing = true; }
 
 bool ClangdLSPServer::run() {
   // Run the Language Server loop.
