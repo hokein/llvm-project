@@ -224,7 +224,45 @@ Expected<Tweak::Effect> ExtractVariable::apply(const Selection &Inputs) {
   // replace expression with variable name
   if (auto Err = Result.add(Target->replaceWithVar(VarName)))
     return std::move(Err);
-  return Effect::applyEdit(Result);
+  
+  // TODO: refine this.
+  // We do the format internally in order to keep the position of the extracted
+  // variable not being changed from the caller.
+  auto &SM = Inputs.AST.getASTContext().getSourceManager();
+  auto *FS = &SM.getFileManager().getVirtualFileSystem();
+  auto Style = getFormatStyleForFile(
+      SM.getFileEntryForID(SM.getMainFileID())->tryGetRealPathName(),
+      Inputs.Code, FS);
+  auto Formatted = cleanupAndFormat(Inputs.Code, Result, Style);
+  if (!Formatted)
+    return Formatted.takeError();
+  Result = *Formatted;
+  auto NewCode = tooling::applyAllReplacements(Inputs.Code, Result);
+  if (!NewCode)
+    return NewCode.takeError();
+
+  assert(!Result.empty());
+  // Calculate the offset of the dummy variable after applying replacements.
+  size_t ExtractVarOffset = Result.begin()->getOffset();
+  for (auto &R : Result) {
+    auto OffsetInReplacement = R.getReplacementText().find(VarName);
+    if (OffsetInReplacement != llvm::StringRef::npos) {
+      ExtractVarOffset += OffsetInReplacement;
+      break;
+    }
+    ExtractVarOffset += R.getReplacementText().size() - R.getLength();
+  }
+
+  assert(ExtractVarOffset != llvm::StringRef::npos);
+  Effect EResult;
+  Step Apply;
+  Apply.K = Step::APPLY_EDIT;
+  Apply.ApplyEditParams = std::move(Result);
+  Step Rename;
+  Rename.K = Step::RENAME;
+  Rename.RenameParams = offsetToPosition(*NewCode, ExtractVarOffset);
+  EResult.Steps = std::vector<Step>{Apply, Rename};
+  return EResult;
 }
 
 // Find the CallExpr whose callee is an ancestor of the DeclRef

@@ -29,6 +29,23 @@
 namespace clang {
 namespace clangd {
 namespace {
+
+CallRequest toCallRequest(const Tweak::Step& S, URIForFile& File,
+                                    std::string& Code) {
+  if (S.K == Tweak::Step::RENAME) {
+    llvm::json::Object Result;
+    Result["arguments"] = {*S.RenameParams}; 
+    return {"clangd.triggerRename", std::move(Result)};
+  }
+  else if (S.K == Tweak::Step::APPLY_EDIT) {
+    ApplyWorkspaceEditParams Edit;
+    WorkspaceEdit& WE = Edit.edit;
+    WE.changes.emplace();
+    (*WE.changes)[File.uri()] = replacementsToEdits(Code, *S.ApplyEditParams);
+    return {"workspace/applyEdit", std::move(Edit)};
+  }
+  llvm_unreachable("unhandled Step Kind");
+}
 /// Transforms a tweak into a code action that would apply it if executed.
 /// EXPECTS: T.prepare() was called and returned true.
 CodeAction toCodeAction(const ClangdServer::TweakRef &T, const URIForFile &File,
@@ -146,11 +163,14 @@ public:
   bool onReply(llvm::json::Value ID,
                llvm::Expected<llvm::json::Value> Result) override {
     WithContext HandlerContext(handlerContext());
-    // We ignore replies, just log them.
-    if (Result)
-      log("<-- reply({0})", ID);
-    else
-      log("<-- reply({0}) error: {1}", ID, llvm::toString(Result.takeError()));
+    // find the corresponding Callback from the ID.
+    // 
+    // // We ignore replies, just log them.
+    // if (Result)
+    //   log("<-- reply({0})", ID);
+    // else
+    //   log("<-- reply({0}) error: {1}", ID, llvm::toString(Result.takeError()));
+    Server.onResponse(*ID.getAsInteger(), std::move(Result));
     return true;
   }
 
@@ -255,7 +275,6 @@ private:
 
   llvm::StringMap<std::function<void(llvm::json::Value)>> Notifications;
   llvm::StringMap<std::function<void(llvm::json::Value, ReplyOnce)>> Calls;
-
   // Method calls may be cancelled by ID, so keep track of their state.
   // This needs a mutex: handlers may finish on a different thread, and that's
   // when we clean up entries in the map.
@@ -311,11 +330,30 @@ private:
 
 // call(), notify(), and reply() wrap the Transport, adding logging and locking.
 void ClangdLSPServer::call(llvm::StringRef Method, llvm::json::Value Params) {
-  auto ID = NextCallID++;
+  call(Method, Params, NextCallID++);
+}
+
+void ClangdLSPServer::call(StringRef Method, llvm::json::Value Params, int ID) {
   log("--> {0}({1})", Method, ID);
-  // We currently don't handle responses, so no need to store ID anywhere.
   std::lock_guard<std::mutex> Lock(TranspWriter);
   Transp.call(Method, std::move(Params), ID);
+}
+
+void ClangdLSPServer::call(ReplyCallback CB) {
+   CallInSequence C {0, std::move(CB)};
+   Callbacks.emplace_back(NextCallID, std::move(C));
+   C([this](llvm::Expected<std::pair<std::string, llvm::json::Value> > P) {
+      call(P->first, P->second);
+   });
+}
+
+void ClangdLSPServer::call(CallChain CChain) {
+  auto ID = NextCallID++;
+  {
+  std::lock_guard<std::mutex> Lock(CallChainsMutex);
+  CallChains[ID] = std::move(CChain);
+  }
+  callNext(ID);
 }
 
 void ClangdLSPServer::notify(llvm::StringRef Method, llvm::json::Value Params) {
@@ -524,12 +562,41 @@ void ClangdLSPServer::onCommand(const ExecuteCommandParams &Params,
           llvm::inconvertibleErrorCode(),
           "trying to apply a code action for a non-added file"));
 
+
+    // struct 
     auto Action = [this, ApplyEdit](decltype(Reply) Reply, URIForFile File,
                                     std::string Code,
                                     llvm::Expected<Tweak::Effect> R) {
       if (!R)
         return Reply(R.takeError());
-
+      if (R->Steps) {
+        // std::queue<CallRequest> Steps;
+        // for (auto S : *R->Steps)
+        //   Steps.push(toCallRequest(S, File, Code));
+        // call(std::move(Steps));
+        std::vector<Tweak::Step> Steps = *R->Steps;
+        auto S =
+            [Steps, File, Code](size_t CurrentIndex,
+                    Callback<std::pair<std::string, llvm::json::Value>> CB) {
+              assert(CurrentIndex < Steps.size());
+              const auto &CurrentStep = Steps[CurrentIndex];
+              if (CurrentStep.K == Tweak::Step::RENAME) {
+                llvm::json::Object Result;
+                Result["arguments"] = {*CurrentStep.RenameParams};
+                std::pair<std::string, llvm::json::Value> R = {"clangd.triggerRename", std::move(Result)};
+                CB(std::move(R));
+              } else if (CurrentStep.K == Tweak::Step::APPLY_EDIT) {
+                ApplyWorkspaceEditParams Edit;
+                WorkspaceEdit &WE = Edit.edit;
+                WE.changes.emplace();
+                (*WE.changes)[File.uri()] =
+                    replacementsToEdits(Code, *CurrentStep.ApplyEditParams);
+                std::pair<std::string, llvm::json::Value> R = {"workspace/applyEdit", std::move(Edit)};
+                CB(std::move(R));
+              }
+            };
+        call(std::move(S);
+      }
       if (R->ApplyEdit) {
         WorkspaceEdit WE;
         WE.changes.emplace();
@@ -1000,6 +1067,33 @@ void ClangdLSPServer::onSymbolInfo(const TextDocumentPositionParams &Params,
                                    Callback<std::vector<SymbolDetails>> Reply) {
   Server->symbolInfo(Params.textDocument.uri.file(), Params.position,
                      std::move(Reply));
+}
+
+void ClangdLSPServer::onResponse(int ResponseID,
+                                 llvm::Expected<llvm::json::Value> Result) {
+  if (!Result) {
+    log("<-- reply({0}) error: {1}", ResponseID,
+        llvm::toString(Result.takeError()));
+    std::lock_guard<std::mutex> Lock(CallbacksMutex);
+    Callbacks.erase(ResponseID);
+    return;
+  }
+
+  log("<-- reply({0})", ResponseID);
+  callNext(ResponseID);
+}
+
+void ClangdLSPServer::callNext(int ResponseID) {
+  std::lock_guard<std::mutex> Lock(CallChainsMutex);
+  auto It = CallChains.find(ResponseID);
+  if (It == CallChains.end())
+    return;
+  auto NextCall = It->second.front();
+  It->second.pop();
+  if (It->second.empty()) // remove if we don't have further refactorings.
+    CallChains.erase(ResponseID);
+
+  call(NextCall.CallMethod, NextCall.Params, ResponseID);
 }
 
 ClangdLSPServer::ClangdLSPServer(

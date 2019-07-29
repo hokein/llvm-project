@@ -26,6 +26,11 @@ namespace clangd {
 
 class SymbolIndex;
 
+ struct CallRequest {
+     std::string CallMethod;
+     llvm::json::Value Params;
+  };
+  
 /// This class exposes ClangdServer's capabilities via Language Server Protocol.
 ///
 /// MessageHandler binds the implemented LSP methods (e.g. onInitialize) to
@@ -108,6 +113,8 @@ private:
   void onSymbolInfo(const TextDocumentPositionParams &,
                     Callback<std::vector<SymbolDetails>>);
 
+
+  void onResponse(int ResponseID, llvm::Expected<llvm::json::Value> Result);
   std::vector<Fix> getFixes(StringRef File, const clangd::Diagnostic &D);
 
   /// Checks if completion request should be ignored. We need this due to the
@@ -139,6 +146,37 @@ private:
   /// Caches FixIts per file and diagnostics
   llvm::StringMap<DiagnosticToReplacementMap> FixItsMap;
 
+  /// CallID => Step chain
+  // struct Step {
+  //   std::string CallMethod;
+  //   llvm::json::Value Params;
+  // };
+  // std::mutex RefactoringChainMutex;
+  // std::map<int, std::queue<Step>> RefactoringChains;
+
+  // A 
+  // class CallChain {
+  // public:
+  //   struct Request {
+  //     std::string CallMethod;
+  //     llvm::json::Value Params;
+  //   };
+  //   CallChain() : NextRequest(0) {}
+  //   bool empty() const {
+  //     return NextRequest >= Chain.size();
+  //   }
+  //   Request popFront() {
+  //     assert(NextRequest < Chain.size() && "the chain is empty!");
+  //     return std::move(Chain[NextRequest++]);
+  //   }
+  // private:
+  //   size_t NextRequest;
+  //   std::vector<Request> Chain;
+  // };
+
+  using CallChain = std::queue<CallRequest>;
+  std::mutex CallChainsMutex;
+  std::map<int, CallChain> CallChains;
   // Most code should not deal with Transport directly.
   // MessageHandler deals with incoming messages, use call() etc for outgoing.
   clangd::Transport &Transp;
@@ -146,9 +184,31 @@ private:
   std::unique_ptr<MessageHandler> MsgHandler;
   std::atomic<int> NextCallID = {0};
   std::mutex TranspWriter;
-  void call(StringRef Method, llvm::json::Value Params);
-  void notify(StringRef Method, llvm::json::Value Params);
 
+
+  using ReplyCallback = std::function<void(size_t,
+                         Callback<std::pair<std::string, llvm::json::Value>>)>;
+  struct CallInSequence {
+    int CurrentIndex;
+    ReplyCallback CB;
+
+    void operator()(Callback<std::pair<std::string, llvm::json::Value>> CCB)
+    {
+      CB(CurrentIndex++, std::move(CCB));
+    }
+  };
+
+  std::mutex CallbacksMutex;
+  // request ID.
+  std::vector<std::pair<int, CallInSequence>> Callbacks;
+  
+  void call(StringRef Method, llvm::json::Value Params);
+  void call(StringRef Method, llvm::json::Value Params, int ID);
+  void call(CallChain CChain);
+  void callNext(int ID);
+  void notify(StringRef Method, llvm::json::Value Params);
+  
+  void call(ReplyCallback);
   const FileSystemProvider &FSProvider;
   /// Options used for code completion
   clangd::CodeCompleteOptions CCOpts;

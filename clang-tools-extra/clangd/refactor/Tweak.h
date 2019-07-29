@@ -64,7 +64,19 @@ public:
     /// Provide information to the user.
     Info,
   };
+    struct Step {
+      enum Kind {
+         APPLY_EDIT,
+         RENAME,
+      };
+      Kind K;
+      llvm::Optional<tooling::Replacements> ApplyEditParams;
+      llvm::Optional<Position> RenameParams;
+    };
   struct Effect {
+
+
+    llvm::Optional<std::vector<Step>> Steps;
     /// A message to be displayed to the user.
     llvm::Optional<std::string> ShowMessage;
     /// An edit to apply to the input file.
