@@ -569,6 +569,114 @@ void ClangdLSPServer::onFileEvent(const DidChangeWatchedFilesParams &Params) {
   Server->onFileEvent(Params);
 }
 
+
+template <typename T>
+using ReplyCallbackAdaptor =
+    llvm::unique_function<void(Callback<llvm::json::Value>, llvm::Expected<T>)>;
+
+// using ReplyCallbackAdaptor = 
+struct RenameRunner {
+};
+
+struct ApplyEditReplyCallback {
+  void operator()(Callback<llvm::json::Value> Reply,
+                  llvm::Expected<ApplyWorkspaceEditResponse> Response){
+
+  }
+};
+
+
+struct CallInSequence {
+public:
+  CallInSequence(ClangdLSPServer *Server, std::vector<Tweak::Step> Steps,
+                 std::string Code, URIForFile MainFile)
+      : Server(Server), Steps(std::move(Steps)), nextStepIndex(0),
+        Code(std::move(Code)), MainFile(std::move(MainFile)) {}
+  CallInSequence(CallInSequence &&) = default;
+  CallInSequence(const CallInSequence &) = delete;
+  CallInSequence &operator=(const CallInSequence &) = delete;
+
+  void operator()(llvm::Expected<llvm::json::Value> Result) {
+    if (!Result) {
+      // FIXME: should send a failed reply to client.
+      log("receive error: {0}", llvm::toString(Result.takeError()));
+      return;
+    }
+    if (nextStepIndex >= Steps.size()) {
+      // FIXME: should send a successful reply to client.
+      log("applied tweak successfully");
+      return;
+    }
+    auto RequestToClient = takeNextStep();
+    nextCall(Server, RequestToClient.first, RequestToClient.second);
+  }
+
+  template <typename T> Callback<T> NewCallback() {
+    return std::move(*this);
+  }
+  // void operator()(llvm::Expected<ApplyWorkspaceEditResponse> Result) {
+
+  // };
+
+  std::pair<std::string, llvm::json::Value> takeNextStep() {
+    assert(nextStepIndex < Steps.size() && "index out of boundary!");
+    return transform(Steps[nextStepIndex++]);
+  }
+
+private:
+  // Transform the step into a LSP request.
+  std::pair</* Method */ std::string,
+            /* MethodParams */ llvm::json::Value>
+  transform(const Tweak::Step &Step) {
+    if (Step.ApplyKind == Tweak::Step::ApplyEdit) {
+      ApplyWorkspaceEditParams Edit;
+
+      Edit.edit.changes.emplace();
+      (*Edit.edit.changes)[MainFile.uri()] =
+          replacementsToEdits(Code, *Step.ApplyEditParams);
+      return {"workspace/applyEdit", std::move(Edit)};
+    } else if (Step.ApplyKind == Tweak::Step::Rename) {
+      // Clangd extension.
+      llvm::json::Object Result;
+      Result["arguments"] = {*Step.RenameParams};
+      return {"clangd.triggerRename", std::move(Result)};
+    }
+    llvm_unreachable("unhandled apply kind");
+  }
+  void test(Callback<llvm::json::Value> Reply) {
+    auto RequestToClient = takeNextStep();
+    if (RequestToClient.first == "applyEdit") {
+      Callback<ApplyWorkspaceEditResponse> CB = Bind(
+          [](decltype(Reply), int NextStepIndex, std::vector<Step> Steps, LSPServer* Server, llvm::Expected<ApplyWorkspaceEditResponse> Res) {
+            // handle res error
+            // get resposne
+            // success  callNextStep
+            // error callreply 
+                  },
+               std::move(Reply));
+      call(, , std::move(CB));
+    }
+    //   Callback<ApplyWorkspaceEditResponse> s = std::move(T);
+    //   Server->call(RequestToClient.first, std::move(RequestToClient.second),
+    //                std::move(s));
+    // } else if (RequestToClient.first == "rename") {
+    // }
+  }
+  void nextCall(ClangdLSPServer *LSPServer, llvm::StringRef Method,
+                llvm::json::Value Params) {
+    
+    // LSPServer->call(Method, std::move(Params), std::move(*this));
+  }
+
+  ClangdLSPServer *Server;
+  std::vector<Tweak::Step> Steps;
+  size_t nextStepIndex;
+
+  // datas for transforming step.
+  std::string Code;
+  URIForFile MainFile;
+};
+
 void ClangdLSPServer::onCommand(const ExecuteCommandParams &Params,
                                 Callback<llvm::json::Value> Reply) {
   auto ApplyEdit = [this](WorkspaceEdit WE,
@@ -576,6 +684,9 @@ void ClangdLSPServer::onCommand(const ExecuteCommandParams &Params,
     ApplyWorkspaceEditParams Edit;
     Edit.edit = std::move(WE);
     call("workspace/applyEdit", std::move(Edit), std::move(Reply));
+  };
+  auto ApplyStep = []() {
+
   };
   auto ReplyApplyEdit =
       [](decltype(Reply) Reply,
@@ -617,6 +728,13 @@ void ClangdLSPServer::onCommand(const ExecuteCommandParams &Params,
       if (!R)
         return Reply(R.takeError());
 
+      if (R->ApplySteps) {
+        CallInSequence Calls(this, *R->ApplySteps, Code, File);
+        ApplyWorkspaceEditParams Edit;
+        Callback<llvm::json::Value> C = std::move(Calls);
+        call("workspace/applyEdit", std::move(Edit), std::move(C));
+      }
+      
       if (R->ApplyEdit) {
         WorkspaceEdit WE;
         WE.changes.emplace();

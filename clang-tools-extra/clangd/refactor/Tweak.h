@@ -64,12 +64,44 @@ public:
     /// Provide information to the user.
     Info,
   };
+
+  // The class represents a small and focus refactoring. The purpose is to form
+  // a chain of different refactorings, so that we could perform a large and
+  // complicate refactoring.
+  //
+  // Steps are applied in sequence. In LSP layer, each step is transformed to a
+  // call request to the LSP client, LSPServer waits for the client response and
+  // continues to apply next step when the previous step is finished
+  // successfully.
+  //
+  // clangd doesn't track changes of the source files when apply a step, so
+  // the following steps are not aware of the changes, Tweak is corresponding to
+  // pre-calculate the changes for all steps.
+  // FIXME: we should have a mechanism to track the changes for each step.
+  struct Step {
+    enum Kind {
+      ApplyEdit,
+      Rename,
+    };
+    Kind ApplyKind;
+
+    llvm::Optional<tooling::Replacements> ApplyEditParams; // For ApplyEdit
+    llvm::Optional<Position> RenameParams;                 // For Rename
+  };
+
   struct Effect {
     /// A message to be displayed to the user.
     llvm::Optional<std::string> ShowMessage;
     /// An edit to apply to the input file.
     llvm::Optional<tooling::Replacements> ApplyEdit;
+    /// A chain of steps being executed in order when applying the tweak.
+    llvm::Optional<std::vector<Step>> ApplySteps;
 
+    static Effect applySteps(std::vector<Step> Steps) {
+      Effect E;
+      E.ApplySteps = std::move(Steps);
+      return E;
+    }
     static Effect applyEdit(tooling::Replacements R) {
       Effect E;
       E.ApplyEdit = std::move(R);

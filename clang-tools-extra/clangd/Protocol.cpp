@@ -27,6 +27,11 @@
 namespace clang {
 namespace clangd {
 
+bool fromJSON(const llvm::json::Value & P, llvm::json::Value & Result) {
+  Result = P;
+  return true;
+}
+
 char LSPError::ID;
 
 URIForFile URIForFile::canonicalize(llvm::StringRef AbsPath,

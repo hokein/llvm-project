@@ -36,6 +36,8 @@
 namespace clang {
 namespace clangd {
 
+bool fromJSON(const llvm::json::Value &, llvm::json::Value &);
+
 enum class ErrorCode {
   // Defined by JSON RPC.
   ParseError = -32700,
