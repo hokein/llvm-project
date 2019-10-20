@@ -812,6 +812,18 @@ TEST_F(FindExplicitReferencesTest, All) {
            "1: targets = {func}\n"
            "2: targets = {w}, decl\n"
            "3: targets = {FuncParam}\n"},
+           {R"cpp(
+            void foo() {
+            class $0^Foo {
+  int $1^A;
+  $2^Foo() : $3^A() {}
+  };
+};
+        )cpp",
+         "0: targets = {Foo}, decl\n"
+         "1: targets = {foo()::Foo::A}, decl\n"
+         "2: targets = {foo()::Foo::Foo}, decl\n"
+         "3: targets = {foo()::Foo::A}\n"},
           {R"cpp(
              namespace ns {}
              class S {};

@@ -641,6 +641,11 @@ public:
       TypeLocsToSkip.insert(TL.getBeginLoc().getRawEncoding());
     return RecursiveASTVisitor::TraverseNestedNameSpecifierLoc(L);
   }
+  
+  bool TraverseConstructorInitializer(CXXCtorInitializer *Init) {
+   visitNode(DynTypedNode::create(*Init));
+    return RecursiveASTVisitor::TraverseConstructorInitializer(Init);
+  }
 
 private:
   /// Obtain information about a reference directly defined in \p N. Does not
@@ -669,6 +674,7 @@ private:
     if (const TypeLoc *TL = N.get<TypeLoc>())
       return refInTypeLoc(*TL);
     if (const CXXCtorInitializer *CCI = N.get<CXXCtorInitializer>()) {
+      llvm::errs() << "CXXCtor\n";
       if (CCI->isBaseInitializer())
         return refInTypeLoc(CCI->getBaseClassLoc());
       assert(CCI->isAnyMemberInitializer());
