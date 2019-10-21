@@ -578,6 +578,10 @@ TEST(SemanticHighlighting, GetsCorrectTokens) {
       }
     )cpp",
       R"cpp(
+       namespace $Namespace[[ns]] { $Primitive[[void]] $Function[[foo]](); }
+       using $Namespace[[ns]]::$Function[[foo]];
+      )cpp"
+      R"cpp(
       template <class $TemplateParameter[[T]]>
       class $Class[[A]] {
         $Primitive[[int]] $Method[[foo]]() {

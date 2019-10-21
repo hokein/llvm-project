@@ -48,6 +48,29 @@ llvm::Optional<HighlightingKind> kindForDecl(const NamedDecl *D) {
     // And fallback to a generic kind if this fails.
     return HighlightingKind::Typedef;
   }
+  if (auto *UD = dyn_cast<UsingDecl>(D)) {
+    if (UD->shadow_size() == 0)
+      return llvm::None;
+    // highlight the decl as one of the underlyding shadow decls.
+    UsingShadowDecl* Selected = *UD->shadow_begin();
+    llvm::for_each(UD->shadows(), [&Selected](UsingShadowDecl* D) {
+      if (D->getLocation() < Selected->getLocation())
+        Selected = D;
+    });
+    return kindForDecl(Selected->getTargetDecl());
+  }
+  // if (auto *UUVD = dyn_cast<UnresolvedUsingValueDecl>(D)) {
+  //   if (auto K = kindForType(UUVD->getType().getTypePtr())) {
+  //     // UUVD->getType()->dump();
+  //     // UUVD->getUnderlyingDecl()->dump();
+  //     return K;
+  //   }
+  //   return llvm::None;
+  // }
+  // if (auto *S = dyn_cast<UnresolvedUsingTypenameDecl>(D)) {
+  //   llvm::errs() << "Un resolve using type name decl";
+  //   return HighlightingKind::DependentType;
+  // }
   // We highlight class decls, constructor decls and destructor decls as
   // `Class` type. The destructor decls are handled in `VisitTypeLoc` (we
   // will visit a TypeLoc where the underlying Type is a CXXRecordDecl).
@@ -91,12 +114,20 @@ llvm::Optional<HighlightingKind> kindForDecl(const NamedDecl *D) {
 llvm::Optional<HighlightingKind> kindForType(const Type *TP) {
   if (!TP)
     return llvm::None;
+  // TP->dump();
+  // llvm::errs() << "!!!!\n";
+  // if (auto *TST = dyn_cast<TemplateSpecializationType>(TP)) {
+  //   llvm::errs() << "for template specialization type\n";
+  //   return kindForDecl(TST->getTemplateName().getA  sTemplateDecl());
+  // }
   if (TP->isBuiltinType()) // Builtins are special, they do not have decls.
     return HighlightingKind::Primitive;
   if (auto *TD = dyn_cast<TemplateTypeParmType>(TP))
     return kindForDecl(TD->getDecl());
   if (auto *TD = TP->getAsTagDecl())
     return kindForDecl(TD);
+  // if (TP->isDependentType() && !isa<FunctionProtoType>(TP))
+  //   return HighlightingKind::DependentType;
   return llvm::None;
 }
 // Given a set of candidate declarations for an unresolved name,
@@ -208,6 +239,8 @@ public:
   }
 
   bool VisitTemplateSpecializationTypeLoc(TemplateSpecializationTypeLoc TL) {
+    // if (auto K = kindForType(TL.getTypePtr()))
+    //   addToken(TL.getBeginLoc(), *K);
     if (const TemplateDecl *TD =
             TL.getTypePtr()->getTemplateName().getAsTemplateDecl())
       addToken(TL.getBeginLoc(), TD);
@@ -238,9 +271,15 @@ public:
 
   bool TraverseNestedNameSpecifierLoc(NestedNameSpecifierLoc NNSLoc) {
     if (auto *NNS = NNSLoc.getNestedNameSpecifier()) {
+      // NNS->dump();
+      // llvm::errs() << "Kind: " << NNS->getKind() << "\n";
       if (NNS->getKind() == NestedNameSpecifier::Namespace ||
           NNS->getKind() == NestedNameSpecifier::NamespaceAlias)
         addToken(NNSLoc.getLocalBeginLoc(), HighlightingKind::Namespace);
+      // if (NNS->getKind() == NestedNameSpecifier::TypeSpec ||
+      //     NNS->getKind() == NestedNameSpecifier::TypeSpecWithTemplate)
+      //   if (auto K = kindForType(NNS->getAsType()))
+      //      addToken(NNSLoc.getLocalBeginLoc(), *K);
     }
     return RecursiveASTVisitor<
         HighlightingTokenCollector>::TraverseNestedNameSpecifierLoc(NNSLoc);
