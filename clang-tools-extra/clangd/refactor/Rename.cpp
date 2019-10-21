@@ -7,15 +7,19 @@
 //===----------------------------------------------------------------------===//
 
 #include "refactor/Rename.h"
+#include "Selection.h"
 #include "AST.h"
 #include "Logger.h"
 #include "ParsedAST.h"
 #include "SourceCode.h"
+#include "FindTarget.h"
 #include "index/SymbolCollector.h"
+#include "clang/AST/DeclCXX.h"
 #include "clang/Tooling/Refactoring/Rename/RenamingAction.h"
 #include "clang/Tooling/Refactoring/Rename/USRFinder.h"
 #include "clang/Tooling/Refactoring/Rename/USRFindingAction.h"
 #include "clang/Tooling/Refactoring/Rename/USRLocFinder.h"
+#include <vector>
 
 namespace clang {
 namespace clangd {
@@ -65,6 +69,7 @@ enum ReasonToReject {
   NoIndexProvided,
   NonIndexable,
   UsedOutsideFile,
+  AmbiguousSymbol,
   UnsupportedSymbol,
 };
 
@@ -129,6 +134,8 @@ llvm::Error makeError(ReasonToReject Reason) {
       return "symbol may be used in other files (not eligible for indexing)";
     case UnsupportedSymbol:
       return "symbol is not a supported kind (e.g. namespace, macro)";
+    case AmbiguousSymbol:
+      return "there are multiple symbols at the given location";
     }
     llvm_unreachable("unhandled reason kind");
   };
@@ -137,23 +144,115 @@ llvm::Error makeError(ReasonToReject Reason) {
       llvm::inconvertibleErrorCode());
 }
 
+std::vector<const Decl *> getDeclAtPosition(ParsedAST &AST, Position P) {
+  FileID FID;
+  unsigned Offset;
+  SourceLocation Pos;
+  if (auto L = sourceLocationInMainFile(AST.getSourceManager(), P)) {
+    Pos = *L;
+  }
+  std::tie(FID, Offset) = AST.getSourceManager().getDecomposedSpellingLoc(Pos);
+  SelectionTree Selection(AST.getASTContext(), AST.getTokens(), Offset);
+  std::vector<const Decl *> Result;
+  
+  if (const SelectionTree::Node *N = Selection.commonAncestor()) {
+    // if (N->ASTNode.get<UsingDecl>()) {
+    //   return {}; // doesn't support using decls.
+    // }
+    auto Decls = targetDecl(N->ASTNode,  DeclRelation::Alias | DeclRelation::TemplatePattern);
+    Result.assign(Decls.begin(), Decls.end());
+  }
+  return Result;
+
+}
+
+llvm::DenseSet<const Decl*> getExtraRenameDecl(const NamedDecl* RenameDecl) {
+  // RenajkkmeDecl = nullptr;
+  if (llvm::isa_and_nonnull<CXXConstructorDecl>(RenameDecl))
+    RenameDecl = dyn_cast<CXXConstructorDecl>(RenameDecl)->getParent();
+  llvm::DenseSet<const Decl*> Results {RenameDecl->getCanonicalDecl()};
+  if (auto *RD = dyn_cast<CXXRecordDecl>(RenameDecl)) {
+    if (auto *CTD = RD->getDescribedClassTemplate()) {
+      for (auto *S : CTD->specializations())
+        Results.insert(S->getCanonicalDecl());
+      SmallVector<ClassTemplatePartialSpecializationDecl *, 4> PartialSpecs;
+      CTD->getPartialSpecializations(PartialSpecs);
+      for (const auto *PD : PartialSpecs)
+        Results.insert(PD->getCanonicalDecl());
+    }
+    for (const auto* CTR : RD->ctors())
+      Results.insert(CTR->getCanonicalDecl());
+  }
+  if (auto *FD = dyn_cast<FunctionDecl>(RenameDecl)) {
+    if (FD->getDescribedFunctionTemplate())
+    for (auto *S : FD->getDescribedFunctionTemplate()->specializations())
+      Results.insert(S->getCanonicalDecl());
+  }
+  if (auto *MD = dyn_cast<CXXMethodDecl>(RenameDecl)) {
+    for (auto * OD : MD->overridden_methods())
+      Results.insert(OD->getCanonicalDecl());
+  }
+  return Results;
+}
+
 // Return all rename occurrences in the main file.
-tooling::SymbolOccurrences
-findOccurrencesWithinFile(ParsedAST &AST, const NamedDecl *RenameDecl) {
+// tooling::SymbolOccurrences
+std::vector<SourceLocation>
+findOccurrencesWithinFile(ParsedAST &AST, Position P, const NamedDecl *RenameDecl) {
   const NamedDecl *CanonicalRenameDecl =
       tooling::getCanonicalSymbolDeclaration(RenameDecl);
   assert(CanonicalRenameDecl && "RenameDecl must be not null");
-  std::vector<std::string> RenameUSRs =
-      tooling::getUSRsForDeclaration(CanonicalRenameDecl, AST.getASTContext());
+  // std::vector<std::string> RenameUSRs =
+  //     tooling::getUSRsForDeclaration(CanonicalRenameDecl, AST.getASTContext());
+  // dyn_castCanonicalRenameDecl
+  llvm::DenseSet<SymbolID> WhitelistIDs; 
+  auto AllDecls = getExtraRenameDecl(RenameDecl);
+  // for (const auto* D : getExtraRenameDecl(RenameDecl))
+  //   if (auto ID = getSymbolID(D))
+  //     WhitelistIDs.insert(*ID);
+  // if (auto ID = getSymbolID(CanonicalRenameDecl))
+  //   WhitelistIDs.insert(*ID);
+  // if (const auto* R = dyn_cast<CXXRecordDecl>(CanonicalRenameDecl)) {
+  //   if (auto ID = getSymbolID(R->getDestructor()))
+  //      WhitelistIDs.insert(*ID);
+  //   for (const auto* C : R->ctors())
+  //   WhitelistIDs.insert(*getSymbolID(C));
+  // }
+  // CanonicalRenameDecl->dump();
+  // for (const auto& USR : RenameUSRs) {
+  //   llvm::errs() << "USR: " << USR << "\n";
+  //   WhitelistIDs.insert(SymbolID(USR));
+  // }
+  // auto Decls = getDeclAtPosition(AST, P);
+  // for (const auto* D : Decls) {
+  //   if (auto ID = getSymbolID(D))
+  //     WhitelistIDs.insert(*ID);
+  // }
   std::string OldName = CanonicalRenameDecl->getNameAsString();
   tooling::SymbolOccurrences Result;
-  for (Decl *TopLevelDecl : AST.getLocalTopLevelDecls()) {
-    tooling::SymbolOccurrences RenameInDecl =
-        tooling::getOccurrencesOfUSRs(RenameUSRs, OldName, TopLevelDecl);
-    Result.insert(Result.end(), std::make_move_iterator(RenameInDecl.begin()),
-                  std::make_move_iterator(RenameInDecl.end()));
+  // void findExplicitReferences(const Decl *D,
+  //                           llvm::function_ref<void(ReferenceLoc)> Out);
+  std::vector<SourceLocation> RenameRefs;
+  for (Decl *TopLevelDecl : AST.getLocalTopLevelDecls())
+  {
+    findExplicitReferences(TopLevelDecl,
+                           [&](ReferenceLoc Ref) {
+                             if (Ref.Targets.size() != 1)
+                               return;
+                              if (AllDecls.find(Ref.Targets.front()->getCanonicalDecl()) != AllDecls.end())
+                                RenameRefs.push_back(Ref.NameLoc);
+                            //  if (auto ID = getSymbolID(Ref.Targets.front()))
+                            //   if (WhitelistIDs.find(*ID) != WhitelistIDs.end())
+                            // //  if (CanonicalRenameDecl->getCanonicalDecl() == Ref.Targets.front()->getCanonicalDecl())
+                            //    RenameRefs.push_back(Ref.NameLoc);
+                           });
+
+    // tooling::SymbolOccurrences RenameInDecl =
+    //     tooling::getOccurrencesOfUSRs(RenameUSRs, OldName, TopLevelDecl);
+    // Result.insert(Result.end(), std::make_move_iterator(RenameInDecl.begin()),
+    //               std::make_move_iterator(RenameInDecl.end()));
   }
-  return Result;
+  return RenameRefs;
 }
 
 } // namespace
@@ -171,28 +270,36 @@ renameWithinFile(ParsedAST &AST, llvm::StringRef File, Position Pos,
 
   const auto *RenameDecl =
       tooling::getNamedDeclAt(AST.getASTContext(), SourceLocationBeg);
-  if (!RenameDecl)
+  auto Decls = getDeclAtPosition(AST, Pos);
+  if (Decls.size() > 1)
+    return makeError(AmbiguousSymbol);
+  if (Decls.empty())
     return makeError(NoSymbolFound);
+  RenameDecl = llvm::dyn_cast<NamedDecl>(Decls.front()->getCanonicalDecl());
+  // RenameDecl->dump();
+  if (!RenameDecl)
+    return makeError(UnsupportedSymbol);
 
   if (auto Reject =
-          renamableWithinFile(*RenameDecl->getCanonicalDecl(), File, Index))
+          renamableWithinFile(*RenameDecl, File, Index))
     return makeError(*Reject);
 
   // Rename sometimes returns duplicate edits (which is a bug). A side-effect of
   // adding them to a single Replacements object is these are deduplicated.
   tooling::Replacements FilteredChanges;
-  for (const tooling::SymbolOccurrence &Rename :
-       findOccurrencesWithinFile(AST, RenameDecl)) {
+  for (const SourceLocation RenameLoc :
+       findOccurrencesWithinFile(AST,Pos, RenameDecl)) {
     // Currently, we only support normal rename (one range) for C/C++.
     // FIXME: support multiple-range rename for objective-c methods.
-    if (Rename.getNameRanges().size() > 1)
-      continue;
+    // if (Rename.getNameRanges().size() > 1)
+    //   continue;
     // We shouldn't have conflicting replacements. If there are conflicts, it
     // means that we have bugs either in clangd or in Rename library, therefore
     // we refuse to perform the rename.
     if (auto Err = FilteredChanges.add(tooling::Replacement(
             AST.getASTContext().getSourceManager(),
-            CharSourceRange::getCharRange(Rename.getNameRanges()[0]), NewName)))
+            CharSourceRange::getTokenRange(RenameLoc),
+            NewName)))
       return std::move(Err);
   }
   return FilteredChanges;

@@ -21,6 +21,308 @@ namespace {
 MATCHER_P2(RenameRange, Code, Range, "") {
   return replacementToEdit(Code, arg).range == Range;
 }
+TEST(RenameTest, ClangRenameTest) {
+  StringRef Tests[] = {
+    R"cpp(
+      class [[F^oo]] {};
+      template <typename T> void func() {}
+      template <typename T> class Baz {};
+      int main() {
+        func<[[F^oo]]>();             
+        Baz<[[F^oo]]> obj;
+        return 0;
+      }
+    )cpp",
+    
+    // class simple rename.
+    R"cpp(
+      class [[F^oo]] {
+        void foo(int x);
+      };
+ 
+      void [[Foo]]::foo(int x) {}
+    )cpp",
+    // class overrides
+    R"cpp(
+      struct A {
+       virtual void [[f^oo]]() {} 
+      };
+ 
+      struct B : A {
+        void [[f^oo]]() override {}
+      };
+ 
+      struct C : B {
+        void [[f^oo]]() override {}
+      };
+ 
+      struct D : B {
+        void [[f^oo]]() override {}
+      };
+ 
+      struct E : D {
+        void [[f^oo]]() override {} 
+      };
+ 
+      void func() {
+        A a;
+        a.[[foo]]();                           
+        B b;
+        b.[[foo]](); 
+        C c;
+        c.[[foo]]();
+        D d;
+        d.[[foo]]();
+        E e;
+        e.[[foo]]();
+      }
+    )cpp",
+    // complicated class type.
+    R"cpp(
+      // Forward declaration.
+      class [[Fo^o]];
+ 
+      class Baz {
+        virtual int getValue() const = 0;
+      };
+ 
+      class [[F^oo]] : public Baz  {
+      public:
+        [[Foo]](int value = 0) : x(value) {}
+      
+        [[Foo]] &operator++(int) {
+          x++;
+          return *this;
+        }
+ 
+        bool operator<([[Foo]] const &rhs) {
+          return this->x < rhs.x;
+        }
+ 
+        int getValue() const {
+          return 0;
+        }
+ 
+      private:
+        int x;
+      };
+ 
+      void func() {
+        [[Foo]] *Pointer = 0;
+        [[Foo]] Variable = [[Foo]](10);
+        for ([[Foo]] it; it < Variable; it++) {
+        }
+        const [[Foo]] *C = new [[Foo]]();
+        const_cast<[[Foo]] *>(C)->getValue();
+        [[Foo]] foo;
+        const Baz &BazReference = foo;
+        const Baz *BazPointer = &foo;
+        dynamic_cast<const [[^Foo]] &>(BazReference).getValue();
+        dynamic_cast<const [[^Foo]] *>(BazPointer)->getValue();
+        reinterpret_cast<const [[^Foo]] *>(BazPointer)->getValue();
+        static_cast<const [[^Foo]] &>(BazReference).getValue();
+        static_cast<const [[^Foo]] *>(BazPointer)->getValue();
+      }
+    )cpp",
+    // class constructors
+    R"cpp(
+      class [[^Foo]] { 
+       public:
+         [[Foo]]();
+      };
+ 
+      [[Foo]]::[[Fo^o]]() {}
+    )cpp",
+    // constructor initializer list.
+    R"cpp(
+      class Baz {};
+      class Qux {
+        Baz [[F^oo]];
+      public:
+        Qux();
+      };
+ 
+      Qux::Qux() : [[F^oo]]() {}
+    )cpp",
+ 
+    // DeclRef Expr?
+    R"cpp(
+      class C {
+       public:
+         static int [[F^oo]];
+       };
+ 
+       int foo(int x) { return 0; }
+       #define MACRO(a) foo(a)
+ 
+       void func() {
+         C::[[F^oo]] = 1;
+         MACRO(C::[[Foo]]);
+         int y = C::[[F^oo]];
+       }
+    )cpp",
+    // Forward declaration.
+    R"cpp(
+      class [[F^oo]];
+      [[Foo]] *f();
+    )cpp",
+    // function marco????
+    R"cpp(
+      #define moo foo           // CHECK: #define moo macro_function
+ 
+int foo() /* Test 1 */ {  // CHECK: int macro_function() /* Test 1 */ {
+  return 42;
+}
+ 
+void boo(int value) {}
+ 
+void qoo() {
+  foo();                  // CHECK: macro_function();
+  boo(foo());             // CHECK: boo(macro_function());
+  moo();
+  boo(moo());
+}
+    )cpp",
+ 
+    R"cpp(
+      class Baz {
+       public:
+         int [[Foo]];
+       };
+ 
+       int qux(int x) { return 0; }
+       #define MACRO(a) qux(a)
+ 
+       int main() {
+         Baz baz;
+         baz.[[Foo]] = 1;
+         MACRO(baz.[[Foo]]);
+         int y = baz.[[Foo]];
+       }
+    )cpp",
+    
+    // template class instantiation.
+    R"cpp(
+      template <typename T>
+      class [[F^oo]] {
+      public:
+        T foo(T arg, T& ref, T* ptr) {
+          T value;
+          int number = 42;
+          value = (T)number;
+          value = static_cast<T>(number);
+          return value;
+        }
+        static void foo(T value) {}
+        T member;
+      };
+ 
+      template <typename T>
+      void func() {
+        [[F^oo]]<T> obj;
+        obj.member = T();
+        [[Foo]]<T>::foo();
+      }
+ 
+      int main() {
+        [[F^oo]]<int> i;
+        i.member = 0;
+        [[F^oo]]<int>::foo(0);
+ 
+        [[F^oo]]<bool> b;
+        b.member = false;
+        [[Foo]]<bool>::foo(false);
+ 
+        return 0;
+      }
+    )cpp",
+    // template arguments
+    R"cpp(
+      template <typename [[^T]]>
+      class Foo {
+        [[T]] foo([[T]] arg, [[T]]& ref, [[^T]]* ptr) {
+          [[T]] value;
+          int number = 42;
+          value = ([[T]])number;
+          value = static_cast<[[^T]]>(number); 
+          return value;
+        }
+        static void foo([[T]] value) {}
+        [[T]] member;
+      };
+    )cpp",
+    // template class methods.
+    R"cpp(
+      template <typename T>
+      class A {
+      public:
+        void [[f^oo]]() {}
+      };
+ 
+      void func() {
+        A<int> a;
+        A<double> b;
+        A<float> c;
+        a.[[f^oo]](); 
+        b.[[f^oo]](); 
+        c.[[f^oo]]();
+      }
+    )cpp",
+ 
+    // Typedef.
+    R"cpp(
+      namespace std {
+      class basic_string {};
+      typedef basic_string [[s^tring]];
+      } // namespace std
+ 
+      std::[[s^tring]] foo();
+    )cpp",
+    // Variable.
+    R"cpp(
+      #define NAMESPACE namespace A
+      NAMESPACE {
+      int [[F^oo]];
+      }
+      int Foo;
+      int Qux = Foo;
+      int Baz = A::[[^Foo]];
+      void fun() {
+        struct {
+          int Foo;
+        } b = {100};
+        int Foo = 100;
+        Baz = Foo;
+        {
+          extern int Foo;
+          Baz = Foo;
+          Foo = A::[[F^oo]] + Baz;
+          A::[[Fo^o]] /* Test 4 */ = b.Foo;
+        }
+        Foo = b.Foo;
+      }
+    )cpp",
+  };
+  int count = 0;
+  for (const auto& Test : Tests) {
+    Annotations Code(Test);
+    for (const auto& RenamePos : Code.points()) {
+      auto TU = TestTU::withCode(Code.code());
+      auto AST = TU.build();
+      auto RenameResult =
+        renameWithinFile(AST, testPath(TU.Filename), RenamePos, "dummy");
+      EXPECT_TRUE(bool(RenameResult)) << "renameWithinFile returned an error: "
+                                 << llvm::toString(RenameResult.takeError());
+      std::vector<testing::Matcher<tooling::Replacement>> Expected;
+      for (const auto &R : Code.ranges())
+        Expected.push_back(RenameRange(TU.Code, R));
+      EXPECT_THAT(*RenameResult, UnorderedElementsAreArray(Expected)) << Test;
+    }
+    ++count;
+    if (count > 10)
+     break;
+  }
+}
 
 TEST(RenameTest, SingleFile) {
   struct Test {
