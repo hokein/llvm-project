@@ -265,6 +265,7 @@ std::vector<std::string> visibleNamespaces(llvm::StringRef Code,
 struct DefinedMacro {
   llvm::StringRef Name;
   const MacroInfo *Info;
+  const IdentifierInfo *II;
 };
 // Gets the macro at a specified \p Loc.
 llvm::Optional<DefinedMacro> locateMacroAt(SourceLocation Loc,

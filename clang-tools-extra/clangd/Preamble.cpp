@@ -12,6 +12,7 @@
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Lex/PPCallbacks.h"
 #include "clang/Lex/PreprocessorOptions.h"
+#include <memory>
 
 namespace clang {
 namespace clangd {
@@ -46,6 +47,7 @@ public:
     CanonIncludes.addSystemHeadersMapping(CI.getLangOpts());
     LangOpts = &CI.getLangOpts();
     SourceMgr = &CI.getSourceManager();
+    PP = CI.getPreprocessorPtr();
   }
 
   std::unique_ptr<PPCallbacks> createPPCallbacks() override {
@@ -54,7 +56,7 @@ public:
 
     return std::make_unique<PPChainedCallbacks>(
         collectIncludeStructureCallback(*SourceMgr, &Includes),
-        std::make_unique<CollectMainFileMacros>(*SourceMgr, *LangOpts, Macros));
+        std::make_unique<CollectMainFileMacros>(*SourceMgr, *LangOpts, PP, Macros));
   }
 
   CommentHandler *getCommentHandler() override {
@@ -71,6 +73,7 @@ private:
   std::unique_ptr<CommentHandler> IWYUHandler = nullptr;
   const clang::LangOptions *LangOpts = nullptr;
   const SourceManager *SourceMgr = nullptr;
+  std::shared_ptr<Preprocessor> PP = nullptr;
 };
 
 } // namespace

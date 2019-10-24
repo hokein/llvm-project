@@ -927,6 +927,23 @@ std::vector<Location> findReferences(ParsedAST &AST, Position Pos,
   }
   auto Loc = SM.getMacroArgExpandedLocation(
       getBeginningOfIdentifier(Pos, SM, AST.getASTContext().getLangOpts()));
+  if (auto Macro = locateMacroAt(Loc, AST.getPreprocessor())) {
+    if (auto ID = getSymbolID(*Macro->II, Macro->Info, SM)) {
+      llvm::errs() << "search id : " << *ID << "\n";
+      Macro->Info->dump();
+      const auto& Refs = AST.getMacros().Refs.find(*ID);
+      if (Refs != AST.getMacros().Refs.end())
+        
+      for (const auto& R : Refs->getSecond()) {
+      Location Result;
+      Result.range = R;
+      Result.uri = URIForFile::canonicalize(*MainFilePath, *MainFilePath);
+      Results.push_back(std::move(Result));
+      }
+    }
+    return Results;
+  }
+    // return makeError(UnsupportedSymbol);
   // TODO: should we handle macros, too?
   auto Decls = getDeclAtPosition(AST, Loc);
 

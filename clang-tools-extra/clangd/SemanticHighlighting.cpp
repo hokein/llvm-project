@@ -128,8 +128,9 @@ public:
     TraverseAST(AST.getASTContext());
     // Add highlightings for macro expansions as they are not traversed by the
     // visitor.
-    for (const auto &M : AST.getMacros().Ranges)
-      Tokens.push_back({HighlightingKind::Macro, M});
+    for (const auto &M : AST.getMacros().Refs)
+      for (const auto &R : M.getSecond())
+        Tokens.push_back({HighlightingKind::Macro, R});
     // Initializer lists can give duplicates of tokens, therefore all tokens
     // must be deduplicated.
     llvm::sort(Tokens);

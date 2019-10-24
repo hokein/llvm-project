@@ -975,16 +975,36 @@ llvm::Optional<DefinedMacro> locateMacroAt(SourceLocation Loc,
   if (!IdentifierInfo || !IdentifierInfo->hadMacroDefinition())
     return None;
 
+  Token Before;
+  if (!Lexer::getRawToken(Lexer::GetBeginningOfToken(SM.getSpellingLoc(Loc).getLocWithOffset(-1), SM, LangOpts), Before, SM, LangOpts, false))
+  PP.DumpToken(Before);
+  // llvm::errs() << Before
+  Token After;
+  if (!Lexer::getRawToken(SM.getSpellingLoc(Loc).getLocWithOffset(1), After, SM, LangOpts, false))
+  PP.DumpToken(After);
+  // IdentifierInfo->hasMacroDefinition();
   std::pair<FileID, unsigned int> DecLoc = SM.getDecomposedExpansionLoc(Loc);
   // Get the definition just before the searched location so that a macro
   // referenced in a '#undef MACRO' can still be found.
   SourceLocation BeforeSearchedLocation =
       SM.getMacroArgExpandedLocation(SM.getLocForStartOfFile(DecLoc.first)
                                          .getLocWithOffset(DecLoc.second - 1));
+  
   MacroDefinition MacroDef =
       PP.getMacroDefinitionAtLoc(IdentifierInfo, BeforeSearchedLocation);
+  // auto MD =  PP.getLocalMacroDirectiveHistory(IdentifierInfo);
+  // while (MD) {
+  //   MD->getDefinition().getLocation().dump(SM);
+  //   MD->getDefinition().getUndefLocation().dump(SM);
+  //   llvm::errs() << "\n\n";
+  //   MD = MD->getPrevious();
+  // }
+  // MacroDef.forAllDefinitions(Fn F)
+  // MacroDef.getMacroInfo()->getDefinitionEndLoc()
+      // PP.getMac
+  // auto* MI = PP.getLocalMacroDirective(IdentifierInfo)->->getMacroInfo();
   if (auto *MI = MacroDef.getMacroInfo())
-    return DefinedMacro{IdentifierInfo->getName(), MI};
+    return DefinedMacro{IdentifierInfo->getName(), MI, IdentifierInfo};
   return None;
 }
 

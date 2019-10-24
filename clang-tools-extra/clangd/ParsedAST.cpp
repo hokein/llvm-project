@@ -347,7 +347,7 @@ ParsedAST::build(std::unique_ptr<clang::CompilerInvocation> CI,
     Macros = Preamble->Macros;
   Clang->getPreprocessor().addPPCallbacks(
       std::make_unique<CollectMainFileMacros>(Clang->getSourceManager(),
-                                              Clang->getLangOpts(), Macros));
+                                              Clang->getLangOpts(), Clang->getPreprocessorPtr(), Macros));
 
   // Copy over the includes from the preamble, then combine with the
   // non-preamble includes below.
