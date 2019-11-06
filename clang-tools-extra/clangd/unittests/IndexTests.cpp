@@ -411,6 +411,7 @@ TEST(MergeIndexTest, NonDocumentation) {
   Symbol L, R;
   L.ID = R.ID = SymbolID("x");
   L.Definition.FileURI = "file:/x.h";
+  L.SymInfo.Kind = index::SymbolKind::Class;
   R.Documentation = "Forward declarations because x.h is too big to include";
 
   Symbol M = mergeSymbol(L, R);
