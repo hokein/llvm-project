@@ -56,6 +56,7 @@ void UnusedUsingDeclsCheck::registerMatchers(MatchFinder *Finder) {
   Finder->addMatcher(loc(enumType(DeclMatcher)), this);
   Finder->addMatcher(loc(recordType(DeclMatcher)), this);
   Finder->addMatcher(loc(templateSpecializationType(DeclMatcher)), this);
+  Finder->addMatcher(loc(deducedTemplateSpecializationType(DeclMatcher)), this);
   Finder->addMatcher(declRefExpr().bind("used"), this);
   Finder->addMatcher(callExpr(callee(unresolvedLookupExpr().bind("used"))),
                      this);
@@ -72,6 +73,14 @@ void UnusedUsingDeclsCheck::check(const MatchFinder::MatchResult &Result) {
   if (Result.Context->getDiagnostics().hasUncompilableErrorOccurred())
     return;
 
+  if (const auto *DT = Result.Nodes.getNodeAs<DeducedTemplateSpecializationType>("deduced")) {
+    llvm::errs() << DT->isDeduced() << "\n";
+    DT->dump(llvm::errs());
+    DT->getTemplateName().getAsTemplateDecl()->dump();
+    // if (DT->getTypeClass() == Type::DeducedTemplateSpecialization)
+    if (const auto* T = DT->getDeducedType().getTypePtrOrNull())
+      T->getAsTagDecl()->dump();
+  }
   if (const auto *Using = Result.Nodes.getNodeAs<UsingDecl>("using")) {
     // Ignores using-declarations defined in macros.
     if (Using->getLocation().isMacroID())

@@ -787,15 +787,19 @@ private:
   /// matcher matches on it.
   bool matchesSpecialized(const Type &Node, ASTMatchFinder *Finder,
                           BoundNodesTreeBuilder *Builder) const {
+    
     // DeducedType does not have declarations of its own, so
     // match the deduced type instead.
     const Type *EffectiveType = &Node;
-    if (const auto *S = dyn_cast<DeducedType>(&Node)) {
-      EffectiveType = S->getDeducedType().getTypePtrOrNull();
-      if (!EffectiveType)
-        return false;
+    if (const auto *DTST =
+            dyn_cast<DeducedTemplateSpecializationType>(&Node)) {
+      return matchesDecl(DTST->getTemplateName().getAsTemplateDecl(), Finder,
+                         Builder);
     }
-
+    if (const auto *S = dyn_cast<DeducedType>(&Node)) {
+      if (const auto* DT = S->getDeducedType().getTypePtrOrNull())
+        EffectiveType = DT;
+    }
     // First, for any types that have a declaration, extract the declaration and
     // match on it.
     if (const auto *S = dyn_cast<TagType>(EffectiveType)) {
@@ -1127,7 +1131,7 @@ using AdaptativeDefaultToTypes =
 
 /// All types that are supported by HasDeclarationMatcher above.
 using HasDeclarationSupportedTypes =
-    TypeList<CallExpr, CXXConstructExpr, CXXNewExpr, DeclRefExpr, EnumType,
+    TypeList<CallExpr, CXXConstructExpr, CXXNewExpr, DeducedTemplateSpecializationType, DeclRefExpr, EnumType,
              ElaboratedType, InjectedClassNameType, LabelStmt, AddrLabelExpr,
              MemberExpr, QualType, RecordType, TagType,
              TemplateSpecializationType, TemplateTypeParmType, TypedefType,
