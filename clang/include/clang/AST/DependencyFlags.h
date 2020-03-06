@@ -17,11 +17,12 @@ struct ExprDependenceScope {
   enum ExprDependence : uint8_t {
     UnexpandedPack = 1,
     Instantiation = 2,
-    Type = 4,
-    Value = 8,
+    Error = 4,
+    Type = 8,
+    Value = 16,
 
     None = 0,
-    All = 15,
+    All = 31,
 
     TypeValue = Type | Value,
     TypeInstantiation = Type | Instantiation,
@@ -32,7 +33,7 @@ struct ExprDependenceScope {
   };
 };
 using ExprDependence = ExprDependenceScope::ExprDependence;
-static constexpr unsigned ExprDependenceBits = 4;
+static constexpr unsigned ExprDependenceBits = 5;
 
 struct TypeDependenceScope {
   enum TypeDependence : uint8_t {
@@ -42,13 +43,15 @@ struct TypeDependenceScope {
     /// Whether this type somehow involves a template parameter, even
     /// if the resolution of the type does not depend on a template parameter.
     Instantiation = 2,
+    ///
+    Error = 4,
     /// Whether this type is a dependent type (C++ [temp.dep.type]).
-    Dependent = 4,
+    Dependent = 8,
     /// Whether this type is a variably-modified type (C99 6.7.5).
-    VariablyModified = 8,
+    VariablyModified = 16,
 
     None = 0,
-    All = 15,
+    All = 31,
 
     DependentInstantiation = Dependent | Instantiation,
 
@@ -56,24 +59,25 @@ struct TypeDependenceScope {
   };
 };
 using TypeDependence = TypeDependenceScope::TypeDependence;
-static constexpr unsigned TypeDependenceBits = 4;
+static constexpr unsigned TypeDependenceBits = 5;
 
 #define LLVM_COMMON_DEPENDENCE(NAME)                                           \
   struct NAME##Scope {                                                         \
     enum NAME : uint8_t {                                                      \
       UnexpandedPack = 1,                                                      \
-      Instantiation = 2,                                                       \
-      Dependent = 4,                                                           \
+      Instantiation = 2, \
+      Error = 4,                                                     \
+      Dependent = 8,                                                           \
                                                                                \
       None = 0,                                                                \
       DependentInstantiation = Dependent | Instantiation,                      \
-      All = 7,                                                                 \
+      All = 15,                                                                 \
                                                                                \
       LLVM_MARK_AS_BITMASK_ENUM(/*LargestValue=*/Dependent)                    \
     };                                                                         \
   };                                                                           \
   using NAME = NAME##Scope::NAME;                                              \
-  static constexpr unsigned NAME##Bits = 3;
+  static constexpr unsigned NAME##Bits = 4;
 
 LLVM_COMMON_DEPENDENCE(NestedNameSpecifierDependence)
 LLVM_COMMON_DEPENDENCE(TemplateNameDependence)
