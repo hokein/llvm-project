@@ -3883,10 +3883,10 @@ class StmtExpr : public Expr {
   SourceLocation LParenLoc, RParenLoc;
 public:
   StmtExpr(CompoundStmt *substmt, QualType T, SourceLocation lp,
-           SourceLocation rp, bool InDependentContext)
+           SourceLocation rp)
       : Expr(StmtExprClass, T, VK_RValue, OK_Ordinary), SubStmt(substmt),
         LParenLoc(lp), RParenLoc(rp) {
-    setDependence(computeDependence(this, InDependentContext));
+    setDependence(computeDependence(this, false));
   }
 
   /// Build an empty statement expression.
