@@ -708,3 +708,10 @@ ExprDependence clang::computeDependence(ObjCMessageExpr *E) {
     D |= A->getDependence();
   return D;
 }
+
+ExprDependence clang::computeDependence(RecoveryExpr *E) {
+  auto Deps = ExprDependence::TypeValueInstantiation | ExprDependence::Error;
+  for (auto *S : E->subExpressions())
+    Deps |= S->getDependence();
+  return Deps;
+}

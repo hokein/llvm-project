@@ -2070,6 +2070,19 @@ void ASTStmtReader::VisitTypoExpr(TypoExpr *E) {
   llvm_unreachable("Cannot read TypoExpr nodes");
 }
 
+void ASTStmtReader::VisitRecoveryExpr(RecoveryExpr *E) {
+  VisitExpr(E);
+  unsigned NumArgs = Record.readInt();
+  E->BeginLoc = readSourceLocation();
+  E->EndLoc = readSourceLocation();
+  assert(
+      (NumArgs == std::distance(E->children().begin(), E->children().end())) &&
+      "Wrong NumArgs!");
+  (void)NumArgs;
+  for (Stmt *&Child : E->children())
+    Child = Record.readSubStmt();
+}
+
 //===----------------------------------------------------------------------===//
 // Microsoft Expressions and Statements
 //===----------------------------------------------------------------------===//
@@ -2838,6 +2851,11 @@ Stmt *ASTReader::ReadStmtFromStream(ModuleFile &F) {
     case EXPR_CALL:
       S = CallExpr::CreateEmpty(
           Context, /*NumArgs=*/Record[ASTStmtReader::NumExprFields], Empty);
+      break;
+
+    case EXPR_RECOVERY:
+      S = RecoveryExpr::CreateEmpty(
+          Context, /*NumArgs=*/Record[ASTStmtReader::NumExprFields]);
       break;
 
     case EXPR_MEMBER:
