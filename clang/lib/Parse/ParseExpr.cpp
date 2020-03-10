@@ -639,9 +639,14 @@ Parser::ParseRHSOfBinaryExpression(ExprResult LHS, prec::Level MinPrec) {
             OpToken.getLocation(), ColonLoc, LHS.get(), TernaryMiddle.get(),
             RHS.get());
         if (CondOp.isInvalid()) {
-          CondOp = Actions.CreateRecoveryExpr(
-              LHS.get()->getBeginLoc(), RHS.get()->getEndLoc(),
-              {LHS.get(), TernaryMiddle.get(), RHS.get()});
+          std::vector<clang::Expr*> Args;
+          // TernaryMiddle can be null for the GNU conditional expr extension.
+          if (TernaryMiddle.get())
+            Args = {LHS.get(), TernaryMiddle.get(), RHS.get()};
+          else
+            Args = {LHS.get(), RHS.get()};
+          CondOp = Actions.CreateRecoveryExpr(LHS.get()->getBeginLoc(),
+                                              RHS.get()->getEndLoc(), Args);
         }
         LHS = CondOp;
       }
