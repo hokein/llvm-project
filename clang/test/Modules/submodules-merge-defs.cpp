@@ -50,7 +50,7 @@ int pre_e = E(0); // expected-error {{must be imported}}
 // expected-note@defs.h:32 +{{here}}
 
 int pre_ff = F<int>().f(); // expected-error +{{must be imported}}
-int pre_fg = F<int>().g<int>(); // expected-error +{{must be imported}}
+int pre_fg = F<int>().g<int>(); // expected-error +{{must be imported}} expected-error {{use 'template' keyword}}
 // expected-note@defs.h:34 +{{here}}
 
 G::A pre_ga // expected-error +{{must be imported}}
