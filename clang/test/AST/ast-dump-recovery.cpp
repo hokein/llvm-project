@@ -72,3 +72,16 @@ int binary = a + nullptr;
 // CHECK-NEXT:  |-CXXNullPtrLiteralExpr
 // CHECK-NEXT:  `-DeclRefExpr {{.*}} 'a'
 int ternary = a ? nullptr : a;
+
+// CHECK:     FunctionDecl
+// CHECK-NEXT:`-CompoundStmt
+// CHECK-NEXT: |-RecoveryExpr {{.*}} contains-errors
+// CHECK-NEXT: | `-DeclRefExpr {{.*}} 'foo'
+// CHECK-NEXT: `-CallExpr {{.*}} contains-errors
+// CHECK-NEXT:  `-RecoveryExpr {{.*}} contains-errors
+// CHECK-NEXT:   `-DeclRefExpr {{.*}} 'foo'
+struct Foo {} foo;
+void test() {
+foo.abc;
+foo->func();
+}

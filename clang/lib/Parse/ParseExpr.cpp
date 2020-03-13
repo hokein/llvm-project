@@ -2101,6 +2101,9 @@ Parser::ParsePostfixExpressionSuffix(ExprResult LHS) {
                                                    : nullptr);
       if (!LHS.isInvalid() && Tok.is(tok::less))
         checkPotentialAngleBracket(LHS);
+      if (LHS.isInvalid() && OrigLHS && Name.isValid())
+        LHS = Actions.CreateRecoveryExpr(OrigLHS->getBeginLoc(),
+                                         Name.getEndLoc(), {OrigLHS});
       break;
     }
     case tok::plusplus:    // postfix-expression: postfix-expression '++'
