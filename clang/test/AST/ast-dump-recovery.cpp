@@ -3,15 +3,17 @@
 int some_func(int *);
 
 // CHECK:     VarDecl {{.*}} invalid_call
-// CHECK-NEXT:`-RecoveryExpr {{.*}} contains-errors
-// CHECK-NEXT:  |-UnresolvedLookupExpr {{.*}} 'some_func'
-// CHECK-NEXT:  `-IntegerLiteral {{.*}} 123
+// CHECK-NEXT:`-ImplicitCastExpr {{.*}} contains-errors
+// CHECK-NEXT: `-RecoveryExpr {{.*}} contains-errors
+// CHECK-NEXT:   |-UnresolvedLookupExpr {{.*}} 'some_func'
+// CHECK-NEXT:   `-IntegerLiteral {{.*}} 123
 int invalid_call = some_func(123);
 
 int ambig_func(double);
 int ambig_func(float);
 
 // CHECK:     VarDecl {{.*}} ambig_call
+// CHECK-NEXT:`-ImplicitCastExpr {{.*}} contains-errors
 // CHECK-NEXT:`-RecoveryExpr {{.*}} contains-errors
 // CHECK-NEXT:  |-UnresolvedLookupExpr {{.*}} 'ambig_func'
 // CHECK-NEXT:  `-IntegerLiteral {{.*}} 123

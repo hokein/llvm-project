@@ -2797,6 +2797,10 @@ static bool HandleSizeof(EvalInfo &Info, SourceLocation Loc,
     Info.FFDiag(Loc);
     return false;
   }
+  if (Type->isUndeducedAutoType()) {
+    Info.FFDiag(Loc);
+    return false;
+  }
 
   if (!Type->isConstantSizeType()) {
     // sizeof(vla) is not a constantexpr: C99 6.5.3.4p2.

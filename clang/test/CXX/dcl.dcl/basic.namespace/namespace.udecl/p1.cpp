@@ -4,8 +4,10 @@
 
 // We have to avoid ADL for this test.
 
-template <unsigned N> class test {};
-
+template <unsigned N> class test {}; // expected-note {{candidate constructor (the implicit copy constructor)}}
+#if __cplusplus >= 201103L // C++11 or later
+//  expected-note@-2 {{candidate constructor (the implicit move constructor)}}
+#endif
 class foo {};	// expected-note {{candidate constructor (the implicit copy constructor) not viable}}
 #if __cplusplus >= 201103L // C++11 or later
 // expected-note@-2 {{candidate constructor (the implicit move constructor) not viable}}
@@ -38,7 +40,7 @@ namespace Test0 {
       class ::foo a;
       
       // Argument-dependent lookup is ambiguous between B:: and ::.
-      test<0> _0 = foo(a); // expected-error {{call to 'foo' is ambiguous}}
+      test<0> _0 = foo(a); // expected-error {{no viable conversion from }} expected-error {{call to 'foo' is ambiguous}}
 
       // But basic unqualified lookup is not.
       test<2> _1 = (foo)(a);

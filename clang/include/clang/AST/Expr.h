@@ -5925,6 +5925,9 @@ class RecoveryExpr final : public Expr,
 public:
   static RecoveryExpr *Create(ASTContext &Ctx, SourceLocation BeginLoc,
                               SourceLocation EndLoc, ArrayRef<Expr *> SubExprs);
+  static RecoveryExpr *Create(ASTContext &Ctx, SourceLocation BeginLoc,
+                              SourceLocation EndLoc, ArrayRef<Expr *> SubExprs,
+                              QualType Type);
   static RecoveryExpr *CreateEmpty(ASTContext &Ctx, unsigned NumStmts);
 
   ArrayRef<Expr *> subExpressions() {
@@ -5951,6 +5954,8 @@ public:
 private:
   RecoveryExpr(ASTContext &Ctx, SourceLocation BeginLoc, SourceLocation EndLoc,
                ArrayRef<Expr *> SubExprs);
+  RecoveryExpr(SourceLocation BeginLoc, SourceLocation EndLoc,
+               ArrayRef<Expr *> SubExprs, QualType Type);             
   RecoveryExpr(EmptyShell Empty) : Expr(RecoveryExprClass, Empty) {}
 
   size_t numTrailingObjects(OverloadToken<Stmt *>) const { return NumExprs; }

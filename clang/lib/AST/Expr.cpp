@@ -4481,7 +4481,7 @@ QualType OMPArraySectionExpr::getBaseOriginalType(const Expr *Base) {
 
 RecoveryExpr::RecoveryExpr(ASTContext &Ctx, SourceLocation BeginLoc,
                            SourceLocation EndLoc, ArrayRef<Expr *> SubExprs)
-    : Expr(RecoveryExprClass, Ctx.DependentTy, VK_RValue, OK_Ordinary),
+    : Expr(RecoveryExprClass, Ctx.DependentTy, VK_LValue, OK_Ordinary),
       BeginLoc(BeginLoc), EndLoc(EndLoc), NumExprs(SubExprs.size()) {
 #ifndef NDEBUG
   for (auto *E : SubExprs)
@@ -4492,12 +4492,27 @@ RecoveryExpr::RecoveryExpr(ASTContext &Ctx, SourceLocation BeginLoc,
   setDependence(computeDependence(this));
 }
 
+RecoveryExpr::RecoveryExpr(SourceLocation BeginLoc, SourceLocation EndLoc,
+                           ArrayRef<Expr *> SubExprs, QualType Type) :
+    Expr(RecoveryExprClass, Type, VK_LValue, OK_Ordinary),
+    BeginLoc(BeginLoc), EndLoc(EndLoc), NumExprs(SubExprs.size()) {
+  llvm::copy(SubExprs, getTrailingObjects<Expr *>());
+  setDependence(computeDependence(this));
+}
+
 RecoveryExpr *RecoveryExpr::Create(ASTContext &Ctx, SourceLocation BeginLoc,
                                    SourceLocation EndLoc,
                                    ArrayRef<Expr *> SubExprs) {
   void *Mem = Ctx.Allocate(totalSizeToAlloc<Expr *>(SubExprs.size()),
                            alignof(RecoveryExpr));
   return new (Mem) RecoveryExpr(Ctx, BeginLoc, EndLoc, SubExprs);
+}
+ RecoveryExpr *RecoveryExpr::Create(ASTContext &Ctx, SourceLocation BeginLoc,
+                            SourceLocation EndLoc, ArrayRef<Expr *> SubExprs,
+                            QualType Type) {
+  void *Mem = Ctx.Allocate(totalSizeToAlloc<Expr *>(SubExprs.size()),
+                           alignof(RecoveryExpr));
+  return new (Mem) RecoveryExpr(BeginLoc, EndLoc, SubExprs, Type);
 }
 
 RecoveryExpr *RecoveryExpr::CreateEmpty(ASTContext &Ctx, unsigned NumStmts) {

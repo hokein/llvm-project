@@ -1978,11 +1978,46 @@ Parser::ParsePostfixExpressionSuffix(ExprResult LHS) {
         SourceLocation RParLoc = Tok.getLocation();
         LHS = Actions.ActOnCallExpr(getCurScope(), Fn, Loc, ArgExprs, RParLoc,
                                     ExecConfig);
-        if (LHS.isInvalid()) {
-          ArgExprs.insert(ArgExprs.begin(), Fn);
-          LHS =
-              Actions.CreateRecoveryExpr(Fn->getBeginLoc(), RParLoc, ArgExprs);
-        }
+        // if (LHS.isInvalid()) {
+        //   if (auto *ULE = dyn_cast<UnresolvedLookupExpr>(Fn)) {
+        //     QualType TargetType = Actions.Context.DependentTy;
+        //     for (const auto *D : ULE->decls()) {
+        //       if (const auto *FD = dyn_cast<FunctionDecl>(D)) {
+        //         TargetType = FD->getCallResultType();
+        //         // if (TargetType.isNull())
+        //         //   TargetType = FD->getCallResultType();
+        //         // else if (TargetType != FD->getCallResultType()) {
+        //         //   TargetType = QualType();
+        //         //   break;
+        //         // }
+        //       }
+        //     }
+        //     // if (TargetType.isNull())
+        //     //   TargetType = Actions.Context.DependentTy;
+        //     ArgExprs.insert(ArgExprs.begin(), Fn);
+        //     // ArgExprs.insert(ArgExprs.begin(), Fn);
+        //     LHS = Actions.CreateRecoveryExpr(Fn->getBeginLoc(), RParLoc,
+        //                                      ArgExprs, TargetType);
+        //   }
+        // }
+        // if (LHS.isInvalid()) {
+        //   ArgExprs.insert(ArgExprs.begin(), Fn);
+        //   // llvm::errs() << "act on callexpr\n";
+        //   // Fn->dump();
+        //   // Fn->getType().dump();
+        //   // OverloadExpr::find(Fn).Expression->dump();
+        //   // Fn->getType().getTypePtr()-
+        //   QualType T = Actions.Context.DependentTy;
+        //   if (const auto* ULE = dyn_cast_or_null<UnresolvedLookupExpr>(Fn)) {
+        //     for (const auto *D : ULE->decls()) {
+        //       if (const auto* FD = dyn_cast<FunctionDecl>(D)) {
+        //         T = FD->getCallResultType();
+        //       }
+        //     }
+        //   }
+        //   LHS =
+        //       Actions.CreateRecoveryExpr(Fn->getBeginLoc(), RParLoc, ArgExprs, T);
+        // }
         PT.consumeClose();
       }
 

@@ -711,6 +711,8 @@ ExprDependence clang::computeDependence(ObjCMessageExpr *E) {
 
 ExprDependence clang::computeDependence(RecoveryExpr *E) {
   auto Deps = ExprDependence::TypeValueInstantiation | ExprDependence::Error;
+  if (!E->getType()->isDependentType())
+    Deps &= ~ExprDependence::Type;
   for (auto *S : E->subExpressions())
     Deps |= S->getDependence();
   return Deps;

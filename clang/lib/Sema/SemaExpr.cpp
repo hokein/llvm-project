@@ -5709,8 +5709,28 @@ ExprResult Sema::ActOnCallExpr(Scope *Scope, Expr *Fn, SourceLocation LParenLoc,
                                Expr *ExecConfig) {
   ExprResult Call =
       BuildCallExpr(Scope, Fn, LParenLoc, ArgExprs, RParenLoc, ExecConfig);
-  if (Call.isInvalid())
-    return Call;
+  if (Call.isInvalid()) {
+    QualType TargetType;
+    if (auto *ULE = dyn_cast<UnresolvedLookupExpr>(Fn)) {
+      for (const auto *D : ULE->decls()) {
+        if (const auto *FD = dyn_cast<FunctionDecl>(D)) {
+          if (TargetType.isNull())
+            TargetType = FD->getCallResultType();
+          else if (TargetType != FD->getCallResultType()) {
+            TargetType = QualType();
+            break;
+          }
+        }
+      }
+    }
+
+    if (TargetType.isNull())
+      TargetType = Context.DependentTy;
+    std::vector<Expr *> Args = {ArgExprs.begin(), ArgExprs.end()};
+    Args.insert(Args.begin(), Fn);
+    // ArgExprs.insert(ArgExprs.begin(), Fn);
+    return CreateRecoveryExpr(Fn->getBeginLoc(), RParenLoc, Args, TargetType);
+  }
 
   // Diagnose uses of the C++20 "ADL-only template-id call" feature in earlier
   // language modes.
@@ -18391,4 +18411,14 @@ ExprResult Sema::CreateRecoveryExpr(SourceLocation Begin, SourceLocation End,
     return ExprError();
 
   return RecoveryExpr::Create(Context, Begin, End, SubExprs);
+}
+
+ ExprResult Sema::CreateRecoveryExpr(SourceLocation Begin, SourceLocation End,
+                                ArrayRef<Expr *> SubExprs, QualType t) {
+  if (!Context.getLangOpts().CPlusPlus)
+    return ExprError();
+  if (isSFINAEContext())
+    return ExprError();
+
+  return RecoveryExpr::Create(Context, Begin, End, SubExprs, t);
 }

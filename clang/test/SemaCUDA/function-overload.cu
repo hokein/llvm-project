@@ -13,7 +13,9 @@ struct DeviceReturnTy {};
 struct DeviceReturnTy2 {};
 struct HostDeviceReturnTy {};
 struct TemplateReturnTy {};
-
+#ifdef __CUDA_ARCH__
+// expected-note@-2 {{candidate constructor (the implicit copy constructor) }}
+#endif
 typedef HostReturnTy (*HostFnPtr)();
 typedef DeviceReturnTy (*DeviceFnPtr)();
 typedef HostDeviceReturnTy (*HostDeviceFnPtr)();
@@ -346,6 +348,7 @@ __host__ __device__ void test_host_device_calls_hd_template() {
   TemplateReturnTy ret2 = template_vs_hd_function(1);
 #ifdef __CUDA_ARCH__
   // expected-error@-2 {{reference to __host__ function 'template_vs_hd_function<int>' in __host__ __device__ function}}
+  // expected-error@-3 {{no viable conversion from 'HostDeviceReturnTy' to 'TemplateReturnTy'}}
 #endif
 }
 

@@ -3,11 +3,11 @@ int foo(int, double);
 int x;
 
 void testTypedRecoveryExpr() {
-  // Inner foo() is a RecoveryExpr, outer foo() is an overloaded call.
+  // Inner foo() is a RecoveryExpr, outer foo() is a CallExpr of foo(int, int).
   foo(x, foo(x));
 }
 // RUN: c-index-test -cursor-at=%s:7:3 %s | FileCheck -check-prefix=OUTER-FOO %s
-// OUTER-FOO: OverloadedDeclRef=foo[2:5, 1:5]
+// OUTER-FOO: DeclRefExpr=foo:1:5 Extent=[7:3 - 7:6]
 // RUN: c-index-test -cursor-at=%s:7:7 %s | FileCheck -check-prefix=OUTER-X %s
 // OUTER-X: DeclRefExpr=x:3:5
 // RUN: c-index-test -cursor-at=%s:7:10 %s | FileCheck -check-prefix=INNER-FOO %s
