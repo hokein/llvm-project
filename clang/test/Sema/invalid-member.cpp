@@ -1,4 +1,3 @@
-// RUN: %clang_cc1 -verify -fsyntax-only -fno-recovery-ast %s
 // RUN: %clang_cc1 -verify -fsyntax-only -frecovery-ast %s
 
 void foo(); // expected-note 2{{requires 0 arguments}}
@@ -9,7 +8,8 @@ class X {
 static_assert(sizeof(X) == 1, "No valid members");
 
 class Y {
-  typeof(foo(42)) invalid; // expected-error {{no matching function}}
+  typeof(foo(42)) invalid; // expected-error {{no matching function}} \
+                           // expected-error {{field has incomplete type}}
 };
 // Should be able to evaluate sizeof without crashing.
 static_assert(sizeof(Y) == 1, "No valid members");

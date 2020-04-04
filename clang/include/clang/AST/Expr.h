@@ -6000,8 +6000,11 @@ public:
 class RecoveryExpr final : public Expr,
                            private llvm::TrailingObjects<RecoveryExpr, Expr *> {
 public:
-  static RecoveryExpr *Create(ASTContext &Ctx, SourceLocation BeginLoc,
+  static RecoveryExpr *Create(ASTContext &Ctx, SourceLocation BeginLoc, 
                               SourceLocation EndLoc, ArrayRef<Expr *> SubExprs);
+  static RecoveryExpr *Create(ASTContext &Ctx, SourceLocation BeginLoc,
+                              SourceLocation EndLoc, ArrayRef<Expr *> SubExprs, 
+                              QualType T);
   static RecoveryExpr *CreateEmpty(ASTContext &Ctx, unsigned NumSubExprs);
 
   ArrayRef<Expr *> subExpressions() {
@@ -6028,6 +6031,8 @@ public:
 private:
   RecoveryExpr(ASTContext &Ctx, SourceLocation BeginLoc, SourceLocation EndLoc,
                ArrayRef<Expr *> SubExprs);
+  RecoveryExpr(ASTContext &Ctx, QualType Type, SourceLocation BeginLoc,
+               SourceLocation EndLoc, ArrayRef<Expr *> SubExprs);
   RecoveryExpr(EmptyShell Empty) : Expr(RecoveryExprClass, Empty) {}
 
   size_t numTrailingObjects(OverloadToken<Stmt *>) const { return NumExprs; }

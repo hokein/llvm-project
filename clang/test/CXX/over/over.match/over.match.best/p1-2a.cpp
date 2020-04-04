@@ -109,5 +109,6 @@ namespace non_template
   }
 
   static_assert(goo(1) == 1);
-  static_assert(doo(2) == 1); // expected-error {{call to 'doo' is ambiguous}}
+  static_assert(doo(2) == 1); // expected-error {{call to 'doo' is ambiguous}} \
+                              // expected-error {{is not an integral constant expression}}
 }

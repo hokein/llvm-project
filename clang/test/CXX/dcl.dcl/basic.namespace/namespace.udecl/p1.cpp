@@ -4,7 +4,7 @@
 
 // We have to avoid ADL for this test.
 
-template <unsigned N> class test {};
+template <unsigned N> class test {}; // expected-note 1{{candidate}}
 
 class foo {};	// expected-note {{candidate constructor (the implicit copy constructor) not viable}}
 #if __cplusplus >= 201103L // C++11 or later
@@ -37,8 +37,10 @@ namespace Test0 {
     void test2() {
       class ::foo a;
       
-      // Argument-dependent lookup is ambiguous between B:: and ::.
-      test<0> _0 = foo(a); // expected-error {{call to 'foo' is ambiguous}}
+      // Argument-dependent lookup is ambiguous between A:: and ::.
+      // FIXME: remove the boguous "no viable conversion" diagnostics.
+      test<0> _0 = foo(a); // expected-error {{call to 'foo' is ambiguous}} \
+                           // expected-error {{no viable conversion from}}
 
       // But basic unqualified lookup is not.
       test<2> _1 = (foo)(a);

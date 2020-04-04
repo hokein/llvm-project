@@ -127,9 +127,9 @@ namespace Core22036 {
     // value dependent. This is true even if the expression's type is a pack
     // expansion type.
     void f1(Y<T> a) { h(g(a)); } // expected-error {{undeclared identifier 'g'}}
-    void f2(Y<Ts>...as) { h(g(as)...); } // expected-error {{undeclared identifier 'g'}}
+    void f2(Y<Ts>...as) { h(g(as)...); } // expected-error {{undeclared identifier 'g'}} expected-error {{pack expansion does not contain any unexpanded parameter packs}}
     void f3(Y<Ts>...as) { g(as...); } // ok
-    void f4(Ts ...ts) { h(g(sizeof(ts))...); } // expected-error {{undeclared identifier 'g'}}
+    void f4(Ts ...ts) { h(g(sizeof(ts))...); } // expected-error {{undeclared identifier 'g'}} expected-error {{pack expansion does not contain any unexpanded parameter packs}}
     // FIXME: We can reject this, since it has no valid instantiations because
     // 'g' never has any associated namespaces.
     void f5(Ts ...ts) { g(sizeof(ts)...); } // ok

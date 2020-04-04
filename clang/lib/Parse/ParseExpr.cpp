@@ -1982,11 +1982,11 @@ Parser::ParsePostfixExpressionSuffix(ExprResult LHS) {
         SourceLocation RParLoc = Tok.getLocation();
         LHS = Actions.ActOnCallExpr(getCurScope(), Fn, Loc, ArgExprs, RParLoc,
                                     ExecConfig);
-        if (LHS.isInvalid()) {
-          ArgExprs.insert(ArgExprs.begin(), Fn);
-          LHS =
-              Actions.CreateRecoveryExpr(Fn->getBeginLoc(), RParLoc, ArgExprs);
-        }
+        // if (LHS.isInvalid()) {
+        //   ArgExprs.insert(ArgExprs.begin(), Fn);
+        //   LHS =
+        //       Actions.CreateRecoveryExpr(Fn->getBeginLoc(), RParLoc, ArgExprs);
+        // }
         PT.consumeClose();
       }
 

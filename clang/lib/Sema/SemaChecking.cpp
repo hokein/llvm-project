@@ -12817,6 +12817,8 @@ void Sema::CheckCompletedExpr(Expr *E, SourceLocation CheckLoc,
                               bool IsConstexpr) {
   llvm::SaveAndRestore<bool> ConstantContext(
       isConstantEvaluatedOverride, IsConstexpr || isa<ConstantExpr>(E));
+  // if (E->containsErrors())
+  //   return;
   CheckImplicitConversions(E, CheckLoc);
   if (!E->isInstantiationDependent())
     CheckUnsequencedOperations(E);

@@ -98,14 +98,14 @@ void test_expressions(bool b) {
   // that in the special case of the top level of a decltype, no temporary is
   // materialized.)
   make_incomplete(); // expected-error {{incomplete}}
-  make_incomplete().a; // expected-error {{incomplete}}
+  make_incomplete().a; // expected-error {{incomplete}} expected-error {{member access into incomplete type}}
   make_incomplete().*(int Incomplete::*)nullptr; // expected-error {{incomplete}}
-  dynamic_cast<Incomplete&&>(make_incomplete()); // expected-error {{incomplete}}
+  dynamic_cast<Incomplete&&>(make_incomplete()); // expected-error 2{{incomplete}}
   const_cast<Incomplete&&>(make_incomplete()); // expected-error {{incomplete}}
 
   sizeof(Indestructible{}); // expected-error {{deleted}}
   sizeof(make_indestructible()); // expected-error {{deleted}}
-  sizeof(make_incomplete()); // expected-error {{incomplete}}
+  sizeof(make_incomplete()); // expected-error 2{{incomplete}}
   typeid(Indestructible{}); // expected-error {{deleted}}
   typeid(make_indestructible()); // expected-error {{deleted}} \
                                  // expected-error {{need to include <typeinfo>}}

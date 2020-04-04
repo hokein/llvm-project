@@ -8495,7 +8495,6 @@ QualType Sema::BuildTypeofExprType(Expr *E, SourceLocation Loc) {
 static QualType getDecltypeForExpr(Sema &S, Expr *E) {
   if (E->isTypeDependent())
     return S.Context.DependentTy;
-
   // C++11 [dcl.type.simple]p4:
   //   The type denoted by decltype(e) is defined as follows:
   //

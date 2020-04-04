@@ -88,7 +88,8 @@ auto init_list() {
 
 auto fwd_decl(); // expected-note 2{{here}}
 
-int n = fwd_decl(); // expected-error {{function 'fwd_decl' with deduced return type cannot be used before it is defined}}
+int n = fwd_decl(); // expected-error {{function 'fwd_decl' with deduced return type cannot be used before it is defined}} \
+                    // expected-error {{cannot initialize a variable of type}}
 int k = sizeof(fwd_decl()); // expected-error {{used before it is defined}}
 
 auto fac(int n) {
@@ -99,7 +100,8 @@ auto fac(int n) {
 
 auto fac_2(int n) { // expected-note {{declared here}}
   if (n > 2)
-    return n * fac_2(n-1); // expected-error {{cannot be used before it is defined}}
+    return n * fac_2(n-1); // expected-error {{cannot be used before it is defined}} \
+                           // expected-error {{invalid operands to binary expression}}
   return n;
 }
 
