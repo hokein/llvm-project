@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -verify -std=c++11 %s
+// RUN: %clang_cc1 -fsyntax-only -frecovery-ast -verify -std=c++11 %s
 
 namespace std {
   template<typename T> struct initializer_list {
@@ -108,7 +108,7 @@ namespace PR7985 {
     integral_c<1> ic1 = array_lengthof(Description<int>::data);
     (void)sizeof(array_lengthof(Description<float>::data));
 
-    sizeof(array_lengthof( // expected-error{{no matching function for call to 'array_lengthof'}}
+    (void)sizeof(array_lengthof( // expected-error{{no matching function for call to 'array_lengthof'}}
                           Description<int*>::data // expected-note{{in instantiation of static data member 'PR7985::Description<int *>::data' requested here}}
                           ));
 

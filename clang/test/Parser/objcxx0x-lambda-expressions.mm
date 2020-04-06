@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -verify -Wno-unused-value -Wno-c++1y-extensions -std=c++11 %s
+// RUN: %clang_cc1 -fsyntax-only -frecovery-ast -verify -Wno-unused-value -Wno-c++1y-extensions -std=c++11 %s
 
 class C {
   id get(int);
@@ -11,7 +11,8 @@ class C {
 
     []; // expected-error {{expected body of lambda expression}}
     [=,foo+] {}; // expected-error {{expected ',' or ']' in lambda capture list}}
-    [&this] {}; // expected-error {{cannot take the address of an rvalue of type 'C *'}}
+    [&this] {}; // expected-error {{cannot take the address of an rvalue of type 'C *'}} \
+                // expected-error {{expected identifier}}
     [] {}; 
     [=] (int i) {}; 
     [&] (int) mutable -> void {}; 
@@ -24,7 +25,8 @@ class C {
     [foo{bar}] () {};
     [foo = {bar}] () {}; // expected-error {{<initializer_list>}}
 
-    [foo(bar) baz] () {}; // expected-error {{called object type 'int' is not a function}}
+    [foo(bar) baz] () {}; // expected-error {{called object type 'int' is not a function}} \
+                          // expected-error {{expected ';'}}
     [foo(bar), baz] () {}; // ok
 
     [foo = bar baz]; // expected-warning {{receiver type 'int'}} expected-warning {{instance method '-baz'}}
