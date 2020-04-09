@@ -2490,8 +2490,7 @@ private:
     BuiltinTypeBits.Kind = K;
     // FIXME: remove the dependent bits.
     if (K == Error)
-      addDependence(TypeDependence::Error |
-                    TypeDependence::DependentInstantiation);
+      addDependence(TypeDependence::Error);
   }
 
 public:
