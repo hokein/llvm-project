@@ -13213,6 +13213,7 @@ ExprResult Sema::CreateOverloadedBinOp(SourceLocation OpLoc,
 
   // If either side is type-dependent, create an appropriate dependent
   // expression.
+  // FIXME: should use containsError here as well.
   if (Args[0]->isTypeDependent() || Args[1]->isTypeDependent()) {
     if (Fns.empty()) {
       // If there are no functions to store, just build a dependent

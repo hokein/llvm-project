@@ -2056,6 +2056,7 @@ void MicrosoftCXXNameMangler::mangleType(const BuiltinType *T, Qualifiers,
 #define PLACEHOLDER_TYPE(Id, SingletonId) \
   case BuiltinType::Id:
 #include "clang/AST/BuiltinTypes.def"
+  case BuiltinType::Error:
   case BuiltinType::Dependent:
     llvm_unreachable("placeholder types shouldn't get to name mangling");
 

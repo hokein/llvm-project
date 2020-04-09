@@ -10291,6 +10291,7 @@ EvaluateBuiltinClassifyType(QualType T, const LangOptions &LangOpts) {
       return GCCTypeClass::None;
 
     case BuiltinType::Dependent:
+    case BuiltinType::Error:
       llvm_unreachable("unexpected dependent type");
     };
     llvm_unreachable("unexpected placeholder type");

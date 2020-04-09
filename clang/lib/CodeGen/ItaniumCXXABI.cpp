@@ -3030,6 +3030,7 @@ static bool TypeInfoIsInStandardLibrary(const BuiltinType *Ty) {
       return false;
 
     case BuiltinType::Dependent:
+    case BuiltinType::Error:
 #define BUILTIN_TYPE(Id, SingletonId)
 #define PLACEHOLDER_TYPE(Id, SingletonId) \
     case BuiltinType::Id:

@@ -2880,6 +2880,8 @@ StringRef BuiltinType::getName(const PrintingPolicy &Policy) const {
     return "<pseudo-object type>";
   case Dependent:
     return "<dependent type>";
+  case Error:
+    return "<error type>";
   case UnknownAny:
     return "<unknown type>";
   case ARCUnbridgedCast:
@@ -3895,6 +3897,7 @@ bool Type::canHaveNullability(bool ResultIfUnknown) const {
     case BuiltinType::PseudoObject:
     case BuiltinType::UnknownAny:
     case BuiltinType::ARCUnbridgedCast:
+    case BuiltinType::Error:
       return ResultIfUnknown;
 
     case BuiltinType::Void:

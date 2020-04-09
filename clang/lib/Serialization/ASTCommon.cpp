@@ -192,6 +192,9 @@ serialization::TypeIdxFromBuiltin(const BuiltinType *BT) {
   case BuiltinType::Dependent:
     ID = PREDEF_TYPE_DEPENDENT_ID;
     break;
+  case BuiltinType::Error:
+    ID = PREDEF_TYPE_ERROR_ID;
+    break;
   case BuiltinType::UnknownAny:
     ID = PREDEF_TYPE_UNKNOWN_ANY;
     break;

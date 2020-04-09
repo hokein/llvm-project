@@ -6895,6 +6895,9 @@ QualType ASTReader::GetType(TypeID ID) {
     case PREDEF_TYPE_DEPENDENT_ID:
       T = Context.DependentTy;
       break;
+    case PREDEF_TYPE_ERROR_ID:
+      T = Context.ErrorTy;
+      break;
     case PREDEF_TYPE_UNKNOWN_ANY:
       T = Context.UnknownAnyTy;
       break;

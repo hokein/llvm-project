@@ -257,6 +257,8 @@ BUILTIN_TYPE(OCLReserveID, OCLReserveIDTy)
 // theoretically deducible.
 BUILTIN_TYPE(Dependent, DependentTy)
 
+BUILTIN_TYPE(Error, ErrorTy)
+
 // The type of an unresolved overload set.  A placeholder type.
 // Expressions with this type have one of the following basic
 // forms, with parentheses generally permitted:

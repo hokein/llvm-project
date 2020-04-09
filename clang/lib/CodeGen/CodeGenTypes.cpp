@@ -564,6 +564,7 @@ llvm::Type *CodeGenTypes::ConvertType(QualType T) {
                                    {16, true});
       break;
     case BuiltinType::Dependent:
+    case BuiltinType::Error:
 #define BUILTIN_TYPE(Id, SingletonId)
 #define PLACEHOLDER_TYPE(Id, SingletonId) \
     case BuiltinType::Id:

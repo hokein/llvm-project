@@ -2754,6 +2754,7 @@ void CXXNameMangler::mangleType(const BuiltinType *T) {
 #define PLACEHOLDER_TYPE(Id, SingletonId) \
   case BuiltinType::Id:
 #include "clang/AST/BuiltinTypes.def"
+  case BuiltinType::Error:
   case BuiltinType::Dependent:
     if (!NullOut)
       llvm_unreachable("mangling a placeholder type");

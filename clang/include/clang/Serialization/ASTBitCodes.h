@@ -1022,6 +1022,8 @@ namespace serialization {
       /// The placeholder type for OpenMP iterator expression.
       PREDEF_TYPE_OMP_ITERATOR = 71,
 
+      /// The type for recovery expression of unknown type.
+      PREDEF_TYPE_ERROR_ID = 72,
       /// OpenCL image types with auto numeration
 #define IMAGE_TYPE(ImgType, Id, SingletonId, Access, Suffix) \
       PREDEF_TYPE_##Id##_ID,

@@ -1367,6 +1367,7 @@ void ASTContext::InitBuiltinTypes(const TargetInfo &Target,
   // expressions.
   InitBuiltinType(DependentTy,         BuiltinType::Dependent);
 
+  InitBuiltinType(ErrorTy, BuiltinType::Error);
   // Placeholder type for functions.
   InitBuiltinType(OverloadTy,          BuiltinType::Overload);
 
@@ -6894,6 +6895,7 @@ static char getObjCEncodingForPrimitiveType(const ASTContext *C,
     case BuiltinType::OCLReserveID:
     case BuiltinType::OCLSampler:
     case BuiltinType::Dependent:
+    case BuiltinType::Error:
 #define BUILTIN_TYPE(KIND, ID)
 #define PLACEHOLDER_TYPE(KIND, ID) \
     case BuiltinType::KIND:

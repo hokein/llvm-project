@@ -380,6 +380,7 @@ TypeSpecifierType BuiltinTypeLoc::getWrittenTypeSpec() const {
 
   case BuiltinType::NullPtr:
   case BuiltinType::Overload:
+  case BuiltinType::Error:
   case BuiltinType::Dependent:
   case BuiltinType::BoundMember:
   case BuiltinType::UnknownAny:

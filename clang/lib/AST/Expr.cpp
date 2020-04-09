@@ -3280,7 +3280,8 @@ bool Expr::HasSideEffects(const ASTContext &Ctx,
   // macro expansion as a potential side effect.
   if (!IncludePossibleEffects && getExprLoc().isMacroID())
     return false;
-
+  if (containsErrors())
+    return IncludePossibleEffects;
   if (isInstantiationDependent())
     return IncludePossibleEffects;
 
@@ -4547,13 +4548,13 @@ QualType OMPArraySectionExpr::getBaseOriginalType(const Expr *Base) {
 
 RecoveryExpr::RecoveryExpr(ASTContext &Ctx, SourceLocation BeginLoc,
                            SourceLocation EndLoc, ArrayRef<Expr *> SubExprs)
-    : Expr(RecoveryExprClass, Ctx.DependentTy, VK_LValue, OK_Ordinary),
+    : Expr(RecoveryExprClass, Ctx.ErrorTy, VK_LValue, OK_Ordinary),
       BeginLoc(BeginLoc), EndLoc(EndLoc), NumExprs(SubExprs.size()) {
 #ifndef NDEBUG
   for (auto *E : SubExprs)
     assert(E != nullptr);
 #endif
-
+  // Ctx.BoolTy;
   llvm::copy(SubExprs, getTrailingObjects<Expr *>());
   setDependence(computeDependence(this));
 }

@@ -6147,7 +6147,6 @@ ExprResult Sema::ActOnCallExpr(Scope *Scope, Expr *Fn, SourceLocation LParenLoc,
       BuildCallExpr(Scope, Fn, LParenLoc, ArgExprs, RParenLoc, ExecConfig);
   if (Call.isInvalid())
     return Call;
-
   // Diagnose uses of the C++20 "ADL-only template-id call" feature in earlier
   // language modes.
   if (auto *ULE = dyn_cast<UnresolvedLookupExpr>(Fn)) {
@@ -6218,7 +6217,6 @@ ExprResult Sema::BuildCallExpr(Scope *Scope, Expr *Fn, SourceLocation LParenLoc,
                                 VK_RValue, RParenLoc);
       }
     }
-
     // Determine whether this is a call to an object (C++ [over.call.object]).
     if (Fn->getType()->isRecordType())
       return BuildCallToObjectOfClassType(Scope, Fn, LParenLoc, ArgExprs,
@@ -14002,7 +14000,8 @@ ExprResult Sema::BuildBinOp(Scope *S, SourceLocation OpLoc,
       RHSExpr = resolvedRHS.get();
 
       if (RHSExpr->isTypeDependent() ||
-          RHSExpr->getType()->isOverloadableType())
+          RHSExpr->getType()->isOverloadableType() ||
+          RHSExpr->containsErrors())
         return BuildOverloadedBinOp(*this, S, OpLoc, Opc, LHSExpr, RHSExpr);
     }
 
@@ -14040,7 +14039,8 @@ ExprResult Sema::BuildBinOp(Scope *S, SourceLocation OpLoc,
     if (Opc == BO_Assign && pty->getKind() == BuiltinType::Overload) {
       if (getLangOpts().CPlusPlus &&
           (LHSExpr->isTypeDependent() || RHSExpr->isTypeDependent() ||
-           LHSExpr->getType()->isOverloadableType()))
+           LHSExpr->containsErrors() || RHSExpr->containsErrors() ||
+           LHSExpr->getType()->isOverloadableType() ))
         return BuildOverloadedBinOp(*this, S, OpLoc, Opc, LHSExpr, RHSExpr);
 
       return CreateBuiltinBinOp(OpLoc, Opc, LHSExpr, RHSExpr);
@@ -14059,7 +14059,8 @@ ExprResult Sema::BuildBinOp(Scope *S, SourceLocation OpLoc,
   if (getLangOpts().CPlusPlus) {
     // If either expression is type-dependent, always build an
     // overloaded op.
-    if (LHSExpr->isTypeDependent() || RHSExpr->isTypeDependent())
+    if (LHSExpr->isTypeDependent() || RHSExpr->isTypeDependent() ||
+        LHSExpr->containsErrors() || RHSExpr->containsErrors())
       return BuildOverloadedBinOp(*this, S, OpLoc, Opc, LHSExpr, RHSExpr);
 
     // Otherwise, build an overloaded op if either expression has an
@@ -18137,7 +18138,8 @@ ExprResult Sema::CheckBooleanCondition(SourceLocation Loc, Expr *E,
   ExprResult result = CheckPlaceholderExpr(E);
   if (result.isInvalid()) return ExprError();
   E = result.get();
-
+  if (E->containsErrors())
+    return E;
   if (!E->isTypeDependent()) {
     if (getLangOpts().CPlusPlus)
       return CheckCXXBooleanCondition(E, IsConstexpr); // C++ 6.4p4
@@ -18155,7 +18157,6 @@ ExprResult Sema::CheckBooleanCondition(SourceLocation Loc, Expr *E,
     }
     CheckBoolLikeConversion(E, Loc);
   }
-
   return E;
 }
 

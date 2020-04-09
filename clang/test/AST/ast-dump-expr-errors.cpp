@@ -25,9 +25,9 @@ int b = bar(baz(), qux());
 // CHECK-NEXT:|   |-UnaryOperator {{.*}} '<dependent type>' contains-errors prefix '&'
 // CHECK-NEXT:|   | `-ParenExpr {{.*}} '<dependent type>' contains-errors
 // CHECK-NEXT:|   |   `-BinaryOperator {{.*}} '<dependent type>' contains-errors '+'
-// CHECK-NEXT:|   |     |-RecoveryExpr {{.*}} '<dependent type>' contains-errors
+// CHECK-NEXT:|   |     |-RecoveryExpr {{.*}} '<error type>' contains-errors
 // CHECK-NEXT:|   |     | `-UnresolvedLookupExpr {{.*}} 'bar'
-// CHECK-NEXT:|   |     `-RecoveryExpr {{.*}} '<dependent type>' contains-errors
+// CHECK-NEXT:|   |     `-RecoveryExpr {{.*}} '<error type>' contains-errors
 // CHECK-NEXT:|   |       `-UnresolvedLookupExpr {{.*}} 'baz'
 int c = &(bar() + baz()) * 10;
 
@@ -35,7 +35,7 @@ int c = &(bar() + baz()) * 10;
 // CHECK:     |-VarDecl {{.*}} d
 // CHECK-NEXT:| `-CXXStaticCastExpr {{.*}} 'int' contains-errors
 // CHECK-NEXT:|   `-BinaryOperator {{.*}} '<dependent type>' contains-errors '+'
-// CHECK-NEXT:|     |-RecoveryExpr {{.*}} '<dependent type>' contains-errors
+// CHECK-NEXT:|     |-RecoveryExpr {{.*}} '<error type>' contains-errors
 // CHECK-NEXT:|     | `-UnresolvedLookupExpr {{.*}} 'bar'
 // CHECK-NEXT:|     `-IntegerLiteral {{.*}} 1
 int d = static_cast<int>(bar() + 1);

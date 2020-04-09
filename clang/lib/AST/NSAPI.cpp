@@ -476,6 +476,7 @@ NSAPI::getNSNumberFactoryMethodKind(QualType T) const {
 #include "clang/Basic/AArch64SVEACLETypes.def"
   case BuiltinType::BoundMember:
   case BuiltinType::Dependent:
+  case BuiltinType::Error:
   case BuiltinType::Overload:
   case BuiltinType::UnknownAny:
   case BuiltinType::ARCUnbridgedCast:
