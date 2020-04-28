@@ -97,15 +97,17 @@ void test_expressions(bool b) {
   // We must check for a complete type for every materialized temporary. (Note
   // that in the special case of the top level of a decltype, no temporary is
   // materialized.)
+  // FIXME: get rid of the "incomplete type" diagnostic below.
   make_incomplete(); // expected-error {{incomplete}}
-  make_incomplete().a; // expected-error {{incomplete}}
+  make_incomplete().a; // expected-error {{incomplete}} expected-error {{member access into incomplete type}}
   make_incomplete().*(int Incomplete::*)nullptr; // expected-error {{incomplete}}
-  dynamic_cast<Incomplete&&>(make_incomplete()); // expected-error {{incomplete}}
+  dynamic_cast<Incomplete&&>(make_incomplete()); // expected-error {{incomplete}} expected-error {{an incomplete type}}
   const_cast<Incomplete&&>(make_incomplete()); // expected-error {{incomplete}}
 
   sizeof(Indestructible{}); // expected-error {{deleted}}
+  // FIXME: get rid of the "invalid application" diagnostics.
   sizeof(make_indestructible()); // expected-error {{deleted}}
-  sizeof(make_incomplete()); // expected-error {{incomplete}}
+  sizeof(make_incomplete()); // expected-error {{incomplete}} expected-error {{invalid application of 'sizeof' to an incomplete type}}
   typeid(Indestructible{}); // expected-error {{deleted}}
   typeid(make_indestructible()); // expected-error {{deleted}} \
                                  // expected-error {{need to include <typeinfo>}}
