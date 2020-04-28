@@ -4,9 +4,10 @@
 int some_func(int *);
 
 // CHECK:     VarDecl {{.*}} invalid_call
-// CHECK-NEXT:`-RecoveryExpr {{.*}} contains-errors
-// CHECK-NEXT:  |-UnresolvedLookupExpr {{.*}} 'some_func'
-// CHECK-NEXT:  `-IntegerLiteral {{.*}} 123
+// CHECK-NEXT: `-ImplicitCastExpr {{.*}} 'int' contains-errors
+// CHECK-NEXT:  `-RecoveryExpr {{.*}} 'int' contains-errors
+// CHECK-NEXT:    |-UnresolvedLookupExpr {{.*}} 'some_func'
+// CHECK-NEXT:    `-IntegerLiteral {{.*}} 123
 // DISABLED-NOT: -RecoveryExpr {{.*}} contains-errors
 int invalid_call = some_func(123);
 
@@ -14,14 +15,15 @@ int ambig_func(double);
 int ambig_func(float);
 
 // CHECK:     VarDecl {{.*}} ambig_call
-// CHECK-NEXT:`-RecoveryExpr {{.*}} contains-errors
-// CHECK-NEXT:  |-UnresolvedLookupExpr {{.*}} 'ambig_func'
-// CHECK-NEXT:  `-IntegerLiteral {{.*}} 123
+// CHECK-NEXT: `-ImplicitCastExpr {{.*}} 'int' contains-errors
+// CHECK-NEXT:  `-RecoveryExpr {{.*}} 'int' contains-errors
+// CHECK-NEXT:    |-UnresolvedLookupExpr {{.*}} 'ambig_func'
+// CHECK-NEXT:    `-IntegerLiteral {{.*}} 123
 // DISABLED-NOT: -RecoveryExpr {{.*}} contains-errors
 int ambig_call = ambig_func(123);
 
 // CHECK:     VarDecl {{.*}} unresolved_call1
-// CHECK-NEXT:`-RecoveryExpr {{.*}} contains-errors
+// CHECK-NEXT:`-RecoveryExpr {{.*}} '<dependent type>' contains-errors
 // CHECK-NEXT:  `-UnresolvedLookupExpr {{.*}} 'bar'
 // DISABLED-NOT: -RecoveryExpr {{.*}} contains-errors
 int unresolved_call1 = bar();
