@@ -34,3 +34,10 @@ void test() {
   dynamic_cast<Incomplete&&>(make_incomplete()); // expected-error {{incomplete return type}} expected-error {{an incomplete type}}
 }
 }
+
+namespace Initializer {
+void test() { // expected-note {{candidate function}}
+  // FIXME: suppress the init_conversion_failed diagnostic.
+  int a = test(1); // expected-error {{no matching function}} expected-error {{cannot initialize a variable of type}}
+}
+}
