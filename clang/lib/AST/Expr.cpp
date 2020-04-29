@@ -3306,7 +3306,7 @@ bool Expr::HasSideEffects(const ASTContext &Ctx,
   if (!IncludePossibleEffects && getExprLoc().isMacroID())
     return false;
 
-  if (isInstantiationDependent())
+  if (isInstantiationDependent() || containsErrors())
     return IncludePossibleEffects;
 
   switch (getStmtClass()) {
