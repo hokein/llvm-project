@@ -20,9 +20,11 @@ static_assert(1 == foo(1), ""); // expected-error {{no matching function}}
 }
 
 namespace typeof_diags {
-void foo(); // expected-note {{requires 0 arguments}}
+void foo(); // expected-note 2{{requires 0 arguments}}
 class Y {
   // verify that "field has incomplete type" diagnostic is suppressed.
   typeof(foo(42)) var; // expected-error {{no matching function}}
+  // FIXME: supporess the "invalid application" diagnostic.
+  int s = sizeof(foo(42)); // expected-error {{no matching function}} expected-error {{invalid application of 'sizeof'}}
 };
 }
