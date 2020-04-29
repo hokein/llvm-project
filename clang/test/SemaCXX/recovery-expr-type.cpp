@@ -35,4 +35,17 @@ template <int N> constexpr int templated() __attribute__((enable_if(N, ""))) { /
 }
 // verify that "constexpr variable must be initialized" diagnostic is suppressed.
 constexpr int A = templated<0>(); // expected-error{{no matching function}}
+
+template <typename T>
+struct AA {
+  template <typename U>
+  static constexpr int getB() { // expected-note{{candidate template ignored}}
+    return 2;
+  }
+  static constexpr int foo2() {
+    return AA<T>::getB(); // expected-error{{no matching function for call to 'getB'}} expected-note {{subexpression not valid in a constant expression}}
+  }
+};
+// FIXME: should we suppress the "be initialized by a constant expression" diagnostic?
+constexpr auto x2 = AA<int>::foo2(); // expected-error {{be initialized by a constant expression}} expected-note{{in instantiation of member function}} expected-note {{in call to}}
 }
