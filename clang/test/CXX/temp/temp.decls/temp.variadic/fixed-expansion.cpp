@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -fno-recovery-ast-type -std=c++11 -verify %s
+// RUN: %clang_cc1 -fsyntax-only -std=c++11 -verify %s
 
 template<typename T, typename U> struct pair { };
 template<typename ...Types> struct tuple { };

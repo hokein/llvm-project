@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -fno-recovery-ast-type -verify -std=c++11 %s 
+// RUN: %clang_cc1 -fsyntax-only -verify -std=c++11 %s 
 
 typedef double A;
 template<typename T> class B {
