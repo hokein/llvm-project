@@ -4668,9 +4668,6 @@ RecoveryExpr *RecoveryExpr::Create(ASTContext &Ctx, QualType T,
                                    ArrayRef<Expr *> SubExprs) {
   void *Mem = Ctx.Allocate(totalSizeToAlloc<Expr *>(SubExprs.size()),
                            alignof(RecoveryExpr));
-  if (T.isNull())
-    // We don't know the concrete type, fallback to dependent type.
-    T = Ctx.DependentTy;
   return new (Mem) RecoveryExpr(Ctx, T, BeginLoc, EndLoc, SubExprs);
 }
 

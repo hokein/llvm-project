@@ -6079,8 +6079,8 @@ public:
   }
 
 private:
-  RecoveryExpr(ASTContext &Ctx, QualType T, SourceLocation BeginLoc, SourceLocation EndLoc,
-               ArrayRef<Expr *> SubExprs);
+  RecoveryExpr(ASTContext &Ctx, QualType T, SourceLocation BeginLoc,
+               SourceLocation EndLoc, ArrayRef<Expr *> SubExprs);
   RecoveryExpr(EmptyShell Empty, unsigned NumSubExprs)
       : Expr(RecoveryExprClass, Empty), NumExprs(NumSubExprs) {}
 
