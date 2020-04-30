@@ -4657,11 +4657,13 @@ RecoveryExpr::RecoveryExpr(ASTContext &Ctx, QualType T, SourceLocation BeginLoc,
   for (auto *E : SubExprs)
     assert(E != nullptr);
 #endif
+
   llvm::copy(SubExprs, getTrailingObjects<Expr *>());
   setDependence(computeDependence(this));
 }
 
-RecoveryExpr *RecoveryExpr::Create(ASTContext &Ctx, QualType T, SourceLocation BeginLoc,
+RecoveryExpr *RecoveryExpr::Create(ASTContext &Ctx, QualType T,
+                                   SourceLocation BeginLoc,
                                    SourceLocation EndLoc,
                                    ArrayRef<Expr *> SubExprs) {
   void *Mem = Ctx.Allocate(totalSizeToAlloc<Expr *>(SubExprs.size()),

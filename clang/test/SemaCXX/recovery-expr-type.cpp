@@ -29,7 +29,7 @@ void func() {
   int a = foo(1); // expected-error {{no matching function}} \
                   // expected-error {{cannot initialize a variable of type}}
   
-  // FIXME: supporess the "invalid application" diagnostic.
+  // FIXME: suppress the "invalid application" diagnostic.
   int s = sizeof(foo(42)); // expected-error {{no matching function}} expected-error {{invalid application of 'sizeof'}}
 };
 }

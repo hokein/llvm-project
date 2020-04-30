@@ -487,8 +487,8 @@ ExprDependence clang::computeDependence(DeclRefExpr *E, const ASTContext &Ctx) {
 ExprDependence clang::computeDependence(RecoveryExpr *E) {
   // FIXME: drop type+value+instantiation once Error is sufficient to suppress
   // bogus dianostics.
-  // E->getType()
-  auto D = toExprDependence(E->getType()->getDependence()) | ExprDependence::Error;
+  auto D =
+      toExprDependence(E->getType()->getDependence()) | ExprDependence::Error;
   for (auto *S : E->subExpressions())
     D |= S->getDependence();
   return D;
