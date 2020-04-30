@@ -1,14 +1,14 @@
 // RUN: %clang_cc1 -triple=x86_64-unknown-unknown -frecovery-ast -frecovery-ast-type -o - %s -fsyntax-only -verify
 
-namespace NoCrash{
+namespace test0 {
 struct Indestructible {
   // Indestructible();
   ~Indestructible() = delete; // expected-note {{deleted}}
 };
 Indestructible make_indestructible();
 
-// no crash on HasSideEffect.
 void test() {
+  // no crash.
   int s = sizeof(make_indestructible()); // expected-error {{deleted}}
 }
 }
@@ -20,10 +20,15 @@ static_assert(1 == foo(1), ""); // expected-error {{no matching function}}
 }
 
 namespace test2 {
-void foo(); // expected-note 2{{requires 0 arguments}}
-class Y {
+void foo(); // expected-note 3{{requires 0 arguments}}
+void func() {
   // verify that "field has incomplete type" diagnostic is suppressed.
   typeof(foo(42)) var; // expected-error {{no matching function}}
+
+  // FIXME: suppress the "cannot initialize a variable" diagnostic.
+  int a = foo(1); // expected-error {{no matching function}} \
+                  // expected-error {{cannot initialize a variable of type}}
+  
   // FIXME: supporess the "invalid application" diagnostic.
   int s = sizeof(foo(42)); // expected-error {{no matching function}} expected-error {{invalid application of 'sizeof'}}
 };
