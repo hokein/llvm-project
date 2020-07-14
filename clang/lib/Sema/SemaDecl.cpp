@@ -12283,7 +12283,7 @@ void Sema::AddInitializerToDecl(Decl *RealDecl, Expr *Init, bool DirectInit) {
       VDecl->setStorageClass(SC_Extern);
 
     // C99 6.7.8p4. All file scoped initializers need to be constant.
-    if (!getLangOpts().CPlusPlus && !VDecl->isInvalidDecl())
+    if (!getLangOpts().CPlusPlus && !VDecl->isInvalidDecl() && !Init->isValueDependent())
       CheckForConstantInitializer(Init, DclT);
   }
 

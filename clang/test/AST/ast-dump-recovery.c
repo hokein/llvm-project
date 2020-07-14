@@ -48,3 +48,13 @@ int unary_bitinverse = ~(a + 0.0);
 // which makes no correction when clang finishes the full expr (Sema::Sema::ActOnFinishFullExpr).
 // this will be fixed when we support dependent mechanism and delayed typo correction for C.
 int ternary = a ? undef : a;
+
+void NoCrash() {
+  int* ptr;
+  // CHECK:      ImplicitCastExpr {{.*}} contains-errors <LValueToRValue>
+  // CHECK-NEXT: `-RecoveryExpr {{.*}} contains-errors lvalue
+  // CHECK-NEXT:   |-DeclRefExpr {{.*}} 'ptr' 'int *'
+  // CHECK-NEXT:   `-RecoveryExpr {{.*}}
+  // CHECK-NEXT:     `-DeclRefExpr {{.*}} 'some_func'
+  ptr = some_func();
+}

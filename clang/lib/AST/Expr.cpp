@@ -3744,7 +3744,8 @@ Expr::isNullPointerConstant(ASTContext &Ctx,
     case NPC_NeverValueDependent:
       llvm_unreachable("Unexpected value dependent expression!");
     case NPC_ValueDependentIsNull:
-      if (isTypeDependent() || getType()->isIntegralType(Ctx))
+      if ((!containsErrors() && isTypeDependent()) ||
+          getType()->isIntegralType(Ctx))
         return NPCK_ZeroExpression;
       else
         return NPCK_NotNull;
