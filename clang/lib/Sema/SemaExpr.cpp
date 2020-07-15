@@ -8064,6 +8064,10 @@ QualType Sema::CheckConditionalOperands(ExprResult &Cond, ExprResult &LHS,
   VK = VK_RValue;
   OK = OK_Ordinary;
 
+  // verify it only occurs on error-recovery path.
+  if (Cond.get()->isTypeDependent() || LHS.get()->isTypeDependent() || RHS.get()->isTypeDependent())
+    return Context.DependentTy;
+
   // The OpenCL operator with a vector condition is sufficiently
   // different to merit its own checker.
   if ((getLangOpts().OpenCL && Cond.get()->getType()->isVectorType()) ||
