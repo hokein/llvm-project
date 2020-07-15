@@ -6433,6 +6433,11 @@ ExprResult Sema::BuildCallExpr(Scope *Scope, Expr *Fn, SourceLocation LParenLoc,
     checkDirectCallValidity(*this, Fn, FD, ArgExprs);
   }
 
+  // Veirfy this can only occur in error-recovery path!
+  if (Fn->isTypeDependent() || Expr::hasAnyTypeDependentArguments(ArgExprs))
+    return CallExpr::Create(Context, Fn, ArgExprs, Context.DependentTy,
+                            VK_RValue, RParenLoc);
+
   return BuildResolvedCallExpr(Fn, NDecl, LParenLoc, ArgExprs, RParenLoc,
                                ExecConfig, IsExecConfig);
 }
