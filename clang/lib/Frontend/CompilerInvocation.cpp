@@ -2924,8 +2924,8 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
   if (Args.hasArg(OPT_fconcepts_ts))
     Diags.Report(diag::warn_fe_concepts_ts_flag);
   // Recovery AST still heavily relies on dependent-type machinery.
-  Opts.RecoveryAST =
-      Args.hasFlag(OPT_frecovery_ast, OPT_fno_recovery_ast, Opts.CPlusPlus);
+  Opts.RecoveryAST = Args.hasFlag(OPT_frecovery_ast, OPT_fno_recovery_ast,
+                                  Opts.CPlusPlus || Opts.C99);
   Opts.RecoveryASTType =
       Args.hasFlag(OPT_frecovery_ast_type, OPT_fno_recovery_ast_type, false);
   Opts.HeinousExtensions = Args.hasArg(OPT_fheinous_gnu_extensions);
