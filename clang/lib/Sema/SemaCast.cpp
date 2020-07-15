@@ -2677,13 +2677,6 @@ void CastOperation::CheckCStyleCast() {
     return;
   }
 
-  // Verify it only occurn in error-recovery path.
-  if (DestType->isDependentType() || SrcExpr.get()->isTypeDependent() ||
-      SrcExpr.get()->isValueDependent()) {
-    assert(Kind == CK_Dependent);
-    return;
-  }
-
   // C99 6.5.4p2: the cast type needs to be void or scalar and the expression
   // type needs to be scalar.
   if (DestType->isVoidType()) {
@@ -2694,6 +2687,13 @@ void CastOperation::CheckCStyleCast() {
 
     // Cast to void allows any expr type.
     Kind = CK_ToVoid;
+    return;
+  }
+
+  // Verify it only occurn in error-recovery path.
+  if (DestType->isDependentType() || SrcExpr.get()->isTypeDependent() ||
+      SrcExpr.get()->isValueDependent()) {
+    assert(Kind == CK_Dependent);
     return;
   }
 

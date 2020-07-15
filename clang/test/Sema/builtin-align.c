@@ -1,6 +1,6 @@
-// RUN: %clang_cc1 -triple x86_64-linux-gnu -DALIGN_BUILTIN=__builtin_align_down -DRETURNS_BOOL=0 %s -fsyntax-only -Wno-unused -verify -Wpedantic
-// RUN: %clang_cc1 -triple x86_64-linux-gnu -DALIGN_BUILTIN=__builtin_align_up   -DRETURNS_BOOL=0 %s -fsyntax-only -Wno-unused -verify -Wpedantic
-// RUN: %clang_cc1 -triple x86_64-linux-gnu -DALIGN_BUILTIN=__builtin_is_aligned -DRETURNS_BOOL=1 %s -fsyntax-only -Wno-unused -verify -Wpedantic
+// RUN: %clang_cc1 -triple x86_64-linux-gnu -DALIGN_BUILTIN=__builtin_align_down -DRETURNS_BOOL=0 %s -fsyntax-only -verify -Wpedantic
+// RUN: %clang_cc1 -triple x86_64-linux-gnu -DALIGN_BUILTIN=__builtin_align_up   -DRETURNS_BOOL=0 %s -fsyntax-only -verify -Wpedantic
+// RUN: %clang_cc1 -triple x86_64-linux-gnu -DALIGN_BUILTIN=__builtin_is_aligned -DRETURNS_BOOL=1 %s -fsyntax-only -verify -Wpedantic
 
 struct Aggregate {
   int i;

@@ -26,7 +26,7 @@ int f2() {
 
 int f3() {
   int X1 = 4; 
-  (void)(Y1 + X1); // expected-error {{use of undeclared identifier 'Y1'}} expected-warning {{unused}}
+  (void)(Y1 + X1); // expected-error {{use of undeclared identifier 'Y1'}}
   (void)(^() { int X = 4; }); // expected-warning{{unused}}
-  (void)(^() { int X = 4; return Y + X; }); // expected-error {{use of undeclared identifier 'Y'}} expected-warning {{unused}}
+  (void)(^() { int X = 4; return Y + X; }); // expected-error {{use of undeclared identifier 'Y'}}
 }
