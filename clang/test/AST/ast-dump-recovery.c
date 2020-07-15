@@ -51,8 +51,7 @@ int ternary = a ? undef : a;
 
 void NoCrash() {
   int* ptr;
-  // CHECK:      ImplicitCastExpr {{.*}} contains-errors <LValueToRValue>
-  // CHECK-NEXT: `-RecoveryExpr {{.*}} contains-errors lvalue
+  // CHECK:      BinaryOperator {{.*}} contains-errors '='
   // CHECK-NEXT:   |-DeclRefExpr {{.*}} 'ptr' 'int *'
   // CHECK-NEXT:   `-RecoveryExpr {{.*}}
   // CHECK-NEXT:     `-DeclRefExpr {{.*}} 'some_func'

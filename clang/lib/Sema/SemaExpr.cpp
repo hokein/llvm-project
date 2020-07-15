@@ -14215,6 +14215,8 @@ ExprResult Sema::BuildBinOp(Scope *S, SourceLocation OpLoc,
                             BinaryOperatorKind Opc,
                             Expr *LHSExpr, Expr *RHSExpr) {
   ExprResult LHS, RHS;
+  // FIXME: should be fine get rid of the typo correction here, as we have
+  // supported the dependent overload binary operator for C.
   std::tie(LHS, RHS) = CorrectDelayedTyposInBinOp(*this, Opc, LHSExpr, RHSExpr);
   if (!LHS.isUsable() || !RHS.isUsable())
     return ExprError();
@@ -14311,6 +14313,13 @@ ExprResult Sema::BuildBinOp(Scope *S, SourceLocation OpLoc,
     if (LHSExpr->getType()->isOverloadableType() ||
         RHSExpr->getType()->isOverloadableType())
       return BuildOverloadedBinOp(*this, S, OpLoc, Opc, LHSExpr, RHSExpr);
+  }
+
+  if (LHSExpr->isTypeDependent() || RHSExpr->isTypeDependent()) {
+    assert(LHSExpr->containsErrors() ||
+           RHSExpr->containsErrors() &&
+               "this should only occur in error-recovery path!");
+    return BuildOverloadedBinOp(*this, S, OpLoc, Opc, LHSExpr, RHSExpr);
   }
 
   // Build a built-in binary operation.
