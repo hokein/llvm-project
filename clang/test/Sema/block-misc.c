@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -verify %s -fblocks
+// RUN: %clang_cc1 -fsyntax-only -Wno-unused -verify %s -fblocks
 void donotwarn();
 
 int (^IFP) ();

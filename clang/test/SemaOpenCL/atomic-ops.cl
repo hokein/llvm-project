@@ -1,5 +1,5 @@
-// RUN: %clang_cc1 %s -cl-std=CL2.0 -verify -fsyntax-only -triple=spir64
-// RUN: %clang_cc1 %s -cl-std=CL2.0 -verify -fsyntax-only -triple=amdgcn-amdhsa-amd-opencl
+// RUN: %clang_cc1 %s -cl-std=CL2.0 -verify -fsyntax-only -Wno-unused -triple=spir64
+// RUN: %clang_cc1 %s -cl-std=CL2.0 -verify -fsyntax-only -Wno-unused -triple=amdgcn-amdhsa-amd-opencl
 
 // Basic parsing/Sema tests for __opencl_atomic_*
 

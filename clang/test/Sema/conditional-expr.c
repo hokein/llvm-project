@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -Wno-pointer-to-int-cast -verify -pedantic -Wsign-conversion %s
+// RUN: %clang_cc1 -fsyntax-only -Wno-pointer-to-int-cast -Wno-unused -verify -pedantic -Wsign-conversion %s
 void foo() {
   *(0 ? (double *)0 : (void *)0) = 0;
   // FIXME: GCC doesn't consider the following two statements to be errors.
@@ -68,8 +68,8 @@ void foo() {
   // The composite type here should be "int (*)[12]", fine for the sizeof
   int (*incomplete)[];
   int (*complete)[12];
-  sizeof(*(test0 ? incomplete : complete)); // expected-warning {{expression result unused}}
-  sizeof(*(test0 ? complete : incomplete)); // expected-warning {{expression result unused}}
+  sizeof(*(test0 ? incomplete : complete));
+  sizeof(*(test0 ? complete : incomplete));
 
   int __attribute__((address_space(2))) *adr2;
   int __attribute__((address_space(3))) *adr3;

@@ -1,6 +1,6 @@
 // RUN: %clang_cc1 -triple s390x-linux-gnu -fzvector \
 // RUN:  -flax-vector-conversions=none -W -Wall -Wconversion \
-// RUN:  -Werror -fsyntax-only -verify %s
+// RUN:  -Wno-unused -Werror -fsyntax-only -verify %s
 
 vector signed char sc, sc2;
 vector unsigned char uc, uc2;
