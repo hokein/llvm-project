@@ -51,8 +51,8 @@ void TEST() {
 
 void TEST() {
   __except ( FilterExpression() ) { // expected-warning{{implicit declaration of function '__except' is invalid in C99}} \
-    // expected-error{{too few arguments to function call, expected 1, have 0}}
-
+    // expected-error{{too few arguments to function call, expected 1, have 0}} \
+    // expected-error{{expected ';' after expression}}
   }
 }
 
@@ -63,8 +63,8 @@ void TEST() {
 void TEST() {
   __try{
     int try_scope = 0;
-  } // TODO: expected expression is an extra error
-  __except( try_scope ? 1 : -1 ) // expected-error{{undeclared identifier 'try_scope'}} expected-error{{expected expression}}
+  }
+  __except( try_scope ? 1 : -1 ) // expected-error{{undeclared identifier 'try_scope'}}
   {}
 }
 
