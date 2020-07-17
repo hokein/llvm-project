@@ -653,7 +653,7 @@ Parser::ParseRHSOfBinaryExpression(ExprResult LHS, prec::Level MinPrec) {
       }
       // In this case, ActOnBinOp or ActOnConditionalOp performed the
       // CorrectDelayedTyposInExpr check.
-      if (!getLangOpts().CPlusPlus)
+      if (!getLangOpts().CPlusPlus && !Actions.Context.getLangOpts().CDependenceType)
         continue;
     }
 
