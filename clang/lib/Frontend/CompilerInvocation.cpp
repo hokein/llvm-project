@@ -2928,6 +2928,9 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
                                   Opts.CPlusPlus || Opts.C99);
   Opts.RecoveryASTType =
       Args.hasFlag(OPT_frecovery_ast_type, OPT_fno_recovery_ast_type, false);
+   Opts.CDependenceType =
+      Args.hasFlag(OPT_fc_dependent_type, OPT_fno_c_dependent_type, false);
+
   Opts.HeinousExtensions = Args.hasArg(OPT_fheinous_gnu_extensions);
   Opts.AccessControl = !Args.hasArg(OPT_fno_access_control);
   Opts.ElideConstructors = !Args.hasArg(OPT_fno_elide_constructors);

@@ -150,6 +150,7 @@ LANGOPT(DoubleSquareBracketAttributes, 1, 0, "'[[]]' attributes extension for al
 
 COMPATIBLE_LANGOPT(RecoveryAST, 1, 0, "Preserve expressions in AST when encountering errors")
 COMPATIBLE_LANGOPT(RecoveryASTType, 1, 0, "Preserve the type in recovery expressions")
+COMPATIBLE_LANGOPT(CDependenceType, 1, 0, "Support dependence type for C")
 
 BENIGN_LANGOPT(ThreadsafeStatics , 1, 1, "thread-safe static initializers")
 LANGOPT(POSIXThreads      , 1, 0, "POSIX thread support")

@@ -4006,6 +4006,10 @@ def frecovery_ast_type : Flag<["-"], "frecovery-ast-type">,
           "(experimental)">;
 def fno_recovery_ast_type : Flag<["-"], "fno-recovery-ast-type">;
 
+def fc_dependent_type : Flag<["-"], "fc-ependent-type">,
+  HelpText<"Support dependent type for C, similar to C++, mainly for error recovery">;
+def fno_c_dependent_type : Flag<["-"], "fno-c-dependent-type">;
+
 let Group = Action_Group in {
 
 def Eonly : Flag<["-"], "Eonly">,
