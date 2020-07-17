@@ -119,10 +119,10 @@ void test_core(void) {
 }
 
 void test_integer(void) {
-  vf = vec_sld(vf, vf, idx);    // expected-error {{no matching function}}
+  vf = vec_sld(vf, vf, idx);    // expected-error {{no matching function}} expected-error {{argument to '__builtin_s390_vsldb' must be a constant integer}}
                                 // expected-note@vecintrin.h:* 13 {{candidate function not viable}}
                                 // expected-note@vecintrin.h:* 1 {{must be a constant integer from 0 to 15}}
-  vd = vec_sld(vd, vd, idx);    // expected-error {{no matching function}}
+  vd = vec_sld(vd, vd, idx);    // expected-error {{no matching function}} expected-error {{argument to '__builtin_s390_vsldb' must be a constant integer}}
                                 // expected-note@vecintrin.h:* 13 {{candidate function not viable}}
                                 // expected-note@vecintrin.h:* 1 {{must be a constant integer from 0 to 15}}
 
@@ -132,22 +132,22 @@ void test_integer(void) {
 }
 
 void test_float(void) {
-  vbi = vec_fp_test_data_class(vf, idx, &cc);   // expected-error {{no matching function}}
+  vbi = vec_fp_test_data_class(vf, idx, &cc);   // expected-error {{no matching function}} expected-error {{argument to '__builtin_s390_vftcisb' must be a constant integer}} expected-error {{argument to '__builtin_s390_vftcidb' must be a constant integer}}
                                                 // expected-note@vecintrin.h:* 1 {{candidate function not viable}}
                                                 // expected-note@vecintrin.h:* 1 {{must be a constant integer from 0 to 4095}}
-  vbi = vec_fp_test_data_class(vf, -1, &cc);    // expected-error {{no matching function}}
+  vbi = vec_fp_test_data_class(vf, -1, &cc);    // expected-error {{no matching function}} expected-error 2{{argument value -1 is outside the valid range [0, 4095]}}
                                                 // expected-note@vecintrin.h:* 1 {{candidate function not viable}}
                                                 // expected-note@vecintrin.h:* 1 {{must be a constant integer from 0 to 4095}}
-  vbi = vec_fp_test_data_class(vf, 4096, &cc);  // expected-error {{no matching function}}
+  vbi = vec_fp_test_data_class(vf, 4096, &cc);  // expected-error {{no matching function}} expected-error 2{{argument value 4096 is outside the valid range [0, 4095]}}
                                                 // expected-note@vecintrin.h:* 1 {{candidate function not viable}}
                                                 // expected-note@vecintrin.h:* 1 {{must be a constant integer from 0 to 4095}}
-  vbl = vec_fp_test_data_class(vd, idx, &cc);   // expected-error {{no matching function}}
+  vbl = vec_fp_test_data_class(vd, idx, &cc);   // expected-error {{no matching function}} expected-error {{argument to '__builtin_s390_vftcisb' must be a constant integer}} expected-error {{argument to '__builtin_s390_vftcidb' must be a constant integer}}
                                                 // expected-note@vecintrin.h:* 1 {{candidate function not viable}}
                                                 // expected-note@vecintrin.h:* 1 {{must be a constant integer from 0 to 4095}}
-  vbl = vec_fp_test_data_class(vd, -1, &cc);    // expected-error {{no matching function}}
+  vbl = vec_fp_test_data_class(vd, -1, &cc);    // expected-error {{no matching function}} expected-error 2{{argument value -1 is outside the valid range [0, 4095]}}
                                                 // expected-note@vecintrin.h:* 1 {{candidate function not viable}}
                                                 // expected-note@vecintrin.h:* 1 {{must be a constant integer from 0 to 4095}}
-  vbl = vec_fp_test_data_class(vd, 4096, &cc);  // expected-error {{no matching function}}
+  vbl = vec_fp_test_data_class(vd, 4096, &cc);  // expected-error {{no matching function}} expected-error 2{{argument value 4096 is outside the valid range [0, 4095]}}
                                                 // expected-note@vecintrin.h:* 1 {{candidate function not viable}}
                                                 // expected-note@vecintrin.h:* 1 {{must be a constant integer from 0 to 4095}}
 }
