@@ -9280,6 +9280,14 @@ public:
                           const TemplateArgumentList &TemplateArgs,
                           sema::TemplateDeductionInfo &Info);
 
+  TemplateDeductionResult
+  DeduceTemplateArguments(TemplateParameterList *TemplateParams,
+                          ArrayRef<TemplateArgument> Ps,
+                          ArrayRef<TemplateArgument> As,
+                          sema::TemplateDeductionInfo &Info,
+                          SmallVectorImpl<DeducedTemplateArgument> &Deduced,
+                          bool NumberOfArgumentsMustMatch);
+
   TemplateDeductionResult SubstituteExplicitTemplateArguments(
       FunctionTemplateDecl *FunctionTemplate,
       TemplateArgumentListInfo &ExplicitTemplateArgs,
@@ -10432,9 +10440,11 @@ public:
       SourceLocation PointOfInstantiation, FunctionDecl *Decl,
       ArrayRef<TemplateArgument> TemplateArgs,
       ConstraintSatisfaction &Satisfaction);
-  FunctionDecl *InstantiateFunctionDeclaration(FunctionTemplateDecl *FTD,
-                                               const TemplateArgumentList *Args,
-                                               SourceLocation Loc);
+  FunctionDecl *InstantiateFunctionDeclaration(
+      FunctionTemplateDecl *FTD, const TemplateArgumentList *Args,
+      SourceLocation Loc,
+      CodeSynthesisContext::SynthesisKind CSC =
+          CodeSynthesisContext::ExplicitTemplateArgumentSubstitution);
   void InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
                                      FunctionDecl *Function,
                                      bool Recursive = false,

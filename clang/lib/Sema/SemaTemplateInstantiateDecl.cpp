@@ -4857,13 +4857,13 @@ bool TemplateDeclInstantiator::SubstDefaultedFunction(FunctionDecl *New,
 FunctionDecl *
 Sema::InstantiateFunctionDeclaration(FunctionTemplateDecl *FTD,
                                      const TemplateArgumentList *Args,
-                                     SourceLocation Loc) {
+                                     SourceLocation Loc, CodeSynthesisContext::SynthesisKind CSC) {
   FunctionDecl *FD = FTD->getTemplatedDecl();
 
   sema::TemplateDeductionInfo Info(Loc);
   InstantiatingTemplate Inst(
       *this, Loc, FTD, Args->asArray(),
-      CodeSynthesisContext::ExplicitTemplateArgumentSubstitution, Info);
+      CSC, Info);
   if (Inst.isInvalid())
     return nullptr;
 
@@ -6284,7 +6284,18 @@ NamedDecl *Sema::FindInstantiatedDecl(SourceLocation Loc, NamedDecl *D,
           QualType T = CheckTemplateIdType(TemplateName(TD), Loc, Args);
           if (T.isNull())
             return nullptr;
-          auto *SubstRecord = T->getAsCXXRecordDecl();
+          CXXRecordDecl *SubstRecord = T->getAsCXXRecordDecl();
+
+          if (!SubstRecord) {
+            // FIXME: we encounter a new type here as we use the
+            // `InstantiateFunctionDeclaration` API to substitute the deduced
+            // template arguments into deduction guide.
+            if (auto TST = T->getAs<TemplateSpecializationType>())
+              // Return a nullptr as a sentinel value, we handle it properly in
+              // the TemplateInstantiator::TransformInjectedClassNameType
+              // override.
+              return nullptr;
+          }
           assert(SubstRecord && "class template id not a class type?");
           // Check that this template-id names the primary template and not a
           // partial or explicit specialization. (In the latter cases, it's

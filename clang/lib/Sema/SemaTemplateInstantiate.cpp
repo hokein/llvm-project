@@ -21,6 +21,7 @@
 #include "clang/AST/ExprConcepts.h"
 #include "clang/AST/PrettyDeclStackTrace.h"
 #include "clang/AST/Type.h"
+#include "clang/AST/TypeLoc.h"
 #include "clang/AST/TypeVisitor.h"
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/Stack.h"
@@ -521,7 +522,8 @@ Sema::InstantiatingTemplate::InstantiatingTemplate(
                             TemplateArgs, &DeductionInfo) {
   assert(
     Kind == CodeSynthesisContext::ExplicitTemplateArgumentSubstitution ||
-    Kind == CodeSynthesisContext::DeducedTemplateArgumentSubstitution);
+    Kind == CodeSynthesisContext::DeducedTemplateArgumentSubstitution ||
+    Kind == CodeSynthesisContext::BuildingDeductionGuides);
 }
 
 Sema::InstantiatingTemplate::InstantiatingTemplate(
@@ -1416,6 +1418,28 @@ namespace {
                                         FunctionProtoTypeLoc TL) {
       // Call the base version; it will forward to our overridden version below.
       return inherited::TransformFunctionProtoType(TLB, TL);
+    }
+
+    QualType TransformInjectedClassNameType(TypeLocBuilder &TLB,
+                                            InjectedClassNameTypeLoc TL) {
+      // Return a TemplateSpecializationType for building deduction guides
+      Decl *D = TransformDecl(TL.getNameLoc(),
+                              TL.getTypePtr()->getDecl());
+      if (!D) {
+        if (SemaRef.CodeSynthesisContexts.back().Kind !=
+            Sema::CodeSynthesisContext::BuildingDeductionGuides)
+          return QualType();
+        auto *ICT = TL.getType()->getAs<InjectedClassNameType>();
+        auto TST = SemaRef.Context.getTemplateSpecializationType(
+            ICT->getTemplateName(), TemplateArgs.getOutermost());
+        TLB.pushTrivial(SemaRef.Context, TST, {});
+        return TST;
+      }
+
+      // Default implementation.
+      QualType T = SemaRef.Context.getTypeDeclType(cast<TypeDecl>(D));
+      TLB.pushTypeSpec(T).setNameLoc(TL.getNameLoc());
+      return T;
     }
 
     template<typename Fn>
