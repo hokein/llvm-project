@@ -41,3 +41,25 @@ struct container {
 template<class T> using vector = container<T, int>;
 vector v(0, 0);
 } // namespace test3
+
+
+namespace test4 {
+template<class T>
+struct X
+{
+  T t;
+  X(T) {}
+};
+
+template <class T>
+X(T) -> X<double>;
+
+template <class T>
+using AX = X<T>;
+
+void test1() {
+  AX s = {1};
+  // FIXME: should select X<double> deduction guide
+  // static_assert(__is_same(decltype(s.t), double));
+}
+}
