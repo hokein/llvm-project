@@ -30,3 +30,14 @@ void test2() {
   static_assert(__is_same(decltype(xy.x), int));
   static_assert(__is_same(decltype(xy.y), double));
 }
+
+namespace test3 {
+template<typename T, class>
+struct container {
+  // test with default arguments.
+  container(T a , T b = T());
+};
+
+template<class T> using vector = container<T, int>;
+vector v(0, 0);
+} // namespace test3

@@ -10922,11 +10922,15 @@ private:
       // placeholder to indicate there is a default argument.
       QualType ParamTy = NewDI->getType();
       NewDefArg = new (SemaRef.Context)
-          OpaqueValueExpr(OldParam->getDefaultArg()->getBeginLoc(),
-                          ParamTy.getNonLValueExprType(SemaRef.Context),
-                          ParamTy->isLValueReferenceType()   ? VK_LValue
-                          : ParamTy->isRValueReferenceType() ? VK_XValue
-                                                             : VK_PRValue);
+          // FIXME: using getDefaultArg will crash hitting "Default argument is
+          // not yet instantiated!" erro, fixed in constructor transformer as
+          // well.
+          OpaqueValueExpr(
+              OldParam->getDefaultArgRange().getBegin(),
+              ParamTy.getNonLValueExprType(SemaRef.Context),
+              ParamTy->isLValueReferenceType()   ? VK_LValue
+              : ParamTy->isRValueReferenceType() ? VK_XValue
+                                                 : VK_PRValue);
     }
 
     ParmVarDecl *NewParam = ParmVarDecl::Create(SemaRef.Context, DC,
