@@ -40,6 +40,7 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/Signals.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>

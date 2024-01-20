@@ -71,3 +71,14 @@ template<int... C>
 using AF = Foo<1>;
 auto a = AF {};
 }
+
+namespace test6 {
+template<typename T, bool B = false>
+struct Foo {
+  Foo(T);
+};
+// non-type template argument.
+template<typename T>
+using AF = Foo<T, 1>;
+AF b{0};//
+}
