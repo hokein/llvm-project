@@ -34,6 +34,7 @@
 #include "clang/Sema/SemaInternal.h"
 #include "clang/Sema/Template.h"
 #include "llvm/ADT/APInt.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/PointerIntPair.h"
 #include "llvm/ADT/SmallString.h"
@@ -11003,16 +11004,29 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
       dyn_cast_or_null<ClassTemplateDecl>(TemplateName.getAsTemplateDecl());
 
   TypeAliasTemplateDecl* AliasTemplate = nullptr;
+  llvm::ArrayRef<TemplateArgument> AliasRhsTemplateArgs;
   if (!Template) {
-    if ((AliasTemplate = dyn_cast_or_null<TypeAliasTemplateDecl>(
-             TemplateName.getAsTemplateDecl()))) {
+    if (AliasTemplate = dyn_cast_or_null<TypeAliasTemplateDecl>(
+             TemplateName.getAsTemplateDecl()); AliasTemplate) {
+      llvm::errs() << "alias template decl\n";
       auto UnderlyingType = AliasTemplate->getTemplatedDecl()
                                 ->getUnderlyingType()
                                 .getDesugaredType(Context);
       if (const auto *TST =
               UnderlyingType->getAs<TemplateSpecializationType>()) {
+        // normal cases: using AliasFoo = Foo<T, U>;
         Template = dyn_cast_or_null<ClassTemplateDecl>(
             TST->getTemplateName().getAsTemplateDecl());
+        AliasRhsTemplateArgs = TST->template_arguments();
+      } else if (const auto *RT = UnderlyingType->getAs<RecordType>()) {
+        // cases where template arguments in the RHS of the alias are not
+        // dependent. e.g.
+        //   using AliasFoo = Foo<bool>;
+        if (const auto *CTSD = llvm::dyn_cast<ClassTemplateSpecializationDecl>(
+                RT->getAsCXXRecordDecl())) {
+          Template = CTSD->getSpecializedTemplate();
+          AliasRhsTemplateArgs = CTSD->getTemplateArgs().asArray();
+        }
       }
     }
   }
@@ -11098,15 +11112,10 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
           //
           // The RHS of alias is f<int, U>, we deduced the template arguments of
           // the return type of the deduction guide from it: Y->int, X -> U
-          const auto* AliasRhsTST = AliasTemplate->getTemplatedDecl()
-                         ->getUnderlyingType()
-                         .getDesugaredType(this->Context)
-                         ->getAs<TemplateSpecializationType>();
-          assert(AliasRhsTST);
-
           if (DeduceTemplateArguments(AliasTemplate->getTemplateParameters(),
                                       ReturnTST->template_arguments(),
-                                      AliasRhsTST->template_arguments(),
+                                      //AliasRhsTST->template_arguments(),
+                                      AliasRhsTemplateArgs,
                                       TDeduceInfo, DeduceResults,
                                       /*NumberOfArgumentsMustMatch*/ false)) {
             // FIXME: not all template arguments are deduced, we should continue

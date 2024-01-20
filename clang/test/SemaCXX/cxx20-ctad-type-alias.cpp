@@ -63,3 +63,11 @@ void test1() {
   // static_assert(__is_same(decltype(s.t), double));
 }
 }
+
+namespace test5 {
+template<int B>
+struct Foo {};
+template<int... C>
+using AF = Foo<1>;
+auto a = AF {};
+}
