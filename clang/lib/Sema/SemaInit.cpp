@@ -11008,17 +11008,25 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
   if (!Template) {
     if (AliasTemplate = dyn_cast_or_null<TypeAliasTemplateDecl>(
              TemplateName.getAsTemplateDecl()); AliasTemplate) {
-      llvm::errs() << "alias template decl\n";
-      auto UnderlyingType = AliasTemplate->getTemplatedDecl()
+      // Unrap the sugar ElaboratedType.
+      auto RhsType = AliasTemplate->getTemplatedDecl()
                                 ->getUnderlyingType()
-                                .getDesugaredType(Context);
+                                .getSingleStepDesugaredType(Context);
       if (const auto *TST =
-              UnderlyingType->getAs<TemplateSpecializationType>()) {
-        // normal cases: using AliasFoo = Foo<T, U>;
+              RhsType->getAs<TemplateSpecializationType>()) {
+        // The template decl in the TST can be a TypeALiasTemplateDecl if
+        // the right hand side of the alias is a type alias as well. E.g.
+        //
+        // template<typename T>
+        // using AliasFoo1 = Foo<T>;  // Foo<T> is a class template specialization
+        //
+        // template<typename T>
+        // using AliasFoo2 = AliasFoo1<T>; // AliasFoo1<T> is a type alias
+        // FIXME: handle this case, we need to recursively perform deductions.
         Template = dyn_cast_or_null<ClassTemplateDecl>(
             TST->getTemplateName().getAsTemplateDecl());
         AliasRhsTemplateArgs = TST->template_arguments();
-      } else if (const auto *RT = UnderlyingType->getAs<RecordType>()) {
+      } else if (const auto *RT = RhsType->getAs<RecordType>()) {
         // cases where template arguments in the RHS of the alias are not
         // dependent. e.g.
         //   using AliasFoo = Foo<bool>;

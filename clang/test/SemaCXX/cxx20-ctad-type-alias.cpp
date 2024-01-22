@@ -1,5 +1,4 @@
 // RUN: %clang_cc1 -fsyntax-only -Wno-c++11-narrowing -Wno-literal-conversion -std=c++20 -verify %s
-// expected-no-diagnostics
 
 template<typename T>
 struct Foo {
@@ -81,4 +80,17 @@ struct Foo {
 template<typename T>
 using AF = Foo<T, 1>;
 AF b{0};//
+}
+
+namespace test7 {
+
+template<typename T>
+struct Foo { Foo(T); };
+
+template<typename U>
+using AF1 = Foo<U>;
+template<typename K>
+using AF2 = AF1<K>; // expected-note {{template is declared here}}
+// FIXME: support this case.
+AF2 b = 1; // expected-error {{alias template 'AF2' requires template arguments; argument deduction only allowed for class templates}}
 }
