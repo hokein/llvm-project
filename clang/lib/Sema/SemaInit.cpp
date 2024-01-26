@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "CTAD.h"
 #include "TreeTransform.h"
 #include "TypeLocBuilder.h"
 #include "clang/AST/ASTContext.h"
@@ -10677,12 +10678,6 @@ struct AliasTemplateDeductionGuideTransform {
 
   DeclContext *DC = nullptr;
 
-  // FIXME: is this really needed?
-  ClassTemplateDecl *NestedPattern = nullptr;
-  // Instantiation arguments for the outermost depth-1 templates
-  // when the template is nested
-  MultiLevelTemplateArgumentList OuterInstantiationArgs;
-
   // Returns the result of substituting the deduced template arguments into f.
   NamedDecl *transformUnderlyingFunctionTemplate(
       CXXDeductionGuideDecl *UnderlyingCDGD,
@@ -10713,7 +10708,7 @@ struct AliasTemplateDeductionGuideTransform {
     SmallVector<TemplateArgument, 16> Depth1Args;
     SmallVector<NamedDecl *, 16> AllParams;
     SmallVector<TemplateArgument, 16> SubstArgs;
-    int Index = 0;
+    unsigned int Index = 0;
     TemplateParameterList *TemplateParams = nullptr;
 
     for (TemplateTypeParmDecl* Param : DeducedTemplateTypeParDecls) {
@@ -10763,8 +10758,9 @@ struct AliasTemplateDeductionGuideTransform {
       return nullptr;
     TypeSourceInfo *NewTInfo = TLB.getTypeSourceInfo(SemaRef.Context, NewType);
 
-    return buildDeductionGuide(
-        TemplateParams, UnderlyingCDGD->getCorrespondingConstructor(),
+    return ::clang::buildDeductionGuide(
+        SemaRef, AliasTemplate, TemplateParams,
+        UnderlyingCDGD->getCorrespondingConstructor(),
         UnderlyingCDGD->getExplicitSpecifier(), NewTInfo,
         UnderlyingCDGD->getBeginLoc(), UnderlyingCDGD->getLocation(),
         UnderlyingCDGD->getEndLoc(), UnderlyingCDGD->isImplicit(),
@@ -10839,10 +10835,7 @@ private:
     //    -- The types of the function parameters are those of the constructor.
     for (auto *OldParam : TL.getParams()) {
       ParmVarDecl *NewParam =
-          transformFunctionTypeParam(OldParam, Args, MaterializedTypedefs);
-      if (NestedPattern && NewParam)
-        NewParam = transformFunctionTypeParam(NewParam, OuterInstantiationArgs,
-                                              MaterializedTypedefs);
+          clang::transformFunctionTypeParam(SemaRef, OldParam, Args, MaterializedTypedefs);
       if (!NewParam)
         return QualType();
       ParamTypes.push_back(NewParam->getType());
@@ -10886,106 +10879,106 @@ private:
     return FunctionTy;
   }
 
-  ParmVarDecl *transformFunctionTypeParam(
-      ParmVarDecl *OldParam, MultiLevelTemplateArgumentList &Args,
-      llvm::SmallVectorImpl<TypedefNameDecl *> &MaterializedTypedefs) {
-    TypeSourceInfo *OldDI = OldParam->getTypeSourceInfo();
-    TypeSourceInfo *NewDI;
-    if (auto PackTL = OldDI->getTypeLoc().getAs<PackExpansionTypeLoc>()) {
-      // Expand out the one and only element in each inner pack.
-      Sema::ArgumentPackSubstitutionIndexRAII SubstIndex(SemaRef, 0);
-      NewDI =
-          SemaRef.SubstType(PackTL.getPatternLoc(), Args,
-                            OldParam->getLocation(), OldParam->getDeclName());
-      if (!NewDI)
-        return nullptr;
-      NewDI =
-          SemaRef.CheckPackExpansion(NewDI, PackTL.getEllipsisLoc(),
-                                     PackTL.getTypePtr()->getNumExpansions());
-    } else
-      NewDI = SemaRef.SubstType(OldDI, Args, OldParam->getLocation(),
-                                OldParam->getDeclName());
-    if (!NewDI)
-      return nullptr;
+  // ParmVarDecl *transformFunctionTypeParam(
+  //     ParmVarDecl *OldParam, MultiLevelTemplateArgumentList &Args,
+  //     llvm::SmallVectorImpl<TypedefNameDecl *> &MaterializedTypedefs) {
+  //   TypeSourceInfo *OldDI = OldParam->getTypeSourceInfo();
+  //   TypeSourceInfo *NewDI;
+  //   if (auto PackTL = OldDI->getTypeLoc().getAs<PackExpansionTypeLoc>()) {
+  //     // Expand out the one and only element in each inner pack.
+  //     Sema::ArgumentPackSubstitutionIndexRAII SubstIndex(SemaRef, 0);
+  //     NewDI =
+  //         SemaRef.SubstType(PackTL.getPatternLoc(), Args,
+  //                           OldParam->getLocation(), OldParam->getDeclName());
+  //     if (!NewDI)
+  //       return nullptr;
+  //     NewDI =
+  //         SemaRef.CheckPackExpansion(NewDI, PackTL.getEllipsisLoc(),
+  //                                    PackTL.getTypePtr()->getNumExpansions());
+  //   } else
+  //     NewDI = SemaRef.SubstType(OldDI, Args, OldParam->getLocation(),
+  //                               OldParam->getDeclName());
+  //   if (!NewDI)
+  //     return nullptr;
 
-    // Extract the type. This (for instance) replaces references to typedef
-    // members of the current instantiations with the definitions of those
-    // typedefs, avoiding triggering instantiation of the deduced type during
-    // deduction.
-    NewDI = ExtractTypeForDeductionGuide(SemaRef, MaterializedTypedefs)
-                .transform(NewDI);
+  //   // Extract the type. This (for instance) replaces references to typedef
+  //   // members of the current instantiations with the definitions of those
+  //   // typedefs, avoiding triggering instantiation of the deduced type during
+  //   // deduction.
+  //   NewDI = ExtractTypeForDeductionGuide(SemaRef, MaterializedTypedefs)
+  //               .transform(NewDI);
 
-    // Resolving a wording defect, we also inherit default arguments from the
-    // constructor.
-    ExprResult NewDefArg;
-    if (OldParam->hasDefaultArg()) {
-      // We don't care what the value is (we won't use it); just create a
-      // placeholder to indicate there is a default argument.
-      QualType ParamTy = NewDI->getType();
-      NewDefArg = new (SemaRef.Context)
-          // FIXME: using getDefaultArg will crash hitting "Default argument is
-          // not yet instantiated!" erro, fixed in constructor transformer as
-          // well.
-          OpaqueValueExpr(
-              OldParam->getDefaultArgRange().getBegin(),
-              ParamTy.getNonLValueExprType(SemaRef.Context),
-              ParamTy->isLValueReferenceType()   ? VK_LValue
-              : ParamTy->isRValueReferenceType() ? VK_XValue
-                                                 : VK_PRValue);
-    }
+  //   // Resolving a wording defect, we also inherit default arguments from the
+  //   // constructor.
+  //   ExprResult NewDefArg;
+  //   if (OldParam->hasDefaultArg()) {
+  //     // We don't care what the value is (we won't use it); just create a
+  //     // placeholder to indicate there is a default argument.
+  //     QualType ParamTy = NewDI->getType();
+  //     NewDefArg = new (SemaRef.Context)
+  //         // FIXME: using getDefaultArg will crash hitting "Default argument is
+  //         // not yet instantiated!" erro, fixed in constructor transformer as
+  //         // well.
+  //         OpaqueValueExpr(
+  //             OldParam->getDefaultArgRange().getBegin(),
+  //             ParamTy.getNonLValueExprType(SemaRef.Context),
+  //             ParamTy->isLValueReferenceType()   ? VK_LValue
+  //             : ParamTy->isRValueReferenceType() ? VK_XValue
+  //                                                : VK_PRValue);
+  //   }
 
-    ParmVarDecl *NewParam = ParmVarDecl::Create(SemaRef.Context, DC,
-                                                OldParam->getInnerLocStart(),
-                                                OldParam->getLocation(),
-                                                OldParam->getIdentifier(),
-                                                NewDI->getType(),
-                                                NewDI,
-                                                OldParam->getStorageClass(),
-                                                NewDefArg.get());
-    NewParam->setScopeInfo(OldParam->getFunctionScopeDepth(),
-                           OldParam->getFunctionScopeIndex());
-    SemaRef.CurrentInstantiationScope->InstantiatedLocal(OldParam, NewParam);
-    return NewParam;
-  }
+  //   ParmVarDecl *NewParam = ParmVarDecl::Create(SemaRef.Context, DC,
+  //                                               OldParam->getInnerLocStart(),
+  //                                               OldParam->getLocation(),
+  //                                               OldParam->getIdentifier(),
+  //                                               NewDI->getType(),
+  //                                               NewDI,
+  //                                               OldParam->getStorageClass(),
+  //                                               NewDefArg.get());
+  //   NewParam->setScopeInfo(OldParam->getFunctionScopeDepth(),
+  //                          OldParam->getFunctionScopeIndex());
+  //   SemaRef.CurrentInstantiationScope->InstantiatedLocal(OldParam, NewParam);
+  //   return NewParam;
+  // }
 
-  FunctionTemplateDecl *buildDeductionGuide(
-      TemplateParameterList *TemplateParams, CXXConstructorDecl *Ctor,
-      ExplicitSpecifier ES, TypeSourceInfo *TInfo, SourceLocation LocStart,
-      SourceLocation Loc, SourceLocation LocEnd, bool IsImplicit,
-      llvm::ArrayRef<TypedefNameDecl *> MaterializedTypedefs = {}) {
-    auto DeductionGuideName =
-        SemaRef.Context.DeclarationNames.getCXXDeductionGuideName(
-            AliasTemplate);
+  // FunctionTemplateDecl *buildDeductionGuide(
+  //     TemplateParameterList *TemplateParams, CXXConstructorDecl *Ctor,
+  //     ExplicitSpecifier ES, TypeSourceInfo *TInfo, SourceLocation LocStart,
+  //     SourceLocation Loc, SourceLocation LocEnd, bool IsImplicit,
+  //     llvm::ArrayRef<TypedefNameDecl *> MaterializedTypedefs = {}) {
+  //   auto DeductionGuideName =
+  //       SemaRef.Context.DeclarationNames.getCXXDeductionGuideName(
+  //           AliasTemplate);
 
-    DeclarationNameInfo Name(DeductionGuideName, Loc);
-    ArrayRef<ParmVarDecl *> Params =
-        TInfo->getTypeLoc().castAs<FunctionProtoTypeLoc>().getParams();
+  //   DeclarationNameInfo Name(DeductionGuideName, Loc);
+  //   ArrayRef<ParmVarDecl *> Params =
+  //       TInfo->getTypeLoc().castAs<FunctionProtoTypeLoc>().getParams();
 
-    // Build the implicit deduction guide template.
-    auto *Guide =
-        CXXDeductionGuideDecl::Create(SemaRef.Context, DC, LocStart, ES, Name,
-                                      TInfo->getType(), TInfo, LocEnd, Ctor);
-    Guide->setImplicit(IsImplicit);
-    Guide->setParams(Params);
+  //   // Build the implicit deduction guide template.
+  //   auto *Guide =
+  //       CXXDeductionGuideDecl::Create(SemaRef.Context, DC, LocStart, ES, Name,
+  //                                     TInfo->getType(), TInfo, LocEnd, Ctor);
+  //   Guide->setImplicit(IsImplicit);
+  //   Guide->setParams(Params);
 
-    for (auto *Param : Params)
-      Param->setDeclContext(Guide);
-    for (auto *TD : MaterializedTypedefs)
-      TD->setDeclContext(Guide);
+  //   for (auto *Param : Params)
+  //     Param->setDeclContext(Guide);
+  //   for (auto *TD : MaterializedTypedefs)
+  //     TD->setDeclContext(Guide);
 
-    auto *GuideTemplate = FunctionTemplateDecl::Create(
-        SemaRef.Context, DC, Loc, DeductionGuideName, TemplateParams, Guide);
-    GuideTemplate->setImplicit(IsImplicit);
-    Guide->setDescribedFunctionTemplate(GuideTemplate);
+  //   auto *GuideTemplate = FunctionTemplateDecl::Create(
+  //       SemaRef.Context, DC, Loc, DeductionGuideName, TemplateParams, Guide);
+  //   GuideTemplate->setImplicit(IsImplicit);
+  //   Guide->setDescribedFunctionTemplate(GuideTemplate);
 
-    if (isa<CXXRecordDecl>(DC)) {
-      Guide->setAccess(AS_public);
-      GuideTemplate->setAccess(AS_public);
-    }
+  //   if (isa<CXXRecordDecl>(DC)) {
+  //     Guide->setAccess(AS_public);
+  //     GuideTemplate->setAccess(AS_public);
+  //   }
 
-    DC->addDecl(GuideTemplate);
-    return GuideTemplate;
-  }
+  //   DC->addDecl(GuideTemplate);
+  //   return GuideTemplate;
+  // }
 };
 
 QualType Sema::DeduceTemplateSpecializationFromInitializer(
@@ -11113,7 +11106,7 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
           //
           //
           //  template<typename X, typename Y>
-          //  f(X, Y) -> f<Y, X>
+          //  f(X, Y) -> f<Y, X>;
           //
           //  template<typename U>
           //  using alias = f<int, U>;
@@ -11122,7 +11115,6 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
           // the return type of the deduction guide from it: Y->int, X -> U
           if (DeduceTemplateArguments(AliasTemplate->getTemplateParameters(),
                                       ReturnTST->template_arguments(),
-                                      //AliasRhsTST->template_arguments(),
                                       AliasRhsTemplateArgs,
                                       TDeduceInfo, DeduceResults,
                                       /*NumberOfArgumentsMustMatch*/ false)) {
@@ -11130,8 +11122,10 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
             // to proceed with all deduced results.
           } else {
             // Happy case, all template arguments are deduced.
-            for (auto D : DeduceResults)
+            for (auto D : DeduceResults) {
+              // D.
               DeducedArgs.push_back(D);
+            }
 
             auto *DeducedArgList =
                 TemplateArgumentList::CreateCopy(this->Context, DeducedArgs);
@@ -11156,18 +11150,19 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
               InstantiatingTemplate BuildingDeductionGuides(
                   *this, SourceLocation(), AliasTemplate,
                   Sema::InstantiatingTemplate::BuildingDeductionGuidesTag{});
-              auto *D = Transform.transformUnderlyingFunctionTemplate(
-                  dyn_cast<CXXDeductionGuideDecl>(K), DeducedArgs);
-              // FIXME: implement the assoicated constraint per C++
-              // [over.match.class.deduct]p3.3:
-              //    The associated constraints ([temp.constr.decl]) are the
-              //    conjunction of the associated constraints of g and a
-              //    constraint that is satisfied if and only if the arguments of
-              //    A are deducible (see below) from the return type.
-              // This could be implemented as part of function overload
-              // resolution below.
-              GuidesCandidates.push_back(
-                  DeclAccessPair::make(D, AccessSpecifier::AS_public));
+              if (auto *D = Transform.transformUnderlyingFunctionTemplate(
+                      dyn_cast<CXXDeductionGuideDecl>(K), DeducedArgs)) {
+                // FIXME: implement the assoicated constraint per C++
+                // [over.match.class.deduct]p3.3:
+                //    The associated constraints ([temp.constr.decl]) are the
+                //    conjunction of the associated constraints of g and a
+                //    constraint that is satisfied if and only if the arguments
+                //    of A are deducible (see below) from the return type.
+                // This could be implemented as part of function overload
+                // resolution below.
+                GuidesCandidates.push_back(
+                    DeclAccessPair::make(D, AccessSpecifier::AS_public));
+              }
             }
           }
       }
