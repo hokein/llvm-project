@@ -103,7 +103,18 @@ template<typename X, int Y>
 using Bar = Foo<X, Y>;
 
 void k() {
-  // FIXME: fix this case.
-  Bar s = {{1}}; // expected-error {{no viable constructor or deduction guide for deduction of template arguments of 'Bar'}}
+  Bar s = {{1}}; }
 }
+
+namespace test9 {
+template<typename T, int N>
+struct Foo { Foo(T const (&)[N]); };
+
+template<typename X, int Y>
+using Bar = Foo<X, sizeof(X)>;
+
+void k() {
+  // FIXME: should we reject this case? GCC rejects it, MSVC accepts it.
+  Bar s = {{1}};
+ }
 }

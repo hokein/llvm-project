@@ -21,6 +21,7 @@
 #include "clang/AST/ExprObjC.h"
 #include "clang/AST/ExprOpenMP.h"
 #include "clang/AST/IgnoreExpr.h"
+#include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/Type.h"
 #include "clang/AST/TypeLoc.h"
 #include "clang/Basic/CharInfo.h"
@@ -10677,27 +10678,11 @@ struct AliasTemplateDeductionGuideTransform {
   TypeAliasTemplateDecl *AliasTemplate = nullptr;
 
   DeclContext *DC = nullptr;
-
-  // Returns the result of substituting the deduced template arguments into f.
+  
+  // Returns the result of substituting the deduced template arguments into F.
   NamedDecl *transformUnderlyingFunctionTemplate(
-      CXXDeductionGuideDecl *UnderlyingCDGD,
+      CXXDeductionGuideDecl *F,
       SmallVector<TemplateArgument> DeducedArgs) {
-    SmallVector<TemplateTypeParmDecl *> DeducedTemplateTypeParDecls;
-    // Add all parameters that appear in the deductions.
-    // FIXME: add template parameters of f that were not deduced.
-    for (auto D : DeducedArgs) {
-      // FIXME: fix other template argument kind.
-      if (D.getKind() != TemplateArgument::Type) {
-        return nullptr;        
-      }
-      if (auto *TT =
-              dyn_cast<TemplateTypeParmType>(D.getAsType().getTypePtr())) {
-        if (TemplateTypeParmDecl *DD = TT->getDecl()) {
-          DeducedTemplateTypeParDecls.push_back(DD);
-        }
-      }
-    }
-
     // C++ [over.match.class.deduct]p3.2:
     //   If f is a function template, f' is a function template whose template
     //   parameter list consists of all the template parameters of A (including
@@ -10705,6 +10690,46 @@ struct AliasTemplateDeductionGuideTransform {
     //   or (recursively) in their default template arguments, followed by the
     //   template parameters of f that were not deduced (including their default
     //   template arguments)...
+
+    // Find all template parameters of the AliasTemplate that appear in the
+    // DeducedArgs.
+    struct FindAppearedTemplateParams
+        : public RecursiveASTVisitor<FindAppearedTemplateParams> {
+      llvm::DenseSet<NamedDecl *> TemplateParamsInAlias;
+      llvm::DenseSet<const NamedDecl *> AppearedTemplateParams;
+
+      FindAppearedTemplateParams(ArrayRef<NamedDecl *> TemplateParamsInAlias)
+          : TemplateParamsInAlias(TemplateParamsInAlias.begin(),
+                                  TemplateParamsInAlias.end()) {}
+
+      bool VisitTemplateTypeParmType(TemplateTypeParmType *TTP) {
+        MarkAppeared(TTP->getDecl());
+        return true;
+      }
+      bool VisitDeclRefExpr(DeclRefExpr *DRE) {
+        MarkAppeared(DRE->getFoundDecl());
+        return true;
+      }
+
+      void MarkAppeared(NamedDecl *ND) {
+        if (TemplateParamsInAlias.contains(ND))
+          AppearedTemplateParams.insert(ND);
+      }
+    };
+    ArrayRef<NamedDecl *> TemplateParamsInAlias =
+        AliasTemplate->getTemplateParameters()->asArray();
+    FindAppearedTemplateParams MarkAppeared(TemplateParamsInAlias);
+    MarkAppeared.TraverseTemplateArguments(DeducedArgs);
+
+    // Template parameters of the f'.
+    // FIXME: add template parameters of f that were not deduced.
+    SmallVector<NamedDecl *> TemplateParamsInFPrime;
+    for (auto* TP : TemplateParamsInAlias) {
+      if (MarkAppeared.AppearedTemplateParams.contains(TP)) {
+        TemplateParamsInFPrime.push_back(TP);
+      }
+    }
+
     LocalInstantiationScope Scope(SemaRef);
     SmallVector<TemplateArgument, 16> Depth1Args;
     SmallVector<NamedDecl *, 16> AllParams;
@@ -10712,7 +10737,7 @@ struct AliasTemplateDeductionGuideTransform {
     unsigned int Index = 0;
     TemplateParameterList *TemplateParams = nullptr;
 
-    for (TemplateTypeParmDecl* Param : DeducedTemplateTypeParDecls) {
+    for (NamedDecl* Param : TemplateParamsInFPrime) {
       MultiLevelTemplateArgumentList Args;
 
       Args.setKind(TemplateSubstitutionKind::Rewrite);
@@ -10741,7 +10766,7 @@ struct AliasTemplateDeductionGuideTransform {
     Args.addOuterTemplateArguments(SubstArgs);
     Args.addOuterRetainedLevel();
 
-    FunctionProtoTypeLoc FPTL = UnderlyingCDGD->getTypeSourceInfo()
+    FunctionProtoTypeLoc FPTL = F->getTypeSourceInfo()
                                     ->getTypeLoc()
                                     .getAsAdjusted<FunctionProtoTypeLoc>();
     assert(FPTL && "no prototype for underlying deduction guides");
@@ -10753,7 +10778,7 @@ struct AliasTemplateDeductionGuideTransform {
     SmallVector<ParmVarDecl*, 8> Params;
     SmallVector<TypedefNameDecl *, 4> MaterializedTypedefs;
     QualType NewType = transformFunctionProtoType(
-        TLB, FPTL, Params, Args, UnderlyingCDGD->getReturnType(),
+        TLB, FPTL, Params, Args, F->getReturnType(),
         MaterializedTypedefs);
     if (NewType.isNull())
       return nullptr;
@@ -10761,10 +10786,10 @@ struct AliasTemplateDeductionGuideTransform {
 
     return ::clang::buildDeductionGuide(
         SemaRef, AliasTemplate, TemplateParams,
-        UnderlyingCDGD->getCorrespondingConstructor(),
-        UnderlyingCDGD->getExplicitSpecifier(), NewTInfo,
-        UnderlyingCDGD->getBeginLoc(), UnderlyingCDGD->getLocation(),
-        UnderlyingCDGD->getEndLoc(), UnderlyingCDGD->isImplicit(),
+        F->getCorrespondingConstructor(),
+        F->getExplicitSpecifier(), NewTInfo,
+        F->getBeginLoc(), F->getLocation(),
+        F->getEndLoc(), F->isImplicit(),
         MaterializedTypedefs);
   }
 
