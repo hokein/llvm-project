@@ -94,3 +94,16 @@ using AF2 = AF1<K>; // expected-note {{template is declared here}}
 // FIXME: support this case.
 AF2 b = 1; // expected-error {{alias template 'AF2' requires template arguments; argument deduction only allowed for class templates}}
 }
+
+namespace test8 {
+template<typename T, int N>
+struct Foo { Foo(T const (&)[N]); };
+
+template<typename X, int Y>
+using Bar = Foo<X, Y>;
+
+void k() {
+  // FIXME: fix this case.
+  Bar s = {{1}}; // expected-error {{no viable constructor or deduction guide for deduction of template arguments of 'Bar'}}
+}
+}

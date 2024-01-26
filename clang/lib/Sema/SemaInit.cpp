@@ -10687,8 +10687,9 @@ struct AliasTemplateDeductionGuideTransform {
     // FIXME: add template parameters of f that were not deduced.
     for (auto D : DeducedArgs) {
       // FIXME: fix other template argument kind.
-      if (D.getKind() != TemplateArgument::Type)
-        continue;
+      if (D.getKind() != TemplateArgument::Type) {
+        return nullptr;        
+      }
       if (auto *TT =
               dyn_cast<TemplateTypeParmType>(D.getAsType().getTypePtr())) {
         if (TemplateTypeParmDecl *DD = TT->getDecl()) {
