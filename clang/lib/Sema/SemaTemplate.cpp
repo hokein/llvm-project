@@ -2332,7 +2332,6 @@ struct ConvertConstructorToDeductionGuideTransform {
         NamedDecl *NewParam = transformTemplateParameter(Param, Args);
         if (!NewParam)
           return nullptr;
-
         // Constraints require that we substitute depth-1 arguments
         // to match depths when substituted for evaluation later
         Depth1Args.push_back(SemaRef.Context.getCanonicalTemplateArgument(
@@ -2351,8 +2350,13 @@ struct ConvertConstructorToDeductionGuideTransform {
                "Unexpected template parameter depth");
 
         AllParams.push_back(NewParam);
-        SubstArgs.push_back(SemaRef.Context.getCanonicalTemplateArgument(
+        SubstArgs.push_back(
+          (
+          //SemaRef.Context.getCanonicalTemplateArgument(
             SemaRef.Context.getInjectedTemplateArg(NewParam)));
+        // llvm::errs() << "test2\n";
+        // NewParam->dump();
+        // SubstArgs.back().getAsType()->dump();
       }
 
       // Substitute new template parameters into requires-clause if present.
@@ -2454,50 +2458,16 @@ private:
   /// renumbering as we go.
   NamedDecl *transformTemplateParameter(NamedDecl *TemplateParam,
                                         MultiLevelTemplateArgumentList &Args) {
-    if (auto *TTP = dyn_cast<TemplateTypeParmDecl>(TemplateParam)) {
-      // TemplateTypeParmDecl's index cannot be changed after creation, so
-      // substitute it directly.
-      auto *NewTTP = TemplateTypeParmDecl::Create(
-          SemaRef.Context, DC, TTP->getBeginLoc(), TTP->getLocation(),
-          TTP->getDepth() - 1, Depth1IndexAdjustment + TTP->getIndex(),
-          TTP->getIdentifier(), TTP->wasDeclaredWithTypename(),
-          TTP->isParameterPack(), TTP->hasTypeConstraint(),
-          TTP->isExpandedParameterPack()
-              ? std::optional<unsigned>(TTP->getNumExpansionParameters())
-              : std::nullopt);
-      if (const auto *TC = TTP->getTypeConstraint())
-        SemaRef.SubstTypeConstraint(NewTTP, TC, Args,
-                                    /*EvaluateConstraint*/ true);
-      if (TTP->hasDefaultArgument()) {
-        TypeSourceInfo *InstantiatedDefaultArg =
-            SemaRef.SubstType(TTP->getDefaultArgumentInfo(), Args,
-                              TTP->getDefaultArgumentLoc(), TTP->getDeclName());
-        if (InstantiatedDefaultArg)
-          NewTTP->setDefaultArgument(InstantiatedDefaultArg);
-      }
-      SemaRef.CurrentInstantiationScope->InstantiatedLocal(TemplateParam,
-                                                           NewTTP);
-      return NewTTP;
-    }
-
+    if (auto *TTP = dyn_cast<TemplateTypeParmDecl>(TemplateParam))
+      return clang::transformTemplateTypeParam(
+          SemaRef, DC, TTP, Args, TTP->getDepth() - 1,
+          Depth1IndexAdjustment + TTP->getIndex());
     if (auto *TTP = dyn_cast<TemplateTemplateParmDecl>(TemplateParam))
-      return transformTemplateParameterImpl(TTP, Args);
-
-    return transformTemplateParameterImpl(
-        cast<NonTypeTemplateParmDecl>(TemplateParam), Args);
-  }
-  template<typename TemplateParmDecl>
-  TemplateParmDecl *
-  transformTemplateParameterImpl(TemplateParmDecl *OldParam,
-                                 MultiLevelTemplateArgumentList &Args) {
-    // Ask the template instantiator to do the heavy lifting for us, then adjust
-    // the index of the parameter once it's done.
-    auto *NewParam =
-        cast<TemplateParmDecl>(SemaRef.SubstDecl(OldParam, DC, Args));
-    assert(NewParam->getDepth() == OldParam->getDepth() - 1 &&
-           "unexpected template param depth");
-    NewParam->setPosition(NewParam->getPosition() + Depth1IndexAdjustment);
-    return NewParam;
+      return clang::transformTemplateParam(
+          SemaRef, DC, TTP, Args, Depth1IndexAdjustment + TTP->getIndex());
+    auto *NTTP = cast<NonTypeTemplateParmDecl>(TemplateParam);
+    return clang::transformTemplateParam(
+        SemaRef, DC, NTTP, Args, Depth1IndexAdjustment + NTTP->getIndex());
   }
 
   QualType transformFunctionProtoType(
