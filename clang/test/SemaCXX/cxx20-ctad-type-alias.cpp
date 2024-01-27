@@ -1,34 +1,27 @@
 // RUN: %clang_cc1 -fsyntax-only -Wno-c++11-narrowing -Wno-literal-conversion -std=c++20 -verify %s
 
+namespace test1 {
 template<typename T>
-struct Foo {
-  T t;
-};
-
+struct Foo { T t;};
 template<typename U>
 using Bar = Foo<U>;
 
-void test1() {
-  Bar s = {1};
+Bar s = {1};
 }
 
+namespace test2 {
 template<typename X, typename Y>
-struct XYpair {
-  X x;
-  Y y;
-};
+struct XYpair { X x; Y y; };
 // A tricky explicit deduction guide that swapping X and Y.
 template<typename X, typename Y>
 XYpair(X, Y) -> XYpair<Y, X>;
 template<typename U, typename V>
 using AliasXYpair = XYpair<U, V>;
 
-void test2() {
-  AliasXYpair xy = {1.1, 2}; // XYpair<int, double>
-
-  static_assert(__is_same(decltype(xy.x), int));
-  static_assert(__is_same(decltype(xy.y), double));
-}
+AliasXYpair xy = {1.1, 2}; // XYpair<int, double>
+static_assert(__is_same(decltype(xy.x), int));
+static_assert(__is_same(decltype(xy.y), double));
+} // namespace test2
 
 namespace test3 {
 template<typename T, class>
@@ -44,10 +37,9 @@ vector v(0, 0);
 
 namespace test4 {
 template<class T>
-struct X
-{
+struct X {
   T t;
-  X(T) {}
+  X(T);
 };
 
 template <class T>
@@ -56,12 +48,9 @@ X(T) -> X<double>;
 template <class T>
 using AX = X<T>;
 
-void test1() {
-  AX s = {1};
-  // FIXME: should select X<double> deduction guide
-  // static_assert(__is_same(decltype(s.t), double));
-}
-}
+AX s = {1};
+static_assert(__is_same(decltype(s.t), double));
+} // namespace test4
 
 namespace test5 {
 template<int B>
@@ -69,7 +58,7 @@ struct Foo {};
 template<int... C>
 using AF = Foo<1>;
 auto a = AF {};
-}
+} // namespace test5
 
 namespace test6 {
 template<typename T, bool B = false>
@@ -80,10 +69,9 @@ struct Foo {
 template<typename T>
 using AF = Foo<T, 1>;
 AF b{0};//
-}
+} // namespace test6
 
 namespace test7 {
-
 template<typename T>
 struct Foo { Foo(T); };
 
@@ -93,7 +81,7 @@ template<typename K>
 using AF2 = AF1<K>; // expected-note {{template is declared here}}
 // FIXME: support this case.
 AF2 b = 1; // expected-error {{alias template 'AF2' requires template arguments; argument deduction only allowed for class templates}}
-}
+} // namespace test7
 
 namespace test8 {
 template<typename T, int N>
@@ -102,9 +90,8 @@ struct Foo { Foo(T const (&)[N]); };
 template<typename X, int Y>
 using Bar = Foo<X, Y>;
 
-void k() {
-  Bar s = {{1}}; }
-}
+Bar s = {{1}};
+} // namespace test8
 
 namespace test9 {
 template<typename T, int N>
@@ -113,8 +100,21 @@ struct Foo { Foo(T const (&)[N]); };
 template<typename X, int Y>
 using Bar = Foo<X, sizeof(X)>;
 
-void k() {
-  // FIXME: should we reject this case? GCC rejects it, MSVC accepts it.
-  Bar s = {{1}};
- }
-}
+// FIXME: should we reject this case? GCC rejects it, MSVC accepts it.
+Bar s = {{1}};
+} // namespace test9
+
+namespace test10 {
+template <typename T>
+struct Foo {
+    template <typename U>
+    Foo(U);
+};
+
+template <typename U>
+Foo(U) -> Foo<U*>;
+
+template <typename K>
+using A = Foo<K>;
+A a(2); // Foo<int*>
+} // namespace test10
