@@ -80,7 +80,8 @@ public:
 }
 
 ParmVarDecl *transformFunctionTypeParam(
-    Sema &SemaRef, ParmVarDecl *OldParam, MultiLevelTemplateArgumentList &Args,
+    Sema &SemaRef, ParmVarDecl *OldParam, DeclContext *DC,
+    MultiLevelTemplateArgumentList &Args,
     llvm::SmallVectorImpl<TypedefNameDecl *> &MaterializedTypedefs) {
   TypeSourceInfo *OldDI = OldParam->getTypeSourceInfo();
   TypeSourceInfo *NewDI;
@@ -126,7 +127,7 @@ ParmVarDecl *transformFunctionTypeParam(
     NewType = SemaRef.Context.getDecayedType(NewType);
 
   ParmVarDecl *NewParam = ParmVarDecl::Create(
-      SemaRef.Context, OldParam->getDeclContext(), OldParam->getInnerLocStart(),
+      SemaRef.Context, DC, OldParam->getInnerLocStart(),
       OldParam->getLocation(), OldParam->getIdentifier(), NewType, NewDI,
       OldParam->getStorageClass(), NewDefArg.get());
   NewParam->setScopeInfo(OldParam->getFunctionScopeDepth(),

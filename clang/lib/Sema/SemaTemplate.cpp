@@ -2481,10 +2481,10 @@ private:
     //    -- The types of the function parameters are those of the constructor.
     for (auto *OldParam : TL.getParams()) {
       ParmVarDecl *NewParam = clang::transformFunctionTypeParam(
-          SemaRef, OldParam, Args, MaterializedTypedefs);
+          SemaRef, OldParam, DC, Args, MaterializedTypedefs);
       if (NestedPattern && NewParam)
         NewParam = clang::transformFunctionTypeParam(
-            SemaRef, NewParam, OuterInstantiationArgs, MaterializedTypedefs);
+            SemaRef, NewParam, DC, OuterInstantiationArgs, MaterializedTypedefs);
       if (!NewParam)
         return QualType();
       ParamTypes.push_back(NewParam->getType());

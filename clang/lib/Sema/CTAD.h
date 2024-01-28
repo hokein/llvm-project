@@ -27,7 +27,8 @@
 namespace clang {
 
 ParmVarDecl *transformFunctionTypeParam(
-    Sema &SemaRef, ParmVarDecl *OldParam, MultiLevelTemplateArgumentList &Args,
+    Sema &SemaRef, ParmVarDecl *OldParam, DeclContext *DC,
+    MultiLevelTemplateArgumentList &Args,
     llvm::SmallVectorImpl<TypedefNameDecl *> &MaterializedTypedefs);
 
 // Transform a given template type parameter into a deduction guide template
