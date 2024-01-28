@@ -26,6 +26,8 @@
 
 namespace clang {
 
+// Transform a given function parameter decl into a deduction guide parameter
+// decl.
 ParmVarDecl *transformFunctionTypeParam(
     Sema &SemaRef, ParmVarDecl *OldParam, DeclContext *DC,
     MultiLevelTemplateArgumentList &Args,

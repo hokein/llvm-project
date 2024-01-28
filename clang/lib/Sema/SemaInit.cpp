@@ -11010,10 +11010,6 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
             //    of A are deducible (see below) from the return type.
             // This could be implemented as part of function overload
             // resolution below.
-            // llvm::errs() << "substitituion succeeds\n";
-            // FPrime->dump();
-            // F->dump();
-            // llvm::errs() << "!!\n";
             GuidesCandidates.push_back(
                 DeclAccessPair::make(FPrime, AccessSpecifier::AS_public));
           }

@@ -77,7 +77,7 @@ public:
     return TDTy;
   }
 };
-}
+} // namespace
 
 ParmVarDecl *transformFunctionTypeParam(
     Sema &SemaRef, ParmVarDecl *OldParam, DeclContext *DC,
