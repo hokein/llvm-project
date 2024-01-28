@@ -2350,13 +2350,8 @@ struct ConvertConstructorToDeductionGuideTransform {
                "Unexpected template parameter depth");
 
         AllParams.push_back(NewParam);
-        SubstArgs.push_back(
-          (
-          //SemaRef.Context.getCanonicalTemplateArgument(
+        SubstArgs.push_back(SemaRef.Context.getCanonicalTemplateArgument(
             SemaRef.Context.getInjectedTemplateArg(NewParam)));
-        // llvm::errs() << "test2\n";
-        // NewParam->dump();
-        // SubstArgs.back().getAsType()->dump();
       }
 
       // Substitute new template parameters into requires-clause if present.
@@ -2527,7 +2522,6 @@ private:
   }
 };
 }
-
 
 FunctionTemplateDecl *Sema::DeclareImplicitDeductionGuideFromInitList(
     TemplateDecl *Template, MutableArrayRef<QualType> ParamTypes,

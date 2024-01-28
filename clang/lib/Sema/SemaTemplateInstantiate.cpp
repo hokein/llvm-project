@@ -1422,24 +1422,20 @@ namespace {
 
     QualType TransformInjectedClassNameType(TypeLocBuilder &TLB,
                                             InjectedClassNameTypeLoc TL) {
-      // Return a TemplateSpecializationType for building deduction guides
-      Decl *D = TransformDecl(TL.getNameLoc(),
-                              TL.getTypePtr()->getDecl());
-      if (!D) {
-        if (SemaRef.CodeSynthesisContexts.back().Kind !=
-            Sema::CodeSynthesisContext::BuildingDeductionGuides)
-          return QualType();
-        auto *ICT = TL.getType()->getAs<InjectedClassNameType>();
-        auto TST = SemaRef.Context.getTemplateSpecializationType(
-            ICT->getTemplateName(), TemplateArgs.getOutermost());
-        TLB.pushTrivial(SemaRef.Context, TST, {});
-        return TST;
+      auto Type = inherited::TransformInjectedClassNameType(TLB, TL);
+      if (Type.isNull() &&
+          SemaRef.CodeSynthesisContexts.back().Kind ==
+              Sema::CodeSynthesisContext::BuildingDeductionGuides) {
+        // Return a TemplateSpecializationType for transforming a deduction
+        // guide.
+        if (auto *ICT = TL.getType()->getAs<InjectedClassNameType>()) {
+          auto TST = SemaRef.Context.getTemplateSpecializationType(
+              ICT->getTemplateName(), TemplateArgs.getOutermost());
+          TLB.pushTrivial(SemaRef.Context, TST, TL.getNameLoc());
+          return TST;
+        }
       }
-
-      // Default implementation.
-      QualType T = SemaRef.Context.getTypeDeclType(cast<TypeDecl>(D));
-      TLB.pushTypeSpec(T).setNameLoc(TL.getNameLoc());
-      return T;
+      return Type;
     }
 
     template<typename Fn>

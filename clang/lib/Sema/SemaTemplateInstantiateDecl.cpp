@@ -6287,16 +6287,15 @@ NamedDecl *Sema::FindInstantiatedDecl(SourceLocation Loc, NamedDecl *D,
           CXXRecordDecl *SubstRecord = T->getAsCXXRecordDecl();
 
           if (!SubstRecord) {
-            // FIXME: we encounter a new type here as we use the
-            // `InstantiateFunctionDeclaration` API to substitute the deduced
-            // template arguments into deduction guide.
-            if (auto TST = T->getAs<TemplateSpecializationType>())
-              // Return a nullptr as a sentinel value, we handle it properly in
-              // the TemplateInstantiator::TransformInjectedClassNameType
-              // override.
-              return nullptr;
+            // The template id T is a TemplateSpecializationType when performing
+            // a substitution for a deduction guide,
+            assert(CodeSynthesisContexts.back().Kind ==
+                   CodeSynthesisContext::BuildingDeductionGuides);
+            // Return a nullptr as a sentinel value, we handle it properly in
+            // the TemplateInstantiator::TransformInjectedClassNameType
+            // override.
+            return nullptr;
           }
-          assert(SubstRecord && "class template id not a class type?");
           // Check that this template-id names the primary template and not a
           // partial or explicit specialization. (In the latter cases, it's
           // meaningless to attempt to find an instantiation of D within the
