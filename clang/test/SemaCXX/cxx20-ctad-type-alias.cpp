@@ -131,3 +131,14 @@ template <typename K>
 using A = Foo<K>;
 A a(2);  // Foo<int*>
 }  // namespace test10
+
+namespace test10 {
+
+struct A {};
+template<class C1> struct B { C1 c;};
+// FIXME: we have an out-bound crash on instantating the synthesized deduction guide `auto (B<C2>) -> B<C2>`
+// where C2 should be at the index 0, however, it is still refers the original one where index is 1
+template<class X, class C2=A> using D = B<C2>;
+
+void f () { D s = {1}; }		// { dg-error "deduction failed|no match" }
+}
