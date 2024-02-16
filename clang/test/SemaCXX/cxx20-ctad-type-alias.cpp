@@ -132,7 +132,7 @@ using A = Foo<K>;
 A a(2);  // Foo<int*>
 }  // namespace test10
 
-namespace test10 {
+namespace test11 {
 
 struct A {};
 template<class C1> struct B { C1 c;};

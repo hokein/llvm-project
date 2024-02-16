@@ -10424,6 +10424,9 @@ public:
                       const MultiLevelTemplateArgumentList &TemplateArgs,
                       bool EvaluateConstraints = true);
 
+  bool SubstTemplateArgument(const TemplateArgumentLoc &Input,
+                             const MultiLevelTemplateArgumentList &TemplateArgs,
+                             TemplateArgumentLoc &Output);
   bool
   SubstTemplateArguments(ArrayRef<TemplateArgumentLoc> Args,
                          const MultiLevelTemplateArgumentList &TemplateArgs,

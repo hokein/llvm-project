@@ -2219,7 +2219,8 @@ Decl *TemplateDeclInstantiator::VisitFunctionDecl(
       FunctionTemplate->setInstantiatedFromMemberTemplate(
                                            D->getDescribedFunctionTemplate());
     }
-  } else if (FunctionTemplate) {
+  } else if (FunctionTemplate && SemaRef.CodeSynthesisContexts.back().Kind !=
+                   Sema::CodeSynthesisContext::BuildingDeductionGuides) {
     // Record this function template specialization.
     ArrayRef<TemplateArgument> Innermost = TemplateArgs.getInnermost();
     Function->setFunctionTemplateSpecialization(FunctionTemplate,
@@ -3038,7 +3039,6 @@ Decl *TemplateDeclInstantiator::VisitNonTypeTemplateParmDecl(
       Invalid = true;
     }
   }
-
   NonTypeTemplateParmDecl *Param;
   if (IsExpandedParameterPack)
     Param = NonTypeTemplateParmDecl::Create(
