@@ -3039,6 +3039,7 @@ Decl *TemplateDeclInstantiator::VisitNonTypeTemplateParmDecl(
       Invalid = true;
     }
   }
+
   NonTypeTemplateParmDecl *Param;
   if (IsExpandedParameterPack)
     Param = NonTypeTemplateParmDecl::Create(
@@ -4866,7 +4867,7 @@ FunctionDecl *Sema::InstantiateFunctionDeclaration(
   ContextRAII SavedContext(*this, FD);
   MultiLevelTemplateArgumentList MArgs(FTD, Args->asArray(),
                                        /*Final=*/false);
-
+  MArgs.dump();
   return cast_or_null<FunctionDecl>(SubstDecl(FD, FD->getParent(), MArgs));
 }
 

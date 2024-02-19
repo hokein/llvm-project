@@ -4776,6 +4776,12 @@ bool TreeTransform<Derived>::TransformTemplateArguments(
     TemplateArgumentLoc In = *First;
 
     if (In.getArgument().getKind() == TemplateArgument::Pack) {
+      if (getSema().CodeSynthesisContexts.back().Kind ==
+         Sema::CodeSynthesisContext::BuildingDeductionGuides) {
+        getDerived().TransformTemplateArgument(In, Out, Uneval);
+        Outputs.addArgument(Out);
+        continue;
+      }
       // Unpack argument packs, which we translate them into separate
       // arguments.
       // FIXME: We could do much better if we could guarantee that the

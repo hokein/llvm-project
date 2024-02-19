@@ -1458,12 +1458,66 @@ namespace {
         if (auto *ICT = TL.getType()->getAs<InjectedClassNameType>()) {
           auto TST = SemaRef.Context.getTemplateSpecializationType(
               ICT->getTemplateName(), TemplateArgs.getOutermost());
-          TLB.pushTrivial(SemaRef.Context, TST, TL.getNameLoc());
-          return TST;
+          // ICT->getInjectedSpecializationType()->dump();
+          llvm::errs() << "debug2222\n";
+          TST->dump();
+          ICT->getInjectedSpecializationType()->dump();
+          // TLB.pushTrivial(SemaRef.Context, TST, TL.getNameLoc());
+          // return TST;
+           auto Type = 
+              inherited::TransformType(ICT->getInjectedSpecializationType());
+          Type->dump();
+          TLB.pushTrivial(SemaRef.Context, Type, TL.getNameLoc());
+          return Type;
+          // return TST;
         }
       }
       return Type;
     }
+    // template <typename Derived>
+    bool TransformTemplateArgument(const TemplateArgumentLoc &Input,
+                                   TemplateArgumentLoc &Output,
+                                   bool Uneval = false) {
+      const TemplateArgument &Arg = Input.getArgument();
+      std::vector<TemplateArgument> TArgs;
+      switch (Arg.getKind()) {
+      case TemplateArgument::Pack:
+        assert(SemaRef.CodeSynthesisContexts.back().Kind ==
+               Sema::CodeSynthesisContext::BuildingDeductionGuides);
+        for (auto &pack : Arg.getPackAsArray()) {
+          TemplateArgumentLoc Input = SemaRef.getTrivialTemplateArgumentLoc(
+              pack, QualType(), SourceLocation{});
+          TemplateArgumentLoc Output;
+          if (!SemaRef.SubstTemplateArgument(Input, TemplateArgs, Output)) {
+            llvm::errs() << "success on transforming deduced arg3!\n";
+            Output.getArgument().dump();
+            TArgs.push_back(Output.getArgument());
+          }
+        }
+        Output = SemaRef.getTrivialTemplateArgumentLoc(
+            TemplateArgument(llvm::ArrayRef(TArgs).copy(SemaRef.Context)),
+            QualType(), SourceLocation{});
+        return false;
+      default:
+        break;
+      }
+      return inherited::TransformTemplateArgument(Input, Output, Uneval);
+    }
+
+  //  template <typename InputIterator>
+  //  bool TransformTemplateArguments(InputIterator First, InputIterator Last,
+  //                                  TemplateArgumentListInfo &Outputs,
+  //                                  bool Uneval = false) {
+  //    if (SemaRef.CodeSynthesisContexts.back().Kind ==
+  //        Sema::CodeSynthesisContext::BuildingDeductionGuides) {
+  //      for (; First != Last; ++First) {
+  //        TemplateArgumentLoc Out;
+  //        TemplateArgumentLoc In = *First;
+
+  //      }
+  //    }
+  //    return inherited::TransformTemplateArguments(First, Last, Outputs, Uneval);
+  //  }
 
     template<typename Fn>
     QualType TransformFunctionProtoType(TypeLocBuilder &TLB,

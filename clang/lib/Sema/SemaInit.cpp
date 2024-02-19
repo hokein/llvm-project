@@ -11022,8 +11022,10 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
           const auto &D = DeduceResults[Index];
           if (!D.isNull()) { // Deduced
             D.dump();
+            llvm::errs() << "\nabc!\n";
             DeducedArgs.push_back(D);
           } else {
+            llvm::errs() << "faile at index: " << Index << "\n";
             NonDeducedTemplateParamsInF.push_back(
                 F->getTemplateParameters()->getParam(Index));
             NonDeducedTemplateParamsInFIndex.push_back(Index);
@@ -11080,18 +11082,51 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
           const auto &D = DeduceResults[Index];
           if (D.isNull())
             continue;
-          TemplateArgumentLocInfo Empty;
-          TypeSourceInfo *TInfo = nullptr;
+          // if (D.getKind() == TemplateArgument::Pack) {
+          //   std::vector<TemplateArgument> TArgs;
+          //   for (auto& pack : D.getPackAsArray()) {
+          //     TemplateArgumentLoc Input =
+          //     getTrivialTemplateArgumentLoc(pack, QualType(), SourceLocation{});
+          //     TemplateArgumentLoc Output;
+          //     if (!SubstTemplateArgument(Input, Args, Output)) {
+          //       llvm::errs() << "success on transforming deduced arg2!\n";
+          //       Output.getArgument().dump();
+          //       TArgs.push_back(Output.getArgument());
+          //     }
+          //   }
+           
+          //   InstantiatedArgs[Index] =  TemplateArgument(llvm::ArrayRef(TArgs).copy(Context));
+          //   continue;
+          // }
           TemplateArgumentLoc Input =
               getTrivialTemplateArgumentLoc(D, QualType(), SourceLocation{});
           TemplateArgumentLoc Output;
-          // Input.getArgument().getAsType().dump();
-          if (!SubstTemplateArgument(Input, Args, Output)) {
+          D.dump();
+          // std::vector<TemplateArgumentLoc> Inputs = { Input};
+          // TemplateArgumentListInfo Outputs;
+           if (!SubstTemplateArgument(Input, Args, Output)) {
+            // Outputs.arguments().
+            // Outputs.arguments()[0].getArgument().dump();
+          // if (!SubstTemplateArgument(Input, Args, Output)) {
             llvm::errs() << "success on transforming deduced arg!\n";
+            // Output.getArgument().dump();
             // Output.getArgument().getAsType().dump();
             llvm::errs() << "!\n\n";
+            // InstantiatedArgs[Index] = Outputs.arguments()[0].getArgument();
             InstantiatedArgs[Index] = (Output.getArgument());
           }
+          // Input.getArgument().getAsType().dump();
+          // if (!SubstTemplateArguments(Inputs, Args, Outputs)) {
+          //   // Outputs.arguments().
+          //   Outputs.arguments()[0].getArgument().dump();
+          // // if (!SubstTemplateArgument(Input, Args, Output)) {
+          //   llvm::errs() << "success on transforming deduced arg!\n";
+          //   // Output.getArgument().dump();
+          //   // Output.getArgument().getAsType().dump();
+          //   llvm::errs() << "!\n\n";
+          //   InstantiatedArgs[Index] = Outputs.arguments()[0].getArgument();
+          //   // InstantiatedArgs[Index] = (Output.getArgument());
+          // }
         }
 
         OnGoingArgs.clear();
@@ -11138,8 +11173,8 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
         //   }
         // }
 
-
-
+ 
+        
         auto *DeducedArgList =
             TemplateArgumentList::CreateCopy(this->Context, InstantiatedArgs);
         llvm::errs() << "Start instantiate functio ndeclarations\n";
@@ -11152,12 +11187,15 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
         // is not specified by the standard.
         //
         // FIXME: Cache the result.
+          F->dump();
+         Sema::SFINAETrap Trap(*this);
         if (auto *G = InstantiateFunctionDeclaration(
                 F, DeducedArgList, AliasTemplate->getLocation(),
                 Sema::CodeSynthesisContext::BuildingDeductionGuides)) {
               
           // F->getTemplatedDecl()->getParent()->dumpDeclContext();
-          // G->dump();
+          llvm::errs() << "instantiated results!\n";
+          G->dump();
           
           DeclContext *DC = AliasTemplate->getDeclContext();
           auto DeductionGuideName =
@@ -11170,6 +11208,7 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
                                     GG->getType(), GG->getTypeSourceInfo(), GG->getEndLoc(), GG->getCorrespondingConstructor());
           Guide->setImplicit(F->isImplicit());
           Guide->setParams(GG->parameters());
+          Guide->setAccess(AliasTemplate->getAccess());
           // GG->getParamDecl(1);
           auto TemplateParams = TemplateParameterList::Create(
               Context, AliasTemplate->getTemplateParameters()->getTemplateLoc(),
