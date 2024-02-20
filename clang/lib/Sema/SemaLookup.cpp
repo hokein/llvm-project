@@ -1101,7 +1101,6 @@ static void DeclareImplicitMemberFunctionsWithName(Sema &S,
     break;
 
   case DeclarationName::CXXDeductionGuideName:
-    llvm::errs() << "look up cxx deduction guide name!\n";
     S.DeclareImplicitDeductionGuides(Name.getCXXDeductionGuideTemplate(), Loc);
     break;
 

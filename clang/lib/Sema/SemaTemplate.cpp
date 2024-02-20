@@ -2841,6 +2841,9 @@ void DeclareImplicitDeductionGuidesForTypeAlias(
       Sema::InstantiatingTemplate BuildingDeductionGuides(
           SemaRef, AliasTemplate->getLocation(), F,
           Sema::InstantiatingTemplate::BuildingDeductionGuidesTag{});
+      if (BuildingDeductionGuides.isInvalid())
+        return;
+
       LocalInstantiationScope Scope(SemaRef);
 
       // Create a template parameter list for the synthesized deduction guide
