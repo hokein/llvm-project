@@ -1,4 +1,3 @@
-
 // RUN: %clang_cc1 -fsyntax-only -Wno-c++11-narrowing -Wno-literal-conversion -std=c++20 -verify %s
 // expected-no-diagnostics
 namespace test1 {
@@ -181,7 +180,7 @@ template<False W> using BFoo = AFoo<W>;
 int i = 0;
 AFoo a1(&i); // OK, deduce Foo<int *>
 
-// FIXME: clang should reject this case as the we can't deduce the W from the
-// deduced type Foo<int *>
+// FIXME: we should reject this case as the W is not deduced from the deduced
+// type Foo<int *>.
 BFoo b2(&i); 
 } // namespace test14

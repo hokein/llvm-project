@@ -4780,8 +4780,8 @@ bool TreeTransform<Derived>::TransformTemplateArguments(
       // instead of unpacking.
       if (getSema().CodeSynthesisContexts.back().Kind ==
           Sema::CodeSynthesisContext::BuildingDeductionGuides) {
-       if (getDerived().TransformTemplateArgument(In, Out, Uneval))
-         return true;
+        if (getDerived().TransformTemplateArgument(In, Out, Uneval))
+          return true;
         continue;
       }
       // Unpack argument packs, which we translate them into separate
