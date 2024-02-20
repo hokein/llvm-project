@@ -1450,6 +1450,8 @@ namespace {
     QualType TransformInjectedClassNameType(TypeLocBuilder &TLB,
                                             InjectedClassNameTypeLoc TL) {
       auto Type = inherited::TransformInjectedClassNameType(TLB, TL);
+      // Special case for transforming a deduction guide, we return a
+      // transformed TemplateSpecializationType.
       if (Type.isNull() &&
           SemaRef.CodeSynthesisContexts.back().Kind ==
               Sema::CodeSynthesisContext::BuildingDeductionGuides) {
@@ -1471,8 +1473,11 @@ namespace {
       std::vector<TemplateArgument> TArgs;
       switch (Arg.getKind()) {
       case TemplateArgument::Pack:
-        assert(SemaRef.CodeSynthesisContexts.back().Kind ==
-               Sema::CodeSynthesisContext::BuildingDeductionGuides);
+        assert(
+            SemaRef.CodeSynthesisContexts.back().Kind ==
+                Sema::CodeSynthesisContext::BuildingDeductionGuides &&
+            "Transforming a template argument pack is only allowed in building "
+            "deduction guide");
         for (auto &pack : Arg.getPackAsArray()) {
           TemplateArgumentLoc Input = SemaRef.getTrivialTemplateArgumentLoc(
               pack, QualType(), SourceLocation{});

@@ -5690,15 +5690,13 @@ bool Sema::CheckTemplateTypeArgument(
     [[fallthrough]];
   }
   default: {
+    // We allow instantiateing a template with template argument packs when
+    // building deduction guides.
     if (Arg.getKind() == TemplateArgument::Pack &&
         CodeSynthesisContexts.back().Kind ==
             Sema::CodeSynthesisContext::BuildingDeductionGuides) {
-      assert(Arg.getKind() == TemplateArgument::Pack &&
-             "Expected a pack of template arguments");
-      // Arg.getAsType();
       SugaredConverted.push_back(Arg);
-     CanonicalConverted.push_back(
-      Arg);
+      CanonicalConverted.push_back(Arg);
       return false;
     }
     // We have a template type parameter but the template argument
