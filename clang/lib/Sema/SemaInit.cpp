@@ -10882,39 +10882,59 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
   // We can only perform deduction for class templates or alias templates.
   auto *Template =
       dyn_cast_or_null<ClassTemplateDecl>(TemplateName.getAsTemplateDecl());
-
+  TemplateDecl* LookupTemplateDecl = Template;
   TypeAliasTemplateDecl *AliasTemplate = nullptr;
   llvm::ArrayRef<TemplateArgument> AliasRhsTemplateArgs;
   if (!Template && getLangOpts().CPlusPlus20) { // type alias template
     if (AliasTemplate = dyn_cast_or_null<TypeAliasTemplateDecl>(
             TemplateName.getAsTemplateDecl());
         AliasTemplate) {
-      // Unrap the sugar ElaboratedType.
-      auto RhsType = AliasTemplate->getTemplatedDecl()
-                         ->getUnderlyingType()
-                         .getSingleStepDesugaredType(Context);
-      if (const auto *TST = RhsType->getAs<TemplateSpecializationType>()) {
-        // TemplateName in TEST can be a TypeAliasTemplateDecl if
-        // the right hand side of the alias is also a type alias, e.g.
-        //
-        // template<typename T>
-        // using AliasFoo1 = Foo<T>;  // Foo<T> is a class template
-        // specialization
-        //
-        // template<typename T>
-        // using AliasFoo2 = AliasFoo1<T>; // AliasFoo1<T> is a type alias
-        // FIXME: support this case, we need to recursively perform deductions.
+     
+      // // Unrap the sugar ElaboratedType.
+      // auto RhsType = AliasTemplate->getTemplatedDecl()
+      //                    ->getUnderlyingType()
+      //                    .getSingleStepDesugaredType(Context);
+      // if (const auto *TST = RhsType->getAs<TemplateSpecializationType>()) {
+      //   // TemplateName in TEST can be a TypeAliasTemplateDecl if
+      //   // the right hand side of the alias is also a type alias, e.g.
+      //   //
+      //   // template<typename T>
+      //   // using AliasFoo1 = Foo<T>;  // Foo<T> is a class template
+      //   // specialization
+      //   //
+      //   // template<typename T>
+      //   // using AliasFoo2 = AliasFoo1<T>; // AliasFoo1<T> is a type alias
+      //   // FIXME: support this case, we need to recursively perform deductions.
+      //   Template = dyn_cast_or_null<ClassTemplateDecl>(
+      //       TST->getTemplateName().getAsTemplateDecl());
+      //   AliasRhsTemplateArgs = TST->template_arguments();
+      // } else if (const auto *RT = RhsType->getAs<RecordType>()) {
+      //   // Cases where template arguments in the RHS of the alias are not
+      //   // dependent. e.g.
+      //   //   using AliasFoo = Foo<bool>;
+      //   if (const auto *CTSD = llvm::dyn_cast<ClassTemplateSpecializationDecl>(
+      //           RT->getAsCXXRecordDecl())) {
+      //     Template = CTSD->getSpecializedTemplate();
+      //     AliasRhsTemplateArgs = CTSD->getTemplateArgs().asArray();
+      //   }
+      // }
+
+       LookupTemplateDecl = AliasTemplate;
+       auto UnderlyingType = AliasTemplate->getTemplatedDecl()
+                                ->getUnderlyingType()
+                                .getDesugaredType(Context);
+      if (const auto *TST =
+              UnderlyingType->getAs<TemplateSpecializationType>()) {
         Template = dyn_cast_or_null<ClassTemplateDecl>(
             TST->getTemplateName().getAsTemplateDecl());
-        AliasRhsTemplateArgs = TST->template_arguments();
-      } else if (const auto *RT = RhsType->getAs<RecordType>()) {
+      } 
+      else if (const auto *RT = UnderlyingType->getAs<RecordType>()) {
         // Cases where template arguments in the RHS of the alias are not
         // dependent. e.g.
         //   using AliasFoo = Foo<bool>;
         if (const auto *CTSD = llvm::dyn_cast<ClassTemplateSpecializationDecl>(
                 RT->getAsCXXRecordDecl())) {
           Template = CTSD->getSpecializedTemplate();
-          AliasRhsTemplateArgs = CTSD->getTemplateArgs().asArray();
         }
       }
     }
@@ -10950,309 +10970,310 @@ QualType Sema::DeduceTemplateSpecializationFromInitializer(
   //     template-name, a function template [...]
   //  - For each deduction-guide, a function or function template [...]
   DeclarationNameInfo NameInfo(
-      Context.DeclarationNames.getCXXDeductionGuideName(Template),
+      Context.DeclarationNames.getCXXDeductionGuideName(LookupTemplateDecl),
       TSInfo->getTypeLoc().getEndLoc());
   LookupResult Guides(*this, NameInfo, LookupOrdinaryName);
-  LookupQualifiedName(Guides, Template->getDeclContext());
+  LookupQualifiedName(Guides, LookupTemplateDecl->getDeclContext());
 
   // FIXME: Do not diagnose inaccessible deduction guides. The standard isn't
   // clear on this, but they're not found by name so access does not apply.
   Guides.suppressDiagnostics();
 
   SmallVector<DeclAccessPair> GuidesCandidates;
-  if (AliasTemplate) {
-    for (auto *G : Guides) {
-      FunctionTemplateDecl *F = dyn_cast<FunctionTemplateDecl>(G);
-      if (!F)
-        // FIXME: handle the non-template deduction guide case.
-        continue;
-      auto RType = F->getTemplatedDecl()->getReturnType();
-      // The (trailing) return type of the deduction guide.
-      const TemplateSpecializationType *FReturnType = nullptr;
-      if (const auto *InjectedCNT = RType->getAs<InjectedClassNameType>()) {
-        // implicitly-generated deduction guide.
-        FReturnType = InjectedCNT->getInjectedTST();
-      } else if (const auto *ET = RType->getAs<ElaboratedType>()) {
-        // explicit deduction guide.
-        FReturnType = ET->getNamedType()->getAs<TemplateSpecializationType>();
-      }
-      assert(FReturnType);
-      if (FReturnType) {
-        sema::TemplateDeductionInfo TDeduceInfo(Kind.getLocation());
-        SmallVector<DeducedTemplateArgument> DeduceResults;
-        // DeduceResults.resize(FReturnType->template_arguments().size());
-        DeduceResults.resize(F->getTemplateParameters()->size());
+  // if (AliasTemplate) {
+  //   for (auto *G : Guides) {
+  //     FunctionTemplateDecl *F = dyn_cast<FunctionTemplateDecl>(G);
+  //     if (!F)
+  //       // FIXME: handle the non-template deduction guide case.
+  //       continue;
+  //     auto RType = F->getTemplatedDecl()->getReturnType();
+  //     // The (trailing) return type of the deduction guide.
+  //     const TemplateSpecializationType *FReturnType = nullptr;
+  //     if (const auto *InjectedCNT = RType->getAs<InjectedClassNameType>()) {
+  //       // implicitly-generated deduction guide.
+  //       FReturnType = InjectedCNT->getInjectedTST();
+  //     } else if (const auto *ET = RType->getAs<ElaboratedType>()) {
+  //       // explicit deduction guide.
+  //       FReturnType = ET->getNamedType()->getAs<TemplateSpecializationType>();
+  //     }
+  //     assert(FReturnType);
+  //     if (FReturnType) {
+  //       sema::TemplateDeductionInfo TDeduceInfo(Kind.getLocation());
+  //       SmallVector<DeducedTemplateArgument> DeduceResults;
+  //       // DeduceResults.resize(FReturnType->template_arguments().size());
+  //       DeduceResults.resize(F->getTemplateParameters()->size());
 
-        // Deduce template arguments of the deduction guide f from the RHS of
-        // the alias.
-        //
-        // C++ [over.match.class.deduct]p3: ...For each function or function
-        // template f in the guides of the template named by the
-        // simple-template-id of the defining-type-id, the template arguments
-        // of the return type of f are deduced from the defining-type-id of A
-        // according to the process in [temp.deduct.type] with the exception
-        // that deduction does not fail if not all template arguments are
-        // deduced.
-        //
-        //
-        //  template<typename X, typename Y>
-        //  f(X, Y) -> f<Y, X>;
-        //
-        //  template<typename U>
-        //  using alias = f<int, U>;
-        //
-        // The RHS of alias is f<int, U>, we deduced the template arguments of
-        // the return type of the deduction guide from it: Y->int, X->U
-        //
-        // FIXME: DeduceTemplateArguments stops immediately at the first
-        // non-deduced template parameter, extend it to continue performing
-        // deduction for rest of parameters.
-        DeduceTemplateArguments(
-            F->getTemplateParameters(), FReturnType->template_arguments(),
-            AliasRhsTemplateArgs, TDeduceInfo, DeduceResults,
-            /*NumberOfArgumentsMustMatch=*/false);
+  //       // Deduce template arguments of the deduction guide f from the RHS of
+  //       // the alias.
+  //       //
+  //       // C++ [over.match.class.deduct]p3: ...For each function or function
+  //       // template f in the guides of the template named by the
+  //       // simple-template-id of the defining-type-id, the template arguments
+  //       // of the return type of f are deduced from the defining-type-id of A
+  //       // according to the process in [temp.deduct.type] with the exception
+  //       // that deduction does not fail if not all template arguments are
+  //       // deduced.
+  //       //
+  //       //
+  //       //  template<typename X, typename Y>
+  //       //  f(X, Y) -> f<Y, X>;
+  //       //
+  //       //  template<typename U>
+  //       //  using alias = f<int, U>;
+  //       //
+  //       // The RHS of alias is f<int, U>, we deduced the template arguments of
+  //       // the return type of the deduction guide from it: Y->int, X->U
+  //       //
+  //       // FIXME: DeduceTemplateArguments stops immediately at the first
+  //       // non-deduced template parameter, extend it to continue performing
+  //       // deduction for rest of parameters.
+  //       DeduceTemplateArguments(
+  //           F->getTemplateParameters(), FReturnType->template_arguments(),
+  //           AliasRhsTemplateArgs, TDeduceInfo, DeduceResults,
+  //           /*NumberOfArgumentsMustMatch=*/false);
 
-        SmallVector<TemplateArgument> DeducedArgs;
-        SmallVector<NamedDecl *> NonDeducedTemplateParamsInF;
-        SmallVector<unsigned> NonDeducedTemplateParamsInFIndex;
+  //       SmallVector<TemplateArgument> DeducedArgs;
+  //       SmallVector<NamedDecl *> NonDeducedTemplateParamsInF;
+  //       SmallVector<unsigned> NonDeducedTemplateParamsInFIndex;
  
-        SmallVector<NamedDecl *, 16> AllParamsInFPrime;
-        // !!NOTE: DeduceResults respects the sequence of template parameters.
-        for (unsigned Index = 0; Index < DeduceResults.size(); ++Index) {
-          const auto &D = DeduceResults[Index];
-          if (!D.isNull()) { // Deduced
-            D.dump();
-            llvm::errs() << "\nabc!\n";
-            DeducedArgs.push_back(D);
-          } else {
-            llvm::errs() << "faile at index: " << Index << "\n";
-            NonDeducedTemplateParamsInF.push_back(
-                F->getTemplateParameters()->getParam(Index));
-            NonDeducedTemplateParamsInFIndex.push_back(Index);
-          }
+  //       SmallVector<NamedDecl *, 16> AllParamsInFPrime;
+  //       // !!NOTE: DeduceResults respects the sequence of template parameters.
+  //       for (unsigned Index = 0; Index < DeduceResults.size(); ++Index) {
+  //         const auto &D = DeduceResults[Index];
+  //         if (!D.isNull()) { // Deduced
+  //           D.dump();
+  //           llvm::errs() << "\nabc!\n";
+  //           DeducedArgs.push_back(D);
+  //         } else {
+  //           llvm::errs() << "faile at index: " << Index << "\n";
+  //           NonDeducedTemplateParamsInF.push_back(
+  //               F->getTemplateParameters()->getParam(Index));
+  //           NonDeducedTemplateParamsInFIndex.push_back(Index);
+  //         }
             
-        }
-        auto DeducedAliasTemplateParams =
-            FindAppearedTemplateParamsInAlias(DeducedArgs, AliasTemplate);
-        SmallVector<TemplateArgument> InstantiatedArgs;
-        InstantiatedArgs.resize(DeduceResults.size()); // must set.
+  //       }
+  //       auto DeducedAliasTemplateParams =
+  //           FindAppearedTemplateParamsInAlias(DeducedArgs, AliasTemplate);
+  //       SmallVector<TemplateArgument> InstantiatedArgs;
+  //       InstantiatedArgs.resize(DeduceResults.size()); // must set.
 
-        SmallVector<TemplateArgument, 16> OnGoingArgs;
-        OnGoingArgs.reserve(DeducedAliasTemplateParams.size() +
-                            NonDeducedTemplateParamsInF.size());
+  //       SmallVector<TemplateArgument, 16> OnGoingArgs;
+  //       OnGoingArgs.reserve(DeducedAliasTemplateParams.size() +
+  //                           NonDeducedTemplateParamsInF.size());
 
-        InstantiatingTemplate BuildingDeductionGuides(
-            *this, AliasTemplate->getLocation(), F,
-            Sema::InstantiatingTemplate::BuildingDeductionGuidesTag{});
+  //       InstantiatingTemplate BuildingDeductionGuides(
+  //           *this, AliasTemplate->getLocation(), F,
+  //           Sema::InstantiatingTemplate::BuildingDeductionGuidesTag{});
 
-        LocalInstantiationScope Scope(*this);
+  //       LocalInstantiationScope Scope(*this);
 
-        SmallVector<TemplateArgument, 16> ArgsForDeducedArgsTransform;
-        ArgsForDeducedArgsTransform.resize(AliasTemplate->getTemplateParameters()->size());
+  //       SmallVector<TemplateArgument, 16> ArgsForDeducedArgsTransform;
+  //       ArgsForDeducedArgsTransform.resize(AliasTemplate->getTemplateParameters()->size());
 
-        for (auto [TP, Index] : DeducedAliasTemplateParams) {
-          TP->dump();
-          MultiLevelTemplateArgumentList Args;
-          Args.setKind(TemplateSubstitutionKind::Rewrite);
-          Args.addOuterTemplateArguments(OnGoingArgs);
-          Args.dump();
-          // Args.addOuterRetainedLevel();
-          NamedDecl *NewParam =
-              transformTemplateParameter(*this, AliasTemplate->getDeclContext(),
-                                         TP, Args, AllParamsInFPrime.size());
-          llvm::errs() << "deduce params: dump!\n";
-          NewParam->dump();
-          llvm::errs() << "!\n";
-          AllParamsInFPrime.push_back(NewParam);
-          // InstantiatedArgs.push_back(Context.getCanonicalTemplateArgument(
-              // Context.getInjectedTemplateArg(NewParam)));
-          OnGoingArgs.push_back(Context.getCanonicalTemplateArgument(
-              Context.getInjectedTemplateArg(NewParam)));
+  //       for (auto [TP, Index] : DeducedAliasTemplateParams) {
+  //         TP->dump();
+  //         MultiLevelTemplateArgumentList Args;
+  //         Args.setKind(TemplateSubstitutionKind::Rewrite);
+  //         Args.addOuterTemplateArguments(OnGoingArgs);
+  //         Args.dump();
+  //         // Args.addOuterRetainedLevel();
+  //         NamedDecl *NewParam =
+  //             transformTemplateParameter(*this, AliasTemplate->getDeclContext(),
+  //                                        TP, Args, AllParamsInFPrime.size());
+  //         llvm::errs() << "deduce params: dump!\n";
+  //         NewParam->dump();
+  //         llvm::errs() << "!\n";
+  //         AllParamsInFPrime.push_back(NewParam);
+  //         // InstantiatedArgs.push_back(Context.getCanonicalTemplateArgument(
+  //             // Context.getInjectedTemplateArg(NewParam)));
+  //         OnGoingArgs.push_back(Context.getCanonicalTemplateArgument(
+  //             Context.getInjectedTemplateArg(NewParam)));
 
-          ArgsForDeducedArgsTransform[Index] = Context.getCanonicalTemplateArgument(
-              Context.getInjectedTemplateArg(NewParam));
-        }
-        // Transfrom the deduced template arguments of the alias
-        MultiLevelTemplateArgumentList Args;
-        Args.setKind(TemplateSubstitutionKind::Rewrite);
-        Args.addOuterTemplateArguments(ArgsForDeducedArgsTransform);
-        // Args.addOuterRetainedLevel();
-        Args.dump();
-        for (unsigned Index = 0; Index < DeduceResults.size(); ++Index) {
-          const auto &D = DeduceResults[Index];
-          if (D.isNull())
-            continue;
-          // if (D.getKind() == TemplateArgument::Pack) {
-          //   std::vector<TemplateArgument> TArgs;
-          //   for (auto& pack : D.getPackAsArray()) {
-          //     TemplateArgumentLoc Input =
-          //     getTrivialTemplateArgumentLoc(pack, QualType(), SourceLocation{});
-          //     TemplateArgumentLoc Output;
-          //     if (!SubstTemplateArgument(Input, Args, Output)) {
-          //       llvm::errs() << "success on transforming deduced arg2!\n";
-          //       Output.getArgument().dump();
-          //       TArgs.push_back(Output.getArgument());
-          //     }
-          //   }
+  //         ArgsForDeducedArgsTransform[Index] = Context.getCanonicalTemplateArgument(
+  //             Context.getInjectedTemplateArg(NewParam));
+  //       }
+  //       // Transfrom the deduced template arguments of the alias
+  //       MultiLevelTemplateArgumentList Args;
+  //       Args.setKind(TemplateSubstitutionKind::Rewrite);
+  //       Args.addOuterTemplateArguments(ArgsForDeducedArgsTransform);
+  //       // Args.addOuterRetainedLevel();
+  //       Args.dump();
+  //       for (unsigned Index = 0; Index < DeduceResults.size(); ++Index) {
+  //         const auto &D = DeduceResults[Index];
+  //         if (D.isNull())
+  //           continue;
+  //         // if (D.getKind() == TemplateArgument::Pack) {
+  //         //   std::vector<TemplateArgument> TArgs;
+  //         //   for (auto& pack : D.getPackAsArray()) {
+  //         //     TemplateArgumentLoc Input =
+  //         //     getTrivialTemplateArgumentLoc(pack, QualType(), SourceLocation{});
+  //         //     TemplateArgumentLoc Output;
+  //         //     if (!SubstTemplateArgument(Input, Args, Output)) {
+  //         //       llvm::errs() << "success on transforming deduced arg2!\n";
+  //         //       Output.getArgument().dump();
+  //         //       TArgs.push_back(Output.getArgument());
+  //         //     }
+  //         //   }
            
-          //   InstantiatedArgs[Index] =  TemplateArgument(llvm::ArrayRef(TArgs).copy(Context));
-          //   continue;
-          // }
-          TemplateArgumentLoc Input =
-              getTrivialTemplateArgumentLoc(D, QualType(), SourceLocation{});
-          TemplateArgumentLoc Output;
-          D.dump();
-          // std::vector<TemplateArgumentLoc> Inputs = { Input};
-          // TemplateArgumentListInfo Outputs;
-           if (!SubstTemplateArgument(Input, Args, Output)) {
-            // Outputs.arguments().
-            // Outputs.arguments()[0].getArgument().dump();
-          // if (!SubstTemplateArgument(Input, Args, Output)) {
-            llvm::errs() << "success on transforming deduced arg!\n";
-            // Output.getArgument().dump();
-            // Output.getArgument().getAsType().dump();
-            llvm::errs() << "!\n\n";
-            // InstantiatedArgs[Index] = Outputs.arguments()[0].getArgument();
-            InstantiatedArgs[Index] = (Output.getArgument());
-          }
-          // Input.getArgument().getAsType().dump();
-          // if (!SubstTemplateArguments(Inputs, Args, Outputs)) {
-          //   // Outputs.arguments().
-          //   Outputs.arguments()[0].getArgument().dump();
-          // // if (!SubstTemplateArgument(Input, Args, Output)) {
-          //   llvm::errs() << "success on transforming deduced arg!\n";
-          //   // Output.getArgument().dump();
-          //   // Output.getArgument().getAsType().dump();
-          //   llvm::errs() << "!\n\n";
-          //   InstantiatedArgs[Index] = Outputs.arguments()[0].getArgument();
-          //   // InstantiatedArgs[Index] = (Output.getArgument());
-          // }
-        }
+  //         //   InstantiatedArgs[Index] =  TemplateArgument(llvm::ArrayRef(TArgs).copy(Context));
+  //         //   continue;
+  //         // }
+  //         TemplateArgumentLoc Input =
+  //             getTrivialTemplateArgumentLoc(D, QualType(), SourceLocation{});
+  //         TemplateArgumentLoc Output;
+  //         D.dump();
+  //         // std::vector<TemplateArgumentLoc> Inputs = { Input};
+  //         // TemplateArgumentListInfo Outputs;
+  //          if (!SubstTemplateArgument(Input, Args, Output)) {
+  //           // Outputs.arguments().
+  //           // Outputs.arguments()[0].getArgument().dump();
+  //         // if (!SubstTemplateArgument(Input, Args, Output)) {
+  //           llvm::errs() << "success on transforming deduced arg!\n";
+  //           // Output.getArgument().dump();
+  //           // Output.getArgument().getAsType().dump();
+  //           llvm::errs() << "!\n\n";
+  //           // InstantiatedArgs[Index] = Outputs.arguments()[0].getArgument();
+  //           InstantiatedArgs[Index] = (Output.getArgument());
+  //         }
+  //         // Input.getArgument().getAsType().dump();
+  //         // if (!SubstTemplateArguments(Inputs, Args, Outputs)) {
+  //         //   // Outputs.arguments().
+  //         //   Outputs.arguments()[0].getArgument().dump();
+  //         // // if (!SubstTemplateArgument(Input, Args, Output)) {
+  //         //   llvm::errs() << "success on transforming deduced arg!\n";
+  //         //   // Output.getArgument().dump();
+  //         //   // Output.getArgument().getAsType().dump();
+  //         //   llvm::errs() << "!\n\n";
+  //         //   InstantiatedArgs[Index] = Outputs.arguments()[0].getArgument();
+  //         //   // InstantiatedArgs[Index] = (Output.getArgument());
+  //         // }
+  //       }
 
-        OnGoingArgs.clear();
-           SmallVector<TemplateArgument, 16> ArgsForNonDeducedArgsTransform;
-        ArgsForNonDeducedArgsTransform.resize(F->getTemplateParameters()->size());
-        // for (auto* TP : NonDeducedTemplateParamsInF) {
-        for (unsigned Index : NonDeducedTemplateParamsInFIndex) {
-          auto* TP = F->getTemplateParameters()->getParam(Index);
-          llvm::errs() << "non deduced type \n";
-          TP->dump();
-          llvm::errs() << "?\n";
-          MultiLevelTemplateArgumentList Args;
-          Args.setKind(TemplateSubstitutionKind::Rewrite);
-          Args.addOuterTemplateArguments(OnGoingArgs);
-          // Args.addOuterRetainedLevel();
-          NamedDecl *NewParam =
-              transformTemplateParameter(*this, F->getDeclContext(),
-                                         TP, Args, AllParamsInFPrime.size());
-          AllParamsInFPrime.push_back(NewParam);
-          // InstantiatedArgs.push_back(Context.getCanonicalTemplateArgument(
-              // Context.getInjectedTemplateArg(NewParam)));
-          OnGoingArgs.push_back(Context.getCanonicalTemplateArgument(
-              Context.getInjectedTemplateArg(NewParam)));
-          ArgsForNonDeducedArgsTransform[Index] = Context.getCanonicalTemplateArgument(
-              Context.getInjectedTemplateArg(NewParam));
-          InstantiatedArgs[Index] = Context.getCanonicalTemplateArgument(
-              Context.getInjectedTemplateArg(NewParam));
-        }
-        //   MultiLevelTemplateArgumentList Args2;
-        // Args2.setKind(TemplateSubstitutionKind::Rewrite);
-        // Args2.addOuterTemplateArguments(ArgsForDeducedArgsTransform);
-        // Args2.addOuterRetainedLevel();
-        // for (unsigned Index = 0; Index < DeduceResults.size(); ++Index) {
-        //   const auto &D = DeduceResults[Index];
-        //   if (!D.isNull())
-        //     continue;
+  //       OnGoingArgs.clear();
+  //          SmallVector<TemplateArgument, 16> ArgsForNonDeducedArgsTransform;
+  //       ArgsForNonDeducedArgsTransform.resize(F->getTemplateParameters()->size());
+  //       // for (auto* TP : NonDeducedTemplateParamsInF) {
+  //       for (unsigned Index : NonDeducedTemplateParamsInFIndex) {
+  //         auto* TP = F->getTemplateParameters()->getParam(Index);
+  //         llvm::errs() << "non deduced type \n";
+  //         TP->dump();
+  //         llvm::errs() << "?\n";
+  //         MultiLevelTemplateArgumentList Args;
+  //         Args.setKind(TemplateSubstitutionKind::Rewrite);
+  //         Args.addOuterTemplateArguments(OnGoingArgs);
+  //         // Args.addOuterRetainedLevel();
+  //         NamedDecl *NewParam =
+  //             transformTemplateParameter(*this, F->getDeclContext(),
+  //                                        TP, Args, AllParamsInFPrime.size());
+  //         AllParamsInFPrime.push_back(NewParam);
+  //         // InstantiatedArgs.push_back(Context.getCanonicalTemplateArgument(
+  //             // Context.getInjectedTemplateArg(NewParam)));
+  //         OnGoingArgs.push_back(Context.getCanonicalTemplateArgument(
+  //             Context.getInjectedTemplateArg(NewParam)));
+  //         ArgsForNonDeducedArgsTransform[Index] = Context.getCanonicalTemplateArgument(
+  //             Context.getInjectedTemplateArg(NewParam));
+  //         InstantiatedArgs[Index] = Context.getCanonicalTemplateArgument(
+  //             Context.getInjectedTemplateArg(NewParam));
+  //       }
+  //       //   MultiLevelTemplateArgumentList Args2;
+  //       // Args2.setKind(TemplateSubstitutionKind::Rewrite);
+  //       // Args2.addOuterTemplateArguments(ArgsForDeducedArgsTransform);
+  //       // Args2.addOuterRetainedLevel();
+  //       // for (unsigned Index = 0; Index < DeduceResults.size(); ++Index) {
+  //       //   const auto &D = DeduceResults[Index];
+  //       //   if (!D.isNull())
+  //       //     continue;
           
-        //   TemplateArgumentLoc Input =
-        //       getTrivialTemplateArgumentLoc(D, QualType(), SourceLocation{});
-        //   TemplateArgumentLoc Output;
-        //   if (!SubstTemplateArgument(Input, Args2, Output)) {
-        //     llvm::errs() << "success on transforming deduced arg2!\n";
-        //     InstantiatedArgs[Index] = (Output.getArgument());
-        //   }
-        // }
+  //       //   TemplateArgumentLoc Input =
+  //       //       getTrivialTemplateArgumentLoc(D, QualType(), SourceLocation{});
+  //       //   TemplateArgumentLoc Output;
+  //       //   if (!SubstTemplateArgument(Input, Args2, Output)) {
+  //       //     llvm::errs() << "success on transforming deduced arg2!\n";
+  //       //     InstantiatedArgs[Index] = (Output.getArgument());
+  //       //   }
+  //       // }
 
  
         
-        auto *DeducedArgList =
-            TemplateArgumentList::CreateCopy(this->Context, InstantiatedArgs);
-        llvm::errs() << "Start instantiate functio ndeclarations\n";
-        // Let g denote the result of substituting these deductions into f.
-        //
-        // FIXME: is using the InstantiateFunctionDeclaration API a right
-        // implement choice? It has some side effects which creates a
-        // specialization for the deduction guide function template, and
-        // the specialization is added to the the FunctionTemplateDecl, this
-        // is not specified by the standard.
-        //
-        // FIXME: Cache the result.
-          F->dump();
-         Sema::SFINAETrap Trap(*this);
-        if (auto *G = InstantiateFunctionDeclaration(
-                F, DeducedArgList, AliasTemplate->getLocation(),
-                Sema::CodeSynthesisContext::BuildingDeductionGuides)) {
+  //       auto *DeducedArgList =
+  //           TemplateArgumentList::CreateCopy(this->Context, InstantiatedArgs);
+  //       llvm::errs() << "Start instantiate functio ndeclarations\n";
+  //       // Let g denote the result of substituting these deductions into f.
+  //       //
+  //       // FIXME: is using the InstantiateFunctionDeclaration API a right
+  //       // implement choice? It has some side effects which creates a
+  //       // specialization for the deduction guide function template, and
+  //       // the specialization is added to the the FunctionTemplateDecl, this
+  //       // is not specified by the standard.
+  //       //
+  //       // FIXME: Cache the result.
+  //         F->dump();
+  //        Sema::SFINAETrap Trap(*this);
+  //       if (auto *G = InstantiateFunctionDeclaration(
+  //               F, DeducedArgList, AliasTemplate->getLocation(),
+  //               Sema::CodeSynthesisContext::BuildingDeductionGuides)) {
               
-          // F->getTemplatedDecl()->getParent()->dumpDeclContext();
-          llvm::errs() << "instantiated results!\n";
-          G->dump();
+  //         // F->getTemplatedDecl()->getParent()->dumpDeclContext();
+  //         llvm::errs() << "instantiated results!\n";
+  //         G->dump();
           
-          DeclContext *DC = AliasTemplate->getDeclContext();
-          auto DeductionGuideName =
-              Context.DeclarationNames.getCXXDeductionGuideName(AliasTemplate);
-          auto* GG = dyn_cast<CXXDeductionGuideDecl>(G);
-            DeclarationNameInfo Name(DeductionGuideName, AliasTemplate->getLocation());
+  //         DeclContext *DC = AliasTemplate->getDeclContext();
+  //         auto DeductionGuideName =
+  //             Context.DeclarationNames.getCXXDeductionGuideName(AliasTemplate);
+  //         auto* GG = dyn_cast<CXXDeductionGuideDecl>(G);
+  //           DeclarationNameInfo Name(DeductionGuideName, AliasTemplate->getLocation());
 
-          auto *Guide =
-          CXXDeductionGuideDecl::Create(Context, DC, AliasTemplate->getLocation(), GG->getExplicitSpecifier(), Name,
-                                    GG->getType(), GG->getTypeSourceInfo(), GG->getEndLoc(), GG->getCorrespondingConstructor());
-          Guide->setImplicit(F->isImplicit());
-          Guide->setParams(GG->parameters());
-          Guide->setAccess(AliasTemplate->getAccess());
-          // GG->getParamDecl(1);
-          auto TemplateParams = TemplateParameterList::Create(
-              Context, AliasTemplate->getTemplateParameters()->getTemplateLoc(),
-              AliasTemplate->getTemplateParameters()->getLAngleLoc(),
-              AllParamsInFPrime,
-              AliasTemplate->getTemplateParameters()->getRAngleLoc(), nullptr);
-          auto *GuideTemplate = FunctionTemplateDecl::Create(
-              Context, DC, AliasTemplate->getLocation(), DeductionGuideName,
-              TemplateParams, Guide);
-          GuideTemplate->setImplicit(F->isImplicit());
-          // GuideTemplate->set
-          // Guide->getPrimaryTemplate();
-          Guide->setDescribedFunctionTemplate(GuideTemplate);
+  //         auto *Guide =
+  //         CXXDeductionGuideDecl::Create(Context, DC, AliasTemplate->getLocation(), GG->getExplicitSpecifier(), Name,
+  //                                   GG->getType(), GG->getTypeSourceInfo(), GG->getEndLoc(), GG->getCorrespondingConstructor());
+  //         Guide->setImplicit(F->isImplicit());
+  //         Guide->setParams(GG->parameters());
+  //         Guide->setAccess(AliasTemplate->getAccess());
+  //         // GG->getParamDecl(1);
+  //         auto TemplateParams = TemplateParameterList::Create(
+  //             Context, AliasTemplate->getTemplateParameters()->getTemplateLoc(),
+  //             AliasTemplate->getTemplateParameters()->getLAngleLoc(),
+  //             AllParamsInFPrime,
+  //             AliasTemplate->getTemplateParameters()->getRAngleLoc(), nullptr);
+  //         auto *GuideTemplate = FunctionTemplateDecl::Create(
+  //             Context, DC, AliasTemplate->getLocation(), DeductionGuideName,
+  //             TemplateParams, Guide);
+  //         GuideTemplate->setImplicit(F->isImplicit());
+  //         // GuideTemplate->set
+  //         // Guide->getPrimaryTemplate();
+  //         Guide->setDescribedFunctionTemplate(GuideTemplate);
           
           
-           GuideTemplate->dump();
+  //          GuideTemplate->dump();
 
-             GuidesCandidates.push_back(
-                DeclAccessPair::make(GuideTemplate, AccessSpecifier::AS_public));
-          // InstantiatingTemplate BuildingDeductionGuides(
-          //     *this, AliasTemplate->getLocation(), AliasTemplate,
-          //     Sema::InstantiatingTemplate::BuildingDeductionGuidesTag{});
-          // AliasTemplateDeductionGuideTransform Transform(*this, AliasTemplate);
-          // // If substitution succeeds, form a function or function template
-          // // f' with the following properties and add it to the set of
-          // // guides of A:
-          // if (auto *FPrime = Transform.transform(
-          //         dyn_cast<CXXDeductionGuideDecl>(G), DeducedArgs,
-          //         NonDeducedTemplateParamsInF)) {
-          //   // FIXME: implement the assoicated constraint per C++
-          //   // [over.match.class.deduct]p3.3:
-          //   //    The associated constraints ([temp.constr.decl]) are the
-          //   //    conjunction of the associated constraints of g and a
-          //   //    constraint that is satisfied if and only if the arguments
-          //   //    of A are deducible (see below) from the return type.
-          //   // This could be implemented as part of function overload
-          //   // resolution below.
-          //   GuidesCandidates.push_back(
-          //       DeclAccessPair::make(FPrime, AccessSpecifier::AS_public));
-          // }
-        }
-      }
-    }
-  } else {
+  //            GuidesCandidates.push_back(
+  //               DeclAccessPair::make(GuideTemplate, AccessSpecifier::AS_public));
+  //         // InstantiatingTemplate BuildingDeductionGuides(
+  //         //     *this, AliasTemplate->getLocation(), AliasTemplate,
+  //         //     Sema::InstantiatingTemplate::BuildingDeductionGuidesTag{});
+  //         // AliasTemplateDeductionGuideTransform Transform(*this, AliasTemplate);
+  //         // // If substitution succeeds, form a function or function template
+  //         // // f' with the following properties and add it to the set of
+  //         // // guides of A:
+  //         // if (auto *FPrime = Transform.transform(
+  //         //         dyn_cast<CXXDeductionGuideDecl>(G), DeducedArgs,
+  //         //         NonDeducedTemplateParamsInF)) {
+  //         //   // FIXME: implement the assoicated constraint per C++
+  //         //   // [over.match.class.deduct]p3.3:
+  //         //   //    The associated constraints ([temp.constr.decl]) are the
+  //         //   //    conjunction of the associated constraints of g and a
+  //         //   //    constraint that is satisfied if and only if the arguments
+  //         //   //    of A are deducible (see below) from the return type.
+  //         //   // This could be implemented as part of function overload
+  //         //   // resolution below.
+  //         //   GuidesCandidates.push_back(
+  //         //       DeclAccessPair::make(FPrime, AccessSpecifier::AS_public));
+  //         // }
+  //       }
+  //     }
+  //   }
+  // } else 
+  {
     for (auto I = Guides.begin(), E = Guides.end(); I != E; ++I)
       GuidesCandidates.push_back(I.getPair());
   }
