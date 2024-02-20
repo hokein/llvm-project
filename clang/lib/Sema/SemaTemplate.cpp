@@ -2683,11 +2683,14 @@ void DeclareImplicitDeductionGuidesForTypeAlias(
       AliasRhsTemplateArgs = CTSD->getTemplateArgs().asArray();
     }
   }
+  if (!Template)
+    return;
   DeclarationNameInfo NameInfo(
       Context.DeclarationNames.getCXXDeductionGuideName(Template), Loc);
   LookupResult Guides(SemaRef, NameInfo, clang::Sema::LookupOrdinaryName);
   SemaRef.LookupQualifiedName(Guides, Template->getDeclContext());
   Guides.suppressDiagnostics();
+
   for (auto *G : Guides) {
     FunctionTemplateDecl *F = dyn_cast<FunctionTemplateDecl>(G);
     if (!F)
@@ -2704,11 +2707,6 @@ void DeclareImplicitDeductionGuidesForTypeAlias(
       FReturnType = ET->getNamedType()->getAs<TemplateSpecializationType>();
     }
     assert(FReturnType);
-    if (FReturnType) {
-      sema::TemplateDeductionInfo TDeduceInfo(Loc);
-      SmallVector<DeducedTemplateArgument> DeduceResults;
-      DeduceResults.resize(F->getTemplateParameters()->size());
-
       // Deduce template arguments of the deduction guide f from the RHS of
       // the alias.
       //
@@ -2729,7 +2727,10 @@ void DeclareImplicitDeductionGuidesForTypeAlias(
       //
       // The RHS of alias is f<int, U>, we deduced the template arguments of
       // the return type of the deduction guide from it: Y->int, X->U
-      //
+      sema::TemplateDeductionInfo TDeduceInfo(Loc);
+      // Must initialize n elements, this is required by DeduceTemplateArguments.
+      SmallVector<DeducedTemplateArgument> DeduceResults(
+          F->getTemplateParameters()->size());
       // FIXME: DeduceTemplateArguments stops immediately at the first
       // non-deducible template parameter, extend it to continue performing
       // deduction for rest of parameters.
@@ -2740,137 +2741,137 @@ void DeclareImplicitDeductionGuidesForTypeAlias(
 
       SmallVector<TemplateArgument> DeducedArgs;
       SmallVector<unsigned> NonDeducedTemplateParamsInFIndex;
-
-      
       // !!NOTE: DeduceResults respects the sequence of template parameters of 
       // the deduction guide f.
       for (unsigned Index = 0; Index < DeduceResults.size(); ++Index) {
         const auto &D = DeduceResults[Index];
         if (!D.isNull()) { // Deduced
-          D.dump();
-          llvm::errs() << "\nabc!\n";
           DeducedArgs.push_back(D);
         } else {
-          llvm::errs() << "faile at index: " << Index << "\n";
           NonDeducedTemplateParamsInFIndex.push_back(Index);
         }
       }
       auto DeducedAliasTemplateParams =
           FindAppearedTemplateParamsInAlias(DeducedArgs, AliasTemplate);
-      SmallVector<TemplateArgument> InstantiatedArgs;
       // All template arguments null by default.
-      InstantiatedArgs.resize(DeduceResults.size());
-
+      SmallVector<TemplateArgument> TemplateArgsForBuildingFPrime(
+          F->getTemplateParameters()->size());
 
       Sema::InstantiatingTemplate BuildingDeductionGuides(
           SemaRef, AliasTemplate->getLocation(), F,
           Sema::InstantiatingTemplate::BuildingDeductionGuidesTag{});
       LocalInstantiationScope Scope(SemaRef);
 
-      SmallVector<TemplateArgument, 16> ArgsForDeducedArgsTransform;
-      ArgsForDeducedArgsTransform.resize(
-          AliasTemplate->getTemplateParameters()->size());
-
+  
       // Create a template parameter list for the synthesized deduction guide
       // f'.
-      SmallVector<TemplateArgument, 16> OnGoingArgs;
-      SmallVector<NamedDecl *, 16> AllParamsInFPrime;
-      for (unsigned Index : DeducedAliasTemplateParams) {
-        auto *TP = AliasTemplate->getTemplateParameters()->getParam(Index);
-        TP->dump();
+      //
+      // C++ [over.match.class.deduct]p3.2:
+      //   If f is a function template, f' is a function template whose template
+      //   parameter list consists of all the template parameters of A
+      //   (including their default template arguments) that appear in the above
+      //   deductions or (recursively) in their default template arguments
+      SmallVector<NamedDecl *> FPrimeTemplateParams;
+      // Store template arguments that refer to the newly-created template
+      // parameters, used for building `TemplateArgsForBuildingFPrime`.
+      SmallVector<TemplateArgument, 16> TransformedDeducedAliasArgs(
+          AliasTemplate->getTemplateParameters()->size());
+      for (unsigned AliasTemplateParamIdx : DeducedAliasTemplateParams) {
+        auto *TP = AliasTemplate->getTemplateParameters()->getParam(
+            AliasTemplateParamIdx);
         MultiLevelTemplateArgumentList Args;
         Args.setKind(TemplateSubstitutionKind::Rewrite);
-        Args.addOuterTemplateArguments(OnGoingArgs);
-        Args.dump();
-        // Args.addOuterRetainedLevel();
+        Args.addOuterTemplateArguments(TransformedDeducedAliasArgs);
         NamedDecl *NewParam =
             transformTemplateParameter(SemaRef, AliasTemplate->getDeclContext(),
-                                       TP, Args, AllParamsInFPrime.size());
-        llvm::errs() << "deduce params: dump!\n";
-        NewParam->dump();
-        llvm::errs() << "!\n";
-        AllParamsInFPrime.push_back(NewParam);
-        // InstantiatedArgs.push_back(Context.getCanonicalTemplateArgument(
-        // Context.getInjectedTemplateArg(NewParam)));
+                                       TP, Args, FPrimeTemplateParams.size());
+        FPrimeTemplateParams.push_back(NewParam);
+
         auto NewTemplateArgument = Context.getCanonicalTemplateArgument(
             Context.getInjectedTemplateArg(NewParam));
-        OnGoingArgs.push_back(NewTemplateArgument);
-
-        ArgsForDeducedArgsTransform[Index] = NewTemplateArgument;
+        TransformedDeducedAliasArgs[AliasTemplateParamIdx] = NewTemplateArgument;
       }
-      // Transfrom the deduced template arguments of the alias
-      // Rebuild the deduced template arguments.
+      //   ...followed by the template parameters of f that were not deduced
+      //   (including their default template arguments)
+      for (unsigned FTemplateParamIdx : NonDeducedTemplateParamsInFIndex) {
+        auto *TP = F->getTemplateParameters()->getParam(FTemplateParamIdx);
+        MultiLevelTemplateArgumentList Args;
+        Args.setKind(TemplateSubstitutionKind::Rewrite);
+        // We take a shortcut here, it is ok to reuse the
+        // TemplateArgsForBuildingFPrime.
+        Args.addOuterTemplateArguments(TemplateArgsForBuildingFPrime);
+        NamedDecl *NewParam =
+            transformTemplateParameter(SemaRef, F->getDeclContext(), TP, Args,
+                                       FPrimeTemplateParams.size());
+        FPrimeTemplateParams.push_back(NewParam);
+
+        assert(TemplateArgsForBuildingFPrime[FTemplateParamIdx].isNull() &&
+               "InstantiatedArgs must be null before setting");
+        TemplateArgsForBuildingFPrime[FTemplateParamIdx] =
+            Context.getCanonicalTemplateArgument(
+                Context.getInjectedTemplateArg(NewParam));
+      }
+       // FIXME: support require clause.
+      auto *FPrimeTemplateParamList = TemplateParameterList::Create(
+            Context, AliasTemplate->getTemplateParameters()->getTemplateLoc(),
+            AliasTemplate->getTemplateParameters()->getLAngleLoc(),
+            FPrimeTemplateParams,
+            AliasTemplate->getTemplateParameters()->getRAngleLoc(),
+            /*RequiresClause=*/nullptr);
+  
+      // To form a deduction guid f' from f, we leverage on clang's
+      // instantiation mechanism, we form a template argument list where
+      // template arguments refer to the newly-created template parameters of
+      // f', and use this template argument list to instantiate f, so that all
+      // template parameters occurrences are updated correctly.
+      //
+      // The template argument list is formed from the `DeducedArgs`, two parts
+      //  1) appeared template parameters of alias: transfrom the deduced
+      //  template argument 2) non-deduced template parameters of f: rebuild a
+      //  template argument
+      //
+      // 2) has been built already (when rebuilding the new template
+      // parameters), we now perform 1).
       MultiLevelTemplateArgumentList Args;
       Args.setKind(TemplateSubstitutionKind::Rewrite);
-      Args.addOuterTemplateArguments(ArgsForDeducedArgsTransform);
-      Args.dump();
+      Args.addOuterTemplateArguments(TransformedDeducedAliasArgs);
       for (unsigned Index = 0; Index < DeduceResults.size(); ++Index) {
         const auto &D = DeduceResults[Index];
-        if (D.isNull())
+        if (D.isNull()) {
+          // 2): Non-deduced template parameter has been built already.
+          assert(!TemplateArgsForBuildingFPrime[Index].isNull());
           continue;
+        }
         TemplateArgumentLoc Input = SemaRef.getTrivialTemplateArgumentLoc(
             D, QualType(), SourceLocation{});
         TemplateArgumentLoc Output;
-        D.dump();
         if (!SemaRef.SubstTemplateArgument(Input, Args, Output)) {
-          llvm::errs() << "success on transforming deduced arg!\n";
-          llvm::errs() << "!\n\n";
-          InstantiatedArgs[Index] = (Output.getArgument());
+          assert(TemplateArgsForBuildingFPrime[Index].isNull() &&
+               "InstantiatedArgs must be null before setting");
+          TemplateArgsForBuildingFPrime[Index] = (Output.getArgument());
         }
       }
 
-      OnGoingArgs.clear();
-      // for (auto* TP : NonDeducedTemplateParamsInF) {
-      for (unsigned Index : NonDeducedTemplateParamsInFIndex) {
-        auto *TP = F->getTemplateParameters()->getParam(Index);
-        llvm::errs() << "non deduced type \n";
-        TP->dump();
-        llvm::errs() << "?\n";
-        MultiLevelTemplateArgumentList Args;
-        Args.setKind(TemplateSubstitutionKind::Rewrite);
-        Args.addOuterTemplateArguments(OnGoingArgs);
-        // Args.addOuterRetainedLevel();
-        NamedDecl *NewParam = transformTemplateParameter(
-            SemaRef, F->getDeclContext(), TP, Args, AllParamsInFPrime.size());
-        AllParamsInFPrime.push_back(NewParam);
-
-        OnGoingArgs.push_back(Context.getCanonicalTemplateArgument(
-            Context.getInjectedTemplateArg(NewParam)));
-        InstantiatedArgs[Index] = Context.getCanonicalTemplateArgument(
-            Context.getInjectedTemplateArg(NewParam));
-      }
-
-      auto *DeducedArgList =
-          TemplateArgumentList::CreateCopy(Context, InstantiatedArgs);
-      llvm::errs() << "Start instantiate functio ndeclarations\n";
-      // Let g denote the result of substituting these deductions into f.
-      //
-      // FIXME: is using the InstantiateFunctionDeclaration API a right
-      // implement choice? It has some side effects which creates a
-      // specialization for the deduction guide function template, and
-      // the specialization is added to the the FunctionTemplateDecl, this
-      // is not specified by the standard.
-      //
-      F->dump();
-      if (auto *G = SemaRef.InstantiateFunctionDeclaration(
-              F, DeducedArgList, AliasTemplate->getLocation(),
+      auto *TemplateArgListForBuildingFPrime = TemplateArgumentList::CreateCopy(
+          Context, TemplateArgsForBuildingFPrime);
+      // Form the f' by substituting the template arguments into f.
+      if (auto *FPrime = SemaRef.InstantiateFunctionDeclaration(
+              F, TemplateArgListForBuildingFPrime, AliasTemplate->getLocation(),
               Sema::CodeSynthesisContext::BuildingDeductionGuides)) {
-        llvm::errs() << "instantiated results!\n";
-        G->dump();
-        auto *GG = dyn_cast<CXXDeductionGuideDecl>(G);
-        auto TemplateParams = TemplateParameterList::Create(
-            Context, AliasTemplate->getTemplateParameters()->getTemplateLoc(),
-            AliasTemplate->getTemplateParameters()->getLAngleLoc(),
-            AllParamsInFPrime,
-            AliasTemplate->getTemplateParameters()->getRAngleLoc(), nullptr);
+        auto *GG = dyn_cast<CXXDeductionGuideDecl>(FPrime);
+        // FIXME: implement the assoicated constraint per C++
+        // [over.match.class.deduct]p3.3:
+        //    The associated constraints ([temp.constr.decl]) are the
+        //    conjunction of the associated constraints of g and a
+        //    constraint that is satisfied if and only if the arguments
+        //    of A are deducible (see below) from the return type.
         clang::buildDeductionGuide(
-            SemaRef, AliasTemplate, TemplateParams,
+            SemaRef, AliasTemplate, FPrimeTemplateParamList,
             GG->getCorrespondingConstructor(), GG->getExplicitSpecifier(),
             GG->getTypeSourceInfo(), AliasTemplate->getBeginLoc(),
             AliasTemplate->getLocation(), AliasTemplate->getEndLoc(),
             F->isImplicit());
       }
-    }
   }
 }
 }
