@@ -1466,6 +1466,8 @@ namespace {
       }
       return Type;
     }
+    // Override the default version to handle a rewrite-template-arg-pack case
+    // for building a deduction guide.
     bool TransformTemplateArgument(const TemplateArgumentLoc &Input,
                                    TemplateArgumentLoc &Output,
                                    bool Uneval = false) {
@@ -1473,6 +1475,8 @@ namespace {
       std::vector<TemplateArgument> TArgs;
       switch (Arg.getKind()) {
       case TemplateArgument::Pack:
+        // Iterially rewrite the template argument pack, instead of unpacking
+        // it.
         assert(
             SemaRef.CodeSynthesisContexts.back().Kind ==
                 Sema::CodeSynthesisContext::BuildingDeductionGuides &&

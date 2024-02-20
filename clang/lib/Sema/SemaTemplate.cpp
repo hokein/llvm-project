@@ -2303,9 +2303,7 @@ buildDeductionGuide(Sema &SemaRef, TemplateDecl *OriginalTemplate,
   return GuideTemplate;
 }
 
-// Transform a given template type parameter into a deduction guide template
-// parameter, rebuilding any internal references to earlier parameters and
-// re-indexing as we go.
+// Transform a given template type parameter `TTP`.
 TemplateTypeParmDecl *
 transformTemplateTypeParam(Sema &SemaRef, DeclContext *DC,
                            TemplateTypeParmDecl *TTP,
@@ -2729,6 +2727,7 @@ bool hasDeclaredDeductionGuides(DeclarationName Name, DeclContext* DC) {
   return false;
 }
 
+// Build deduction guides for a type alias template.
 void DeclareImplicitDeductionGuidesForTypeAlias(
     Sema &SemaRef, TypeAliasTemplateDecl *AliasTemplate, SourceLocation Loc) {
   auto &Context = SemaRef.Context;
@@ -2863,30 +2862,29 @@ void DeclareImplicitDeductionGuidesForTypeAlias(
           [&SemaRef](DeclContext *DC, NamedDecl *TemplateParam,
                      MultiLevelTemplateArgumentList &Args,
                      unsigned NewIndex) -> NamedDecl * {
-        if (auto *TTP = dyn_cast<TemplateTypeParmDecl>(TemplateParam)) {
+        if (auto *TTP = dyn_cast<TemplateTypeParmDecl>(TemplateParam))
           return transformTemplateTypeParam(SemaRef, DC, TTP, Args,
                                             TTP->getDepth(), NewIndex);
-        }
-        if (auto *TTP = dyn_cast<TemplateTemplateParmDecl>(TemplateParam)) {
+        if (auto *TTP = dyn_cast<TemplateTemplateParmDecl>(TemplateParam))
           return transformTemplateParam(SemaRef, DC, TTP, Args, NewIndex,
                                            TTP->getDepth());
-        }
-        if (auto *NTTP = dyn_cast<NonTypeTemplateParmDecl>(TemplateParam)) {
+        if (auto *NTTP = dyn_cast<NonTypeTemplateParmDecl>(TemplateParam))
           return transformTemplateParam(SemaRef, DC, NTTP, Args, NewIndex,
                                         NTTP->getDepth());
-        }
         return nullptr;
       };
-
+     
       for (unsigned AliasTemplateParamIdx : DeducedAliasTemplateParams) {
         auto *TP = AliasTemplate->getTemplateParameters()->getParam(
             AliasTemplateParamIdx);
+        // Rebuild any internal references to earlier parameters and reindex as
+        // we go.
         MultiLevelTemplateArgumentList Args;
         Args.setKind(TemplateSubstitutionKind::Rewrite);
         Args.addOuterTemplateArguments(TransformedDeducedAliasArgs);
-        NamedDecl *NewParam =
-            TransformTemplateParameter(AliasTemplate->getDeclContext(),
-                                       TP, Args, FPrimeTemplateParams.size());
+        NamedDecl *NewParam = TransformTemplateParameter(
+            AliasTemplate->getDeclContext(), TP, Args,
+            /*NewIndex*/ FPrimeTemplateParams.size());
         FPrimeTemplateParams.push_back(NewParam);
 
         auto NewTemplateArgument = Context.getCanonicalTemplateArgument(
@@ -2920,14 +2918,15 @@ void DeclareImplicitDeductionGuidesForTypeAlias(
             FPrimeTemplateParams,
             AliasTemplate->getTemplateParameters()->getRAngleLoc(),
             /*RequiresClause=*/nullptr);
-  
-      // To form a deduction guid f' from f, we leverage on clang's
-      // instantiation mechanism, we form a template argument list where
-      // template arguments refer to the newly-created template parameters of
-      // f', and use this template argument list to instantiate f, so that all
-      // template parameters occurrences are updated correctly.
+
+      // To form a deduction guide f' from f, we leverage clang's instantiation
+      // mechanism, we construct a template argument list where the template
+      // arguments refer to the newly-created template parameters of f', and
+      // then apply instantiation on this template argument list to instantiate
+      // f, this ensures all template parameter occurrences are updated
+      // correctly.
       //
-      // The template argument list is formed from the `DeducedArgs`, two parts
+      // The template argument list is formed from the `DeducedArgs`, two parts:
       //  1) appeared template parameters of alias: transfrom the deduced
       //  template argument 2) non-deduced template parameters of f: rebuild a
       //  template argument
