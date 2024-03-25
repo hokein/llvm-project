@@ -582,6 +582,7 @@ DeduceTemplateSpecArguments(Sema &S, TemplateParameterList *TemplateParams,
   TemplateName TNP = TP->getTemplateName();
 
   // If the parameter is an alias template, there is nothing to deduce.
+  // FIXME why??
   if (const auto *TD = TNP.getAsTemplateDecl(); TD && TD->isTypeAlias())
     return TemplateDeductionResult::Success;
 
@@ -628,6 +629,7 @@ DeduceTemplateSpecArguments(Sema &S, TemplateParameterList *TemplateParams,
   }
 
   // Perform template argument deduction for the template name.
+  // FIMXE: requires  the same TemplateName!!!
   if (auto Result = DeduceTemplateArguments(
           S, TemplateParams, TP->getTemplateName(),
           TemplateName(SA->getSpecializedTemplate()), Info, Deduced);
@@ -3140,6 +3142,100 @@ static TemplateDeductionResult FinishTemplateArgumentDeduction(
   return TemplateDeductionResult::Success;
 }
 
+TemplateDeductionResult Sema::FinishTemplateArgumentDeduction(
+      TemplateDecl *Partial, bool IsPartialOrdering,
+      ArrayRef<TemplateArgument> TemplateArgs,
+      SmallVectorImpl<DeducedTemplateArgument> &Deduced,
+      sema::TemplateDeductionInfo &Info) {
+  // Unevaluated SFINAE context.
+  EnterExpressionEvaluationContext Unevaluated(
+      *this, Sema::ExpressionEvaluationContext::Unevaluated);
+  Sema::SFINAETrap Trap(*this);
+
+  Sema::ContextRAII SavedContext(*this, getAsDeclContextOrEnclosing(Partial));
+
+  // C++ [temp.deduct.type]p2:
+  //   [...] or if any template argument remains neither deduced nor
+  //   explicitly specified, template argument deduction fails.
+  SmallVector<TemplateArgument, 4> SugaredBuilder, CanonicalBuilder;
+  if (auto Result = ConvertDeducedTemplateArguments(
+          *this, Partial, IsPartialOrdering, Deduced, Info, SugaredBuilder,
+          CanonicalBuilder);
+      Result != TemplateDeductionResult::Success)
+    return Result;
+
+  // Form the template argument list from the deduced template arguments.
+  TemplateArgumentList *SugaredDeducedArgumentList =
+      TemplateArgumentList::CreateCopy(Context, SugaredBuilder);
+  TemplateArgumentList *CanonicalDeducedArgumentList =
+      TemplateArgumentList::CreateCopy(Context, CanonicalBuilder);
+
+  Info.reset(SugaredDeducedArgumentList, CanonicalDeducedArgumentList);
+
+  // // Substitute the deduced template arguments into the template
+  // // arguments of the class template partial specialization, and
+  // // verify that the instantiated template arguments are both valid
+  // // and are equivalent to the template arguments originally provided
+  // // to the class template.
+  // LocalInstantiationScope InstScope(*this);
+  // auto *Template = Partial;
+  // // Partial->getSpecializedTemplate();
+  // const ASTTemplateArgumentListInfo *PartialTemplArgInfo =
+  //     Partial->getTemplateArgsAsWritten();
+
+  // TemplateArgumentListInfo InstArgs(PartialTemplArgInfo->LAngleLoc,
+  //                                   PartialTemplArgInfo->RAngleLoc);
+
+  // if (this->SubstTemplateArguments(PartialTemplArgInfo->arguments(),
+  //                              MultiLevelTemplateArgumentList(Partial,
+  //                                                             SugaredBuilder,
+  //                                                             /*Final=*/true),
+  //                              InstArgs)) {
+  //   unsigned ArgIdx = InstArgs.size(), ParamIdx = ArgIdx;
+  //   if (ParamIdx >= Partial->getTemplateParameters()->size())
+  //     ParamIdx = Partial->getTemplateParameters()->size() - 1;
+
+  //   Decl *Param = const_cast<NamedDecl *>(
+  //       Partial->getTemplateParameters()->getParam(ParamIdx));
+  //   Info.Param = makeTemplateParameter(Param);
+  //   Info.FirstArg = (*PartialTemplArgInfo)[ArgIdx].getArgument();
+  //   return TemplateDeductionResult::SubstitutionFailure;
+  // }
+
+  // bool ConstraintsNotSatisfied;
+  // SmallVector<TemplateArgument, 4> SugaredConvertedInstArgs,
+  //     CanonicalConvertedInstArgs;
+  // if (this->CheckTemplateArgumentList(
+  //         Template, Partial->getLocation(), InstArgs, false,
+  //         SugaredConvertedInstArgs, CanonicalConvertedInstArgs,
+  //         /*UpdateArgsWithConversions=*/true, &ConstraintsNotSatisfied))
+  //   return ConstraintsNotSatisfied
+  //              ? TemplateDeductionResult::ConstraintsNotSatisfied
+  //              : TemplateDeductionResult::SubstitutionFailure;
+
+  // TemplateParameterList *TemplateParams = Template->getTemplateParameters();
+  // for (unsigned I = 0, E = TemplateParams->size(); I != E; ++I) {
+  //   TemplateArgument InstArg = SugaredConvertedInstArgs.data()[I];
+  //   if (!isSameTemplateArg(this->Context, TemplateArgs[I], InstArg,
+  //                          IsPartialOrdering)) {
+  //     Info.Param = makeTemplateParameter(TemplateParams->getParam(I));
+  //     Info.FirstArg = TemplateArgs[I];
+  //     Info.SecondArg = InstArg;
+  //     return TemplateDeductionResult::NonDeducedMismatch;
+  //   }
+  // }
+
+  // if (Trap.hasErrorOccurred())
+  //   return TemplateDeductionResult::SubstitutionFailure;
+
+  if (auto Result = CheckDeducedArgumentConstraints(*this, Partial, SugaredBuilder,
+                                                    CanonicalBuilder, Info);
+      Result != TemplateDeductionResult::Success)
+    return Result;
+
+  return TemplateDeductionResult::Success;
+  
+}
 /// Perform template argument deduction to determine whether
 /// the given template arguments match the given class template
 /// partial specialization per C++ [temp.class.spec.match].

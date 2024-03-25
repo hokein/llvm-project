@@ -5815,6 +5815,26 @@ ExprResult Sema::ActOnTypeTrait(TypeTrait Kind, SourceLocation KWLoc,
   return BuildTypeTrait(Kind, KWLoc, ConvertedArgs, RParenLoc);
 }
 
+static bool IsDeducible(Sema &SemaRef, QualType LHS, QualType RHS) {
+  return SemaRef.IsDeducible(LHS, RHS);
+  // auto TST = LHS->getAs<DeducedTemplateSpecializationType>();
+  // auto* TD = TST->getTemplateName().getAsTemplateDecl();
+  // RHS->dump();
+  // auto RTST = RHS.getSingleStepDesugaredType(SemaRef.Context)->getAs<TemplateSpecializationType>();
+  // if (!RTST)
+  //   return false;
+  // sema::TemplateDeductionInfo TDeduceInfo(SourceLocation{});
+  // // Must initialize n elements, this is required by DeduceTemplateArguments.
+  // SmallVector<DeducedTemplateArgument> DeduceResults(
+  //       TD->getTemplateParameters()->size());
+  // SemaRef.DeduceTemplateArguments(TD->getTemplateParameters(), {}, RTST->template_arguments(), TDeduceInfo, DeduceResults, false);
+  // // RTST->template_arguments();
+  //   // RTST->dump();
+  // TemplateArgument* a;;
+  // SemaRef.template
+  // return true;
+}
+
 static bool EvaluateBinaryTypeTrait(Sema &Self, TypeTrait BTT, QualType LhsT,
                                     QualType RhsT, SourceLocation KeyLoc) {
   assert(!LhsT->isDependentType() && !RhsT->isDependentType() &&
@@ -6027,6 +6047,11 @@ static bool EvaluateBinaryTypeTrait(Sema &Self, TypeTrait BTT, QualType LhsT,
   }
   case BTT_IsLayoutCompatible: {
     return Self.IsLayoutCompatible(LhsT, RhsT);
+  }
+  case BTT_IsDeducible: {
+    IsDeducible(Self, LhsT, RhsT);
+    // RhsT.dump();
+    return false;
   }
     default: llvm_unreachable("not a BTT");
   }

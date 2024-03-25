@@ -2754,6 +2754,24 @@ bool hasDeclaredDeductionGuides(DeclarationName Name, DeclContext *DC) {
   return false;
 }
 
+NamedDecl *TransformTemplateParameter(Sema &SemaRef, DeclContext *DC,
+                                      NamedDecl *TemplateParam,
+                                      MultiLevelTemplateArgumentList &Args,
+                                      unsigned NewIndex) {
+  if (auto *TTP = dyn_cast<TemplateTypeParmDecl>(TemplateParam))
+    return transformTemplateTypeParam(SemaRef, DC, TTP, Args, TTP->getDepth(),
+                                      NewIndex);
+  if (auto *TTP = dyn_cast<TemplateTemplateParmDecl>(TemplateParam))
+    return transformTemplateParam(SemaRef, DC, TTP, Args, NewIndex,
+                                  TTP->getDepth());
+  if (auto *NTTP = dyn_cast<NonTypeTemplateParmDecl>(TemplateParam))
+    return transformTemplateParam(SemaRef, DC, NTTP, Args, NewIndex,
+                                  NTTP->getDepth());
+  return nullptr;
+}
+
+
+
 // Build deduction guides for a type alias template.
 void DeclareImplicitDeductionGuidesForTypeAlias(
     Sema &SemaRef, TypeAliasTemplateDecl *AliasTemplate, SourceLocation Loc) {
@@ -3013,7 +3031,98 @@ void DeclareImplicitDeductionGuidesForTypeAlias(
   }
 }
 
+
 } // namespace
+
+
+bool Sema::IsDeducible(QualType LHS, QualType RHS) {
+  auto TST = LHS->getAs<DeducedTemplateSpecializationType>();
+  auto* TD = TST->getTemplateName().getAsTemplateDecl();
+  RHS->dump();
+
+  auto RTST = RHS.getSingleStepDesugaredType(Context);
+  // if (!RTST)
+    // return false;
+  
+  // Build a new template parameter list for the synthesized aggregate deduction
+  // guide by transforming the one from RHSDeductionGuide.
+  SmallVector<NamedDecl *> TransformedTemplateParams;
+  // Template args that refers to the rebuilt template parameters.
+  // All template arguments must be initialized in advance.
+  SmallVector<TemplateArgument> TransformedTemplateArgs(
+      TD->getTemplateParameters()->size());
+   LocalInstantiationScope Scope(*this);
+
+  for (auto *TP : *TD->getTemplateParameters()) {
+    // Rebuild any internal references to earlier parameters and reindex as
+    // we go.
+    MultiLevelTemplateArgumentList Args;
+    Args.setKind(TemplateSubstitutionKind::Rewrite);
+    Args.addOuterTemplateArguments(TransformedTemplateArgs);
+    NamedDecl *NewParam = TransformTemplateParameter(
+        *this, TD->getDeclContext(), TP, Args,
+        /*NewIndex=*/ TransformedTemplateParams.size());
+
+    TransformedTemplateArgs[TransformedTemplateParams.size()] =
+        Context.getCanonicalTemplateArgument(
+            Context.getInjectedTemplateArg(NewParam));
+    TransformedTemplateParams.push_back(NewParam);
+  }
+  auto *TransformedTemplateParameterList = TemplateParameterList::Create(
+      Context, TD->getTemplateParameters()->getTemplateLoc(),
+      TD->getTemplateParameters()->getLAngleLoc(),
+      TransformedTemplateParams,
+      TD->getTemplateParameters()->getRAngleLoc(),
+      /*RequireClause*/nullptr);
+  TemplateName Foo(TD);
+  auto FooTST = Context.getTemplateSpecializationType(Foo, TransformedTemplateArgs);
+  TemplateArgument PSArg(FooTST); // Foo<N>
+  
+  TemplateArgument AArg(RTST); // written type, e.g. Foo<int>
+  
+  TD->getTemplateParameters();
+  sema::TemplateDeductionInfo TDeduceInfo(SourceLocation{});
+  // Must initialize n elements, this is required by DeduceTemplateArguments.
+  SmallVector<DeducedTemplateArgument> Deduced(
+        TD->getTemplateParameters()->size());
+  SmallVector<TemplateArgument> A1 = {PSArg};
+  SmallVector<TemplateArgument> A2 = {AArg};
+  if (auto DeducedResult = DeduceTemplateArguments(TransformedTemplateParameterList, A1, A2,
+                                  TDeduceInfo, Deduced, false);
+        DeducedResult != TemplateDeductionResult::Success) {
+    return false;
+  }
+
+  EnterExpressionEvaluationContext Unevaluated(
+      *this, Sema::ExpressionEvaluationContext::Unevaluated);
+  SFINAETrap Trap(*this);
+
+  SmallVector<TemplateArgument, 4> DeducedArgs(Deduced.begin(), Deduced.end());
+  InstantiatingTemplate Inst(*this, SourceLocation{}, TD, DeducedArgs,
+                             TDeduceInfo);
+  if (Inst.isInvalid())
+    return false;
+    // return TemplateDeductionResult::InstantiationDepth;
+
+  if (Trap.hasErrorOccurred())
+    return false;
+    // return TemplateDeductionResult::SubstitutionFailure;
+
+  TemplateDeductionResult Result;
+  runWithSufficientStackSpace(TDeduceInfo.getLocation(), [&] {
+    Result = FinishTemplateArgumentDeduction(TD,
+                                               /*IsPartialOrdering=*/false,
+                                               A1, Deduced, TDeduceInfo);
+  });
+  if (Result == TemplateDeductionResult::Success) {
+    llvm::errs() << "success!\n";
+    return true;
+  }
+  llvm::errs() << "fails!\n";
+  // RTST->template_arguments();
+  // RTST->dump();
+  return false;
+}
 
 FunctionTemplateDecl *Sema::DeclareImplicitDeductionGuideFromInitList(
     TemplateDecl *Template, MutableArrayRef<QualType> ParamTypes,

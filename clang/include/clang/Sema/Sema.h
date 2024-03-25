@@ -9709,6 +9709,13 @@ public:
                                                  unsigned TemplateDepth,
                                                  const Expr *Constraint);
 
+  TemplateDeductionResult FinishTemplateArgumentDeduction(
+      TemplateDecl *Partial, bool IsPartialOrdering,
+      ArrayRef<TemplateArgument> TemplateArgs,
+      SmallVectorImpl<DeducedTemplateArgument> &Deduced,
+      sema::TemplateDeductionInfo &Info);
+
+  bool IsDeducible(QualType LHS, QualType RHS);
   /// Declare implicit deduction guides for a class template if we've
   /// not already done so.
   void DeclareImplicitDeductionGuides(TemplateDecl *Template,
