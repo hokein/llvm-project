@@ -285,7 +285,7 @@ bool TemplateDecl::hasAssociatedConstraints() const {
 
 bool TemplateDecl::isTypeAlias() const {
   switch (getKind()) {
-  // case TemplateDecl::TypeAliasTemplate:
+  case TemplateDecl::TypeAliasTemplate:
   case TemplateDecl::BuiltinTemplate:
     return true;
   default:

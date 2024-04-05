@@ -6049,9 +6049,9 @@ static bool EvaluateBinaryTypeTrait(Sema &Self, TypeTrait BTT, QualType LhsT,
     return Self.IsLayoutCompatible(LhsT, RhsT);
   }
   case BTT_IsDeducible: {
-    IsDeducible(Self, LhsT, RhsT);
+    return IsDeducible(Self, LhsT, RhsT);
     // RhsT.dump();
-    return false;
+    // return false;
   }
     default: llvm_unreachable("not a BTT");
   }

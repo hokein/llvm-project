@@ -3052,7 +3052,10 @@ bool Sema::IsDeducible(QualType LHS, QualType RHS) {
   SmallVector<TemplateArgument> TransformedTemplateArgs(
       TD->getTemplateParameters()->size());
    LocalInstantiationScope Scope(*this);
-
+  //  InstantiatingTemplate Inst(
+      // *this, Info.getLocation(), TD, DeducedArgs,
+      // CodeSynthesisContext::DeducedTemplateArgumentSubstitution, Info);
+  // if (Inst.isInvalid())
   for (auto *TP : *TD->getTemplateParameters()) {
     // Rebuild any internal references to earlier parameters and reindex as
     // we go.
@@ -3087,9 +3090,10 @@ bool Sema::IsDeducible(QualType LHS, QualType RHS) {
         TD->getTemplateParameters()->size());
   SmallVector<TemplateArgument> A1 = {PSArg};
   SmallVector<TemplateArgument> A2 = {AArg};
-  if (auto DeducedResult = DeduceTemplateArguments(TransformedTemplateParameterList, A1, A2,
+  if (auto DeducedResult =
+          DeduceTemplateArguments(TransformedTemplateParameterList, A1, A2,
                                   TDeduceInfo, Deduced, false);
-        DeducedResult != TemplateDeductionResult::Success) {
+      DeducedResult != TemplateDeductionResult::Success) {
     return false;
   }
 
@@ -3113,14 +3117,13 @@ bool Sema::IsDeducible(QualType LHS, QualType RHS) {
     Result = FinishTemplateArgumentDeduction(TD,
                                                /*IsPartialOrdering=*/false,
                                                A1, Deduced, TDeduceInfo);
+    Context.getCanonicalType(RHS).dump();
   });
   if (Result == TemplateDeductionResult::Success) {
     llvm::errs() << "success!\n";
     return true;
   }
   llvm::errs() << "fails!\n";
-  // RTST->template_arguments();
-  // RTST->dump();
   return false;
 }
 

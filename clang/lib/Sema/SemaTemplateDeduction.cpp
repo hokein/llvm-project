@@ -539,7 +539,10 @@ DeduceTemplateArguments(Sema &S, TemplateParameterList *TemplateParams,
     Deduced[TempParam->getIndex()] = Result;
     return TemplateDeductionResult::Success;
   }
-
+  if (const auto* PA = Param.getAsTemplateDecl();
+      PA && PA->isTypeAlias())
+    return TemplateDeductionResult::Success;
+  // PA->
   // Verify that the two template names are equivalent.
   if (S.Context.hasSameTemplateName(Param, Arg))
     return TemplateDeductionResult::Success;
@@ -583,7 +586,7 @@ DeduceTemplateSpecArguments(Sema &S, TemplateParameterList *TemplateParams,
 
   // If the parameter is an alias template, there is nothing to deduce.
   // FIXME why??
-  if (const auto *TD = TNP.getAsTemplateDecl(); TD && TD->isTypeAlias())
+  if (const auto *TD = TNP.getAsTemplateDecl(); TD && TD->isTypeAlias() && TD->getKind() != TemplateDecl::TypeAliasTemplate)
     return TemplateDeductionResult::Success;
 
   ArrayRef<TemplateArgument> PResolved = TP->template_arguments();
@@ -600,7 +603,7 @@ DeduceTemplateSpecArguments(Sema &S, TemplateParameterList *TemplateParams,
     TemplateName TNA = SA->getTemplateName();
 
     // If the argument is an alias template, there is nothing to deduce.
-    if (const auto *TD = TNA.getAsTemplateDecl(); TD && TD->isTypeAlias())
+    if (const auto *TD = TNA.getAsTemplateDecl(); TD && TD->isTypeAlias() && TD->getKind() != TemplateDecl::TypeAliasTemplate)
       return TemplateDeductionResult::Success;
 
     // Perform template argument deduction for the template name.
@@ -3165,13 +3168,23 @@ TemplateDeductionResult Sema::FinishTemplateArgumentDeduction(
     return Result;
 
   // Form the template argument list from the deduced template arguments.
-  TemplateArgumentList *SugaredDeducedArgumentList =
-      TemplateArgumentList::CreateCopy(Context, SugaredBuilder);
-  TemplateArgumentList *CanonicalDeducedArgumentList =
-      TemplateArgumentList::CreateCopy(Context, CanonicalBuilder);
-
-  Info.reset(SugaredDeducedArgumentList, CanonicalDeducedArgumentList);
-
+  // TemplateArgumentList *SugaredDeducedArgumentList =
+  //     TemplateArgumentList::CreateCopy(Context, SugaredBuilder);
+  // TemplateArgumentList *CanonicalDeducedArgumentList =
+  //     TemplateArgumentList::CreateCopy(Context, CanonicalBuilder);
+  MultiLevelTemplateArgumentList Args;
+  Args.addOuterTemplateArguments(Partial, CanonicalBuilder, true);
+  // ARgs.
+  if (auto* D = dyn_cast<TypeAliasTemplateDecl>(this->SubstDecl(Partial, Partial->getDeclContext(), Args))) {
+    llvm::errs() << "!!subst alias tempalte!\n";
+    D->dump();
+    Context.getCanonicalType(D->getTemplatedDecl()->getUnderlyingType()).dump();
+    // Context.getCanonicalType(D->getTemplatedDecl()->getTypeForDecl())->dump();
+    // if (Context.getCanonicalType(D->getTypeForDecl()) ==
+    //          Context.getCanonicalType(.getAsType());
+  }
+  // Info.reset(SugaredDeducedArgumentList, CanonicalDeducedArgumentList);
+  // this->subst
   // // Substitute the deduced template arguments into the template
   // // arguments of the class template partial specialization, and
   // // verify that the instantiated template arguments are both valid
