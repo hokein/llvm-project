@@ -9867,6 +9867,11 @@ public:
                           ArrayRef<TemplateArgument> TemplateArgs,
                           sema::TemplateDeductionInfo &Info);
 
+  TemplateDeductionResult
+  DeduceTemplateArgumentsFromType(TemplateDecl* TD,
+                                 QualType FromType,
+                                 sema::TemplateDeductionInfo& Info);
+
   TemplateDeductionResult DeduceTemplateArguments(
       TemplateParameterList *TemplateParams, ArrayRef<TemplateArgument> Ps,
       ArrayRef<TemplateArgument> As, sema::TemplateDeductionInfo &Info,

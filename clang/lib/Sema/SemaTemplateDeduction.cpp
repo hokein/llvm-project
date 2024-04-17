@@ -539,14 +539,13 @@ DeduceTemplateArguments(Sema &S, TemplateParameterList *TemplateParams,
     Deduced[TempParam->getIndex()] = Result;
     return TemplateDeductionResult::Success;
   }
-  if (const auto* PA = Param.getAsTemplateDecl();
-      PA && PA->isTypeAlias())
-    return TemplateDeductionResult::Success;
-  // PA->
+  // if (const auto* PA = Param.getAsTemplateDecl();
+  //     PA && PA->isTypeAlias())
+  //   return TemplateDeductionResult::Success;
+
   // Verify that the two template names are equivalent.
   if (S.Context.hasSameTemplateName(Param, Arg))
     return TemplateDeductionResult::Success;
-
   // Mismatch of non-dependent template parameter to argument.
   Info.FirstArg = TemplateArgument(Param);
   Info.SecondArg = TemplateArgument(Arg);
@@ -3166,23 +3165,31 @@ TemplateDeductionResult Sema::FinishTemplateArgumentDeduction(
           CanonicalBuilder);
       Result != TemplateDeductionResult::Success)
     return Result;
-
+  for (const auto& TA : CanonicalBuilder) {
+    llvm::errs() << "Canonical types: \n";
+    TA.dump();
+    llvm::errs() << "\n";
+  }
   // Form the template argument list from the deduced template arguments.
   // TemplateArgumentList *SugaredDeducedArgumentList =
   //     TemplateArgumentList::CreateCopy(Context, SugaredBuilder);
   // TemplateArgumentList *CanonicalDeducedArgumentList =
   //     TemplateArgumentList::CreateCopy(Context, CanonicalBuilder);
-  MultiLevelTemplateArgumentList Args;
-  Args.addOuterTemplateArguments(Partial, CanonicalBuilder, true);
-  // ARgs.
-  if (auto* D = dyn_cast<TypeAliasTemplateDecl>(this->SubstDecl(Partial, Partial->getDeclContext(), Args))) {
-    llvm::errs() << "!!subst alias tempalte!\n";
-    D->dump();
-    Context.getCanonicalType(D->getTemplatedDecl()->getUnderlyingType()).dump();
-    // Context.getCanonicalType(D->getTemplatedDecl()->getTypeForDecl())->dump();
-    // if (Context.getCanonicalType(D->getTypeForDecl()) ==
-    //          Context.getCanonicalType(.getAsType());
-  }
+  // MultiLevelTemplateArgumentList Args;
+  // Args.addOuterTemplateArguments(Partial, CanonicalBuilder, true);
+  // // ARgs.
+  // auto* SubstD = this->SubstDecl(Partial, Partial->getDeclContext(), Args);
+  // if (auto* D = dyn_cast<TypeAliasTemplateDecl>(SubstD)) {
+  //   llvm::errs() << "!!subst alias tempalte!\n";
+  //   D->dump();
+  //   Context.getCanonicalType(D->getTemplatedDecl()->getUnderlyingType()).dump();
+  //   // Context.getCanonicalType(D->getTemplatedDecl()->getTypeForDecl())->dump();
+  //   // if (Context.getCanonicalType(D->getTypeForDecl()) ==
+  //   //          Context.getCanonicalType(.getAsType());
+  // } else {
+  //   llvm::errs() << "subst decl result\n";
+  //   SubstD->dump();
+  // }
   // Info.reset(SugaredDeducedArgumentList, CanonicalDeducedArgumentList);
   // this->subst
   // // Substitute the deduced template arguments into the template
@@ -3351,6 +3358,146 @@ Sema::DeduceTemplateArguments(VarTemplatePartialSpecializationDecl *Partial,
                                                TemplateArgs, Deduced, Info);
   });
   return Result;
+}
+
+TemplateDeductionResult
+Sema::DeduceTemplateArgumentsFromType(TemplateDecl *TD, QualType FromType,
+                                     sema::TemplateDeductionInfo &Info) {
+  if (TD->isInvalidDecl())
+    return TemplateDeductionResult::Invalid;
+  
+  QualType CanonicalType;
+  if (const auto* AliasTemplate = dyn_cast<TypeAliasTemplateDecl>(TD))
+    CanonicalType = AliasTemplate->getTemplatedDecl()->getUnderlyingType().getCanonicalType();
+  else if (const auto* CTD = dyn_cast<ClassTemplateDecl>(TD)) {
+    llvm::errs() << "class tempalte decl type:\n";
+    // Use the InjectedClassNameType.
+     Context.getTypeDeclType(CTD->getTemplatedDecl()).dump();
+    CanonicalType =  Context.getTypeDeclType(CTD->getTemplatedDecl());
+  } else {
+    // emit a diagnostic. only alias and class templates are supported!
+  }
+
+  TemplateArgument PSArg(CanonicalType); // Foo<N>
+  TemplateArgument AArg(FromType); // written type, e.g. Foo<int>
+  
+    // Unevaluated SFINAE context.
+  EnterExpressionEvaluationContext Unevaluated(
+      *this, Sema::ExpressionEvaluationContext::Unevaluated);
+  SFINAETrap Trap(*this);
+
+  // This deduction has no relation to any outer instantiation we might be
+  // performing.
+  LocalInstantiationScope InstantiationScope(*this);
+
+
+  SmallVector<DeducedTemplateArgument> Deduced(
+        TD->getTemplateParameters()->size());
+  SmallVector<TemplateArgument> A1 = {PSArg};
+  SmallVector<TemplateArgument> A2 = {AArg};
+  if (auto DeducedResult =
+          DeduceTemplateArguments(TD->getTemplateParameters(), A1, A2,
+                                  Info, Deduced, false);
+      DeducedResult != TemplateDeductionResult::Success) {
+    return DeducedResult;
+  }
+   
+  SmallVector<TemplateArgument, 4> DeducedArgs(Deduced.begin(), Deduced.end());
+  InstantiatingTemplate Inst(*this, Info.getLocation(), TD, DeducedArgs,
+                             Info);
+  if (Inst.isInvalid())
+    return TemplateDeductionResult::InstantiationDepth;
+
+  if (Trap.hasErrorOccurred())
+    return TemplateDeductionResult::SubstitutionFailure;
+
+  TemplateDeductionResult Result;
+  runWithSufficientStackSpace(Info.getLocation(), [&] {
+    Result = FinishTemplateArgumentDeduction(TD,
+                                               /*IsPartialOrdering=*/false,
+                                               A1, Deduced, Info);
+  });
+  return Result;
+}
+
+bool Sema::IsDeducible(QualType LHS, QualType RHS) {
+  auto TST = LHS->getAs<DeducedTemplateSpecializationType>();
+  auto* TD = TST->getTemplateName().getAsTemplateDecl();
+  TypeAliasTemplateDecl* AliasTemplateLHS = dyn_cast<TypeAliasTemplateDecl>(TD);
+  RHS->dump();
+
+  auto RTST = RHS.getSingleStepDesugaredType(Context);
+
+  LocalInstantiationScope Scope(*this);
+  SmallVector<TemplateArgument> Deduced2(TD->getTemplateParameters()->size());
+  sema::TemplateDeductionInfo TDeduceInfo2(SourceLocation{});
+
+  InstantiatingTemplate Inst2(*this, SourceLocation{}, TD, Deduced2,
+                              TDeduceInfo2);
+  // if (Inst.isInvalid())
+
+  TemplateName Foo(TD);
+
+  QualType Cano;
+  if (AliasTemplateLHS)
+    Cano = AliasTemplateLHS->getTemplatedDecl()->getUnderlyingType().getCanonicalType();
+  else if (const auto* CTD = dyn_cast<ClassTemplateDecl>(TD)) {
+    llvm::errs() << "class tempalte decl type:\n";
+    // Use the InjectedClassNameType.
+     Context.getTypeDeclType(CTD->getTemplatedDecl()).dump();
+    Cano =  Context.getTypeDeclType(CTD->getTemplatedDecl());
+  }
+  Cano.dump();
+  TemplateArgument PSArg(Cano); // Foo<N>
+  TemplateArgument AArg(RTST); // written type, e.g. Foo<int>
+  
+  TD->getTemplateParameters();
+  sema::TemplateDeductionInfo TDeduceInfo(SourceLocation{});
+  // Must initialize n elements, this is required by DeduceTemplateArguments.
+  SmallVector<DeducedTemplateArgument> Deduced(
+        TD->getTemplateParameters()->size());
+  SmallVector<TemplateArgument> A1 = {PSArg};
+  SmallVector<TemplateArgument> A2 = {AArg};
+  if (auto DeducedResult =
+          DeduceTemplateArguments(TD->getTemplateParameters(), A1, A2,
+                                  TDeduceInfo, Deduced, false);
+      DeducedResult != TemplateDeductionResult::Success) {
+    return false;
+  }
+  for (const auto& DTA: Deduced) {
+    llvm::errs() << "deduced type:\n";
+    DTA.dump();
+    llvm::errs() << "!!\n";
+  }
+  EnterExpressionEvaluationContext Unevaluated(
+      *this, Sema::ExpressionEvaluationContext::Unevaluated);
+  SFINAETrap Trap(*this);
+
+  SmallVector<TemplateArgument, 4> DeducedArgs(Deduced.begin(), Deduced.end());
+  InstantiatingTemplate Inst(*this, SourceLocation{}, TD, DeducedArgs,
+                             TDeduceInfo);
+  if (Inst.isInvalid())
+    return false;
+    // return TemplateDeductionResult::InstantiationDepth;
+
+  if (Trap.hasErrorOccurred())
+    return false;
+    // return TemplateDeductionResult::SubstitutionFailure;
+
+  TemplateDeductionResult Result;
+  runWithSufficientStackSpace(TDeduceInfo.getLocation(), [&] {
+    Result = FinishTemplateArgumentDeduction(TD,
+                                               /*IsPartialOrdering=*/false,
+                                               A1, Deduced, TDeduceInfo);
+    llvm::errs() << "RHS types:\n";
+    Context.getCanonicalType(RHS).dump();
+  });
+  if (Result == TemplateDeductionResult::Success) {
+    llvm::errs() << "success!\n";
+    return true;
+  }
+  llvm::errs() << "fails!\n";
+  return false;
 }
 
 /// Determine whether the given type T is a simple-template-id type.

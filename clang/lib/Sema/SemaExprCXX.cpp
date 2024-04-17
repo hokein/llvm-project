@@ -6050,6 +6050,15 @@ static bool EvaluateBinaryTypeTrait(Sema &Self, TypeTrait BTT, QualType LhsT,
   }
   case BTT_IsDeducible: {
     return IsDeducible(Self, LhsT, RhsT);
+    // sema::TemplateDeductionInfo Info(KeyLoc);
+
+    // if (auto TSTToBeDeduced =
+    //         LhsT->getAs<DeducedTemplateSpecializationType>()) {
+    //   Self.DeduceTemplateArgumentsFromType(
+    //       TSTToBeDeduced->getTemplateName().getAsTemplateDecl(), RhsT, Info);
+    //   // return IsDeducible(Self, LhsT, RhsT);
+    // }
+
     // RhsT.dump();
     // return false;
   }
