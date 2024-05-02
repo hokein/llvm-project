@@ -307,3 +307,87 @@ using AFoo = Foo<int, Derived<U>>;
 
 AFoo a(Derived<int>{});
 } // namespace test22
+
+namespace test23 {
+// We have an aggregate deduction guide "G(T) -> G<T>"."
+template<typename T>
+struct G { T t1; };
+
+template<typename X = int>
+using AG = G<int>;
+
+AG ag(1.0);
+// Ensure the aggregate deduction guide "AG(int) -> AG<int>" is built and choosen.
+static_assert(__is_same(decltype(ag.t1), int));
+}
+
+// GH90177
+namespace test23 {
+class Forward;
+class Key1 {};
+
+template <typename D>
+constexpr bool C = sizeof(D);
+
+template <typename T>
+struct Test1 {
+  template <typename Key>
+  struct Foo {
+    Foo(Key);
+  };
+
+  template <class Key>
+  requires (C<Key>)
+  Foo(Key) -> Foo<Key>;
+
+  template <class Y>
+  using Alias = Foo<Y>;
+};
+Test1<Forward>::Alias t2 = Key1();
+
+
+template <typename Key>
+struct Foo {
+  Foo(Key);
+};
+
+template <class Key>
+requires (C<Key>)
+Foo(Key) -> Foo<Key>;
+
+template <typename T>
+struct Test2 {
+  template <class Y>
+  using Alias = Foo<Y>;
+};
+Test2<Forward>::Alias t1 = Key1();
+
+}
+
+// not crash
+namespace test24 {
+template <class>
+concept C = true;
+
+template <class T1>
+struct A1 {
+
+    template<class T2>
+    struct A2 {
+       template <class T3>
+       struct Foo {
+          Foo(T3);
+       };
+
+       template <class T3>
+       requires C<T3>
+       Foo(T3) -> Foo<T3>;
+    };
+};
+
+template <typename U>
+using AFoo = A1<double>::A2<int>::Foo<U>;
+
+
+AFoo k{1}; // clang crashes
+}
