@@ -2883,8 +2883,9 @@ private:
 
   bool
   ParseAttributeArgumentList(const clang::IdentifierInfo &AttrName,
-                             SmallVectorImpl<Expr *> &Exprs,
-                             ParsedAttributeArgumentsProperties ArgsProperties);
+                             ArgsVector &Exprs,
+                             ParsedAttributeArgumentsProperties ArgsProperties,
+                             ParsedAttributes* Attr);
 
   /// Parses syntax-generic attribute arguments for attributes which are
   /// known to the implementation, and adds them to the given ParsedAttributes

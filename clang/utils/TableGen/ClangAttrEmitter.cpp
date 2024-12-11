@@ -337,9 +337,9 @@ namespace {
         return "!get" + getUpperName().str() + "Loc()";
       if (IsOneOf(type, "ParamIdx"))
         return "!get" + getUpperName().str() + "().isValid()";
-
+      // llvm::errs() << "!!" << type << "\n";
       assert(IsOneOf(type, "unsigned", "int", "bool", "FunctionDecl *",
-                     "VarDecl *"));
+                     "VarDecl *", "Attr *"));
       return "false";
     }
 
