@@ -7451,6 +7451,38 @@ bool Sema::diagnoseArgDependentDiagnoseIfAttrs(const FunctionDecl *Function,
         return Result.isInt() && Result.getInt().getBoolValue();
       });
 }
+bool Sema::diagnoseArgDependentAttributeIfAttrs(const FunctionDecl *Function,
+                                               const Expr *ThisArg,
+                                               ArrayRef<const Expr *> Args,
+                                               SourceLocation Loc) {
+  for (const auto* P : Function->parameters()) {
+    if (const auto* A = P->getAttr<AttributeIfAttr>()) {
+              APValue Result;
+        // It's sane to use the same Args for any redecl of this function, since
+        // EvaluateWithSubstitution only cares about the position of each
+      Function->dump();
+      if (!A->getCond()->EvaluateWithSubstitution(Result, Context,Function, Args, ThisArg)) {
+        return false;
+      llvm::errs() << "success full? " << (Result.isInt() && Result.getInt().getBoolValue()) << "\n";
+      return Result.isInt() && Result.getInt().getBoolValue();
+      }
+    }
+  }
+  return false;
+  // return diagnoseDiagnoseIfAttrsWith(
+  //     *this, Function, /*ArgDependent=*/true, Loc,
+  //     [&](const DiagnoseIfAttr *DIA) {
+  //       APValue Result;
+  //       // It's sane to use the same Args for any redecl of this function, since
+  //       // EvaluateWithSubstitution only cares about the position of each
+  //       // argument in the arg list, not the ParmVarDecl* it maps to.
+  //       if (!DIA->getCond()->EvaluateWithSubstitution(
+  //               Result, Context, cast<FunctionDecl>(DIA->getParent()), Args, ThisArg))
+  //         return false;
+  //       return Result.isInt() && Result.getInt().getBoolValue();
+  //     });
+}
+
 
 bool Sema::diagnoseArgIndependentDiagnoseIfAttrs(const NamedDecl *ND,
                                                  SourceLocation Loc) {

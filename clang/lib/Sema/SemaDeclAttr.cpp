@@ -3975,6 +3975,41 @@ static void handleLifetimeCaptureByAttr(Sema &S, Decl *D,
     D->addAttr(CaptureByAttr);
 }
 
+static void handleAttributeIfAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+  llvm::errs() << "handle attribute if";
+  D->dump();
+  auto *PVD = dyn_cast<ParmVarDecl>(D);
+  assert(PVD);
+  FunctionDecl* FD = nullptr;// = dyn_cast<FunctionDecl>(PVD->getDeclContext());
+  // assert(FD);
+  // for (int i = 0; i < AL.getNumArgs(); ++i) {
+  // llvm::errs() << "arg type: " << AL.getArgAsExpr(1) << "!!\n";
+
+  // llvm::errs() << " parsed attr: "
+              //  << AL.getArg(1).get<ParsedAttr *>()->getKind();
+  // AttributeIfAttr* TT;
+  // TT->s
+  // LifetimeBoundAttr::Create(S.Context);
+  D->addAttr(AttributeIfAttr::Create(S.Context, AL.getArgAsExpr(0), LifetimeBoundAttr::Create(S.Context), FD));
+  D->dump();
+  // AL.
+  // llvm::errs() << "is attribute: " << AL.getArg(i).is<Attr*>() << "!\n";
+  // }
+}
+  // Do not allow multiple attributes.
+//   if (D->hasAttr<LifetimeCaptureByAttr>()) {
+//     S.Diag(AL.getLoc(), diag::err_capture_by_attribute_multiple)
+//         << AL.getRange();
+//     return;
+//   }
+//   auto *PVD = dyn_cast<ParmVarDecl>(D);
+//   assert(PVD);
+//   auto *CaptureByAttr = S.ParseLifetimeCaptureByAttr(AL, PVD->getName());
+//   if (CaptureByAttr)
+//     D->addAttr(CaptureByAttr);
+// }
+
+
 void Sema::LazyProcessLifetimeCaptureByParams(FunctionDecl *FD) {
   bool HasImplicitThisParam = isInstanceMethod(FD);
   SmallVector<LifetimeCaptureByAttr *, 1> Attrs;
@@ -6822,6 +6857,9 @@ ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D, const ParsedAttr &AL,
     break;
   case ParsedAttr::AT_LifetimeCaptureBy:
     handleLifetimeCaptureByAttr(S, D, AL);
+    break;
+  case ParsedAttr::AT_AttributeIf:
+    handleAttributeIfAttr(S, D, AL);
     break;
   case ParsedAttr::AT_CalledOnce:
     handleCalledOnceAttr(S, D, AL);

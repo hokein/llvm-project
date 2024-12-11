@@ -41,6 +41,7 @@ class Sema;
 class Stmt;
 class TargetInfo;
 struct IdentifierLoc;
+class ParsedAttributes;
 
 /// Represents information about a change in availability for
 /// an entity, which is part of the encoding of the 'availability'
@@ -110,7 +111,7 @@ struct IdentifierLoc {
 
 /// A union of the various pointer types that can be passed to an
 /// ParsedAttr as an argument.
-using ArgsUnion = llvm::PointerUnion<Expr *, IdentifierLoc *>;
+using ArgsUnion = llvm::PointerUnion<Expr *, IdentifierLoc *, ParsedAttr*>;
 using ArgsVector = llvm::SmallVector<ArgsUnion, 12U>;
 
 /// ParsedAttr - Represents a syntactic attribute.

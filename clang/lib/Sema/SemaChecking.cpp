@@ -3313,6 +3313,10 @@ void Sema::checkCall(NamedDecl *FDecl, const FunctionProtoType *Proto,
       }
     }
   }
+
+  if (FD) {
+    diagnoseArgDependentAttributeIfAttrs(FD, ThisArg, Args, Loc);
+  }
   if (FD)
     checkLifetimeCaptureBy(FD, IsMemberFunction, ThisArg, Args);
   if (FDecl || Proto) {

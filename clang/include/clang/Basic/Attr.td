@@ -3472,6 +3472,26 @@ def DiagnoseIf : InheritableAttr {
   let Documentation = [DiagnoseIfDocs];
 }
 
+def AttributeIf : Attr {
+  let Spellings = [Clang<"attribute_if">];
+  //let Subjects = SubjectList<[]>
+  let Subjects = SubjectList<[ParmVar, ImplicitObjectParameter], ErrorDiag>;
+  let Args = [ExprArgument<"Cond">, WrappedAttr<"AdditionalAttr">,
+              BoolArgument<"ArgDependent", 0, 1>,
+              DeclArgument<Function, "Parent", 0, 1>];
+  let Documentation = [InternalOnly];
+}
+
+// def SwiftVersionedAddition : Attr {
+//   // This attribute has no spellings as it is only ever created implicitly
+//   // from API notes.
+//   let Spellings = [];
+//   let Args = [VersionArgument<"Version">, WrappedAttr<"AdditionalAttr">,
+//               BoolArgument<"IsReplacedByActive">];
+//   let SemaHandler = 0;
+//   let Documentation = [InternalOnly];
+// }
+
 def NoSpecializations : InheritableAttr {
   let Spellings = [Clang<"no_specializations", /*AllowInC*/0>];
   let Args = [StringArgument<"Message", 1>];

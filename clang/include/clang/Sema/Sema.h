@@ -10364,7 +10364,11 @@ public:
                                            const Expr *ThisArg,
                                            ArrayRef<const Expr *> Args,
                                            SourceLocation Loc);
-
+// diagnoseArgDependentAttributeIfAttrs
+ bool diagnoseArgDependentAttributeIfAttrs(const FunctionDecl *Function,
+                                           const Expr *ThisArg,
+                                           ArrayRef<const Expr *> Args,
+                                           SourceLocation Loc);
   /// Emit diagnostics for the diagnose_if attributes on Function, ignoring any
   /// ArgDependent DiagnoseIfAttrs.
   ///

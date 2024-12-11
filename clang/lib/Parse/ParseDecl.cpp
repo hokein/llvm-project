@@ -485,8 +485,9 @@ Parser::ParseUnevaluatedStringInAttribute(const IdentifierInfo &AttrName) {
 }
 
 bool Parser::ParseAttributeArgumentList(
-    const IdentifierInfo &AttrName, SmallVectorImpl<Expr *> &Exprs,
-    ParsedAttributeArgumentsProperties ArgsProperties) {
+    const IdentifierInfo &AttrName, ArgsVector &Exprs,
+    ParsedAttributeArgumentsProperties ArgsProperties,
+    ParsedAttributes* Attr) {
   bool SawError = false;
   unsigned Arg = 0;
   while (true) {
@@ -496,7 +497,17 @@ bool Parser::ParseAttributeArgumentList(
     } else if (getLangOpts().CPlusPlus11 && Tok.is(tok::l_brace)) {
       Diag(Tok, diag::warn_cxx98_compat_generalized_initializer_lists);
       Expr = ParseBraceInitializer();
-    } else {
+    } else if (Tok.is(tok::l_square)) {
+        //  ParsedAttributes Attrs(AttrFactory);
+          ParseCXX11Attributes(*Attr);
+          llvm::errs() << "parse handle";
+      //  ParsedAttr a;
+          // Attrs.back();
+      //    Attrs.takeOneFrom(Attrs, ParsedAttr *PA)
+          // // Actions.Attribut
+          // Attr->takeAllFrom(Attrs);
+          // Exprs.push_back(&Attr->back());
+    }else {
       Expr = ParseAssignmentExpression();
     }
     Expr = Actions.CorrectDelayedTyposInExpr(Expr);
@@ -519,12 +530,12 @@ bool Parser::ParseAttributeArgumentList(
       break;
     }
 
-    if (Actions.DiagnoseUnexpandedParameterPack(Expr.get())) {
+    if (Expr.get() && Actions.DiagnoseUnexpandedParameterPack(Expr.get())) {
       SawError = true;
       break;
     }
-
-    Exprs.push_back(Expr.get());
+    if (Expr.get())
+      Exprs.push_back(Expr.get());
 
     if (Tok.isNot(tok::comma))
       break;
@@ -539,9 +550,9 @@ bool Parser::ParseAttributeArgumentList(
     // Ensure typos get diagnosed when errors were encountered while parsing the
     // expression list.
     for (auto &E : Exprs) {
-      ExprResult Expr = Actions.CorrectDelayedTyposInExpr(E);
-      if (Expr.isUsable())
-        E = Expr.get();
+      // ExprResult Expr = Actions.CorrectDelayedTyposInExpr(E.get<Expr *>());
+      // if (Expr.isUsable())
+        // E = Expr.get();
     }
   }
   return SawError;
@@ -586,7 +597,7 @@ unsigned Parser::ParseAttributeArgsCommon(
     if (IsIdentifierArg)
       ArgExprs.push_back(ParseIdentifierLoc());
   }
-
+  ParsedAttributes InnerAttrStorage(AttrFactory);
   ParsedType TheParsedType;
   if (!ArgExprs.empty() ? Tok.is(tok::comma) : Tok.isNot(tok::r_paren)) {
     // Eat the comma.
@@ -618,7 +629,14 @@ unsigned Parser::ParseAttributeArgsCommon(
         ExprResult ArgExpr;
         if (Tok.is(tok::identifier)) {
           ArgExprs.push_back(ParseIdentifierLoc());
-        } else {
+        } else if (Tok.is(tok::l_square)) {
+          ParsedAttributes Attrs(AttrFactory);
+          ParseCXX11Attributes(Attrs);
+          llvm::errs() << "parse handle";
+          // Actions.Attribut
+          // ArgExprs.push_back(&Attrs);
+        } 
+        else {
           bool Uneval = attributeParsedArgsUnevaluated(
               *AttrName, Form.getSyntax(), ScopeName);
           EnterExpressionEvaluationContext Unevaluated(
@@ -651,18 +669,20 @@ unsigned Parser::ParseAttributeArgsCommon(
           Sema::ExpressionEvaluationContextRecord::ExpressionKind::
               EK_AttrArgument);
 
-      ExprVector ParsedExprs;
+      ArgsVector ParsedExprs;
       ParsedAttributeArgumentsProperties ArgProperties =
           attributeStringLiteralListArg(getTargetInfo().getTriple(), *AttrName,
                                         Form.getSyntax(), ScopeName);
-      if (ParseAttributeArgumentList(*AttrName, ParsedExprs, ArgProperties)) {
+      if (ParseAttributeArgumentList(*AttrName, ParsedExprs, ArgProperties, &InnerAttrStorage)) {
         SkipUntil(tok::r_paren, StopAtSemi);
         return 0;
       }
 
       // Pack expansion must currently be explicitly supported by an attribute.
       for (size_t I = 0; I < ParsedExprs.size(); ++I) {
-        if (!isa<PackExpansionExpr>(ParsedExprs[I]))
+        if (!ParsedExprs[I].is<Expr* >())
+          continue;
+        if (!isa<PackExpansionExpr>(ParsedExprs[I].get<Expr *>()))
           continue;
 
         if (!attributeAcceptsExprPack(*AttrName, Form.getSyntax(), ScopeName)) {
@@ -686,6 +706,15 @@ unsigned Parser::ParseAttributeArgsCommon(
       Attrs.addNewTypeAttr(AttrName, SourceRange(AttrNameLoc, RParen),
                            ScopeName, ScopeLoc, TheParsedType, Form);
     } else {
+      if (!InnerAttrStorage.empty()) {
+        assert(ArgExprs.size() == 1);
+        // FIXME: the memory management is tricky here.
+        // make sure the inner attribute argument outlive, we moved the underlying storage to the Attrs.
+
+        ArgExprs.push_back(&InnerAttrStorage.back());
+        Attrs.getPool().takeAllFrom(InnerAttrStorage.getPool());
+        InnerAttrStorage.clearListOnly();
+      }
       Attrs.addNew(AttrName, SourceRange(AttrLoc, RParen), ScopeName, ScopeLoc,
                    ArgExprs.data(), ArgExprs.size(), Form);
     }
