@@ -523,6 +523,24 @@ static bool isNormalAssignmentOperator(const FunctionDecl *FD) {
   return false;
 }
 
+template<typename T>
+static bool hasAttribute(const Decl* D) {
+  if (D->hasAttr<T>())
+    return true;
+  if (const auto* AI = D->getAttr<AttributeIfAttr>()) {
+    llvm::errs() << "debug 1\n";
+    bool Result;
+    if (AI->getCond()->EvaluateAsBooleanCondition(Result, D->getASTContext())) {
+      if (Result)
+         return dyn_cast<T>(AI->getAdditionalAttr());
+    }
+    else {
+      // FIXME: emits an error!
+    }
+    // AI->getAdditionalAttr()->
+  }
+  return false;
+}
 bool implicitObjectParamIsLifetimeBound(const FunctionDecl *FD) {
   const TypeSourceInfo *TSI = FD->getTypeSourceInfo();
   if (!TSI)
@@ -646,7 +664,7 @@ static void visitFunctionCallArguments(IndirectLocalPath &Path, Expr *Call,
           {IndirectLocalPathEntry::DefaultArg, DAE, DAE->getParam()});
       Arg = DAE->getExpr();
     }
-    if (CheckCoroCall || Callee->getParamDecl(I)->hasAttr<LifetimeBoundAttr>())
+    if (CheckCoroCall || hasAttribute<LifetimeBoundAttr>(Callee->getParamDecl(I)))
       VisitLifetimeBoundArg(Callee->getParamDecl(I), Arg);
     else if (const auto *CaptureAttr =
                  Callee->getParamDecl(I)->getAttr<LifetimeCaptureByAttr>();
