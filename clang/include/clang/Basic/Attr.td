@@ -3476,9 +3476,7 @@ def AttributeIf : Attr {
   let Spellings = [Clang<"attribute_if">];
   //let Subjects = SubjectList<[]>
   let Subjects = SubjectList<[ParmVar, ImplicitObjectParameter], ErrorDiag>;
-  let Args = [ExprArgument<"Cond">, WrappedAttr<"AdditionalAttr">,
-              BoolArgument<"ArgDependent", 0, 1>,
-              DeclArgument<Function, "Parent", 0, 1>];
+  let Args = [ExprArgument<"Cond">, WrappedAttr<"AdditionalAttr">];
   let Documentation = [InternalOnly];
 }
 

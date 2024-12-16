@@ -538,6 +538,24 @@ getDeclWithMergedLifetimeBoundAttrs(const CXXMethodDecl *CMD) {
       getDeclWithMergedLifetimeBoundAttrs(FD));
 }
 
+template<typename T>
+static bool hasAttribute(const Decl* D) {
+  if (D->hasAttr<T>())
+    return true;
+  if (const auto* AI = D->getAttr<AttributeIfAttr>()) {
+    llvm::errs() << "debug 1\n";
+    bool Result;
+    if (AI->getCond()->EvaluateAsBooleanCondition(Result, D->getASTContext())) {
+      if (Result)
+         return dyn_cast<T>(AI->getAdditionalAttr());
+    }
+    else {
+      // FIXME: emits an error!
+    }
+    // AI->getAdditionalAttr()->
+  }
+  return false;
+}
 bool implicitObjectParamIsLifetimeBound(const FunctionDecl *FD) {
   FD = getDeclWithMergedLifetimeBoundAttrs(FD);
   const TypeSourceInfo *TSI = FD->getTypeSourceInfo();
@@ -658,9 +676,8 @@ static void visitFunctionCallArguments(IndirectLocalPath &Path, Expr *Call,
           {IndirectLocalPathEntry::DefaultArg, DAE, DAE->getParam()});
       Arg = DAE->getExpr();
     }
-    if (CheckCoroCall ||
-        CanonCallee->getParamDecl(I)->hasAttr<LifetimeBoundAttr>())
-      VisitLifetimeBoundArg(CanonCallee->getParamDecl(I), Arg);
+    if (CheckCoroCall || hasAttribute<LifetimeBoundAttr>(Callee->getParamDecl(I)))
+      VisitLifetimeBoundArg(Callee->getParamDecl(I), Arg);
     else if (const auto *CaptureAttr =
                  CanonCallee->getParamDecl(I)->getAttr<LifetimeCaptureByAttr>();
              CaptureAttr && isa<CXXConstructorDecl>(CanonCallee) &&

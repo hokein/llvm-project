@@ -37,6 +37,7 @@
 #include "clang/Sema/DelayedDiagnostic.h"
 #include "clang/Sema/Initialization.h"
 #include "clang/Sema/Lookup.h"
+#include "clang/Sema/Ownership.h"
 #include "clang/Sema/ParsedAttr.h"
 #include "clang/Sema/Scope.h"
 #include "clang/Sema/ScopeInfo.h"
@@ -3990,25 +3991,17 @@ static void handleAttributeIfAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   // AttributeIfAttr* TT;
   // TT->s
   // LifetimeBoundAttr::Create(S.Context);
-  D->addAttr(AttributeIfAttr::Create(S.Context, AL.getArgAsExpr(0), LifetimeBoundAttr::Create(S.Context), FD));
-  D->dump();
+  // AttributeIfAttr::Create(S.)
+  
+  // While here, the function decl is not parsed yet, defer to set the argDependent and ParentDecl field.
+  auto* AttributeIf = AttributeIfAttr::Create(S.Context, AL.getArgAsExpr(0), LifetimeBoundAttr::Create(S.Context));
+  // AttributeIf->getPa
+  D->addAttr(AttributeIf);
+  // D->dump();
   // AL.
   // llvm::errs() << "is attribute: " << AL.getArg(i).is<Attr*>() << "!\n";
   // }
 }
-  // Do not allow multiple attributes.
-//   if (D->hasAttr<LifetimeCaptureByAttr>()) {
-//     S.Diag(AL.getLoc(), diag::err_capture_by_attribute_multiple)
-//         << AL.getRange();
-//     return;
-//   }
-//   auto *PVD = dyn_cast<ParmVarDecl>(D);
-//   assert(PVD);
-//   auto *CaptureByAttr = S.ParseLifetimeCaptureByAttr(AL, PVD->getName());
-//   if (CaptureByAttr)
-//     D->addAttr(CaptureByAttr);
-// }
-
 
 void Sema::LazyProcessLifetimeCaptureByParams(FunctionDecl *FD) {
   bool HasImplicitThisParam = isInstanceMethod(FD);
