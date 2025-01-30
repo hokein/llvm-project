@@ -7596,7 +7596,7 @@ void clang_executeOnThread(void (*fn)(void *), void *user_data,
  *   otherwise unused.
  */
 CXTokenKind clang_getTokenKind(CXToken CXTok) {
-  return static_cast<CXTokenKind>(CXTok.int_data[0]);
+  return static_cast<CXTokenKind>(CXTok.uint_data[0]);
 }
 
 CXString clang_getTokenSpelling(CXTranslationUnit TU, CXToken CXTok) {
@@ -7610,7 +7610,9 @@ CXString clang_getTokenSpelling(CXTranslationUnit TU, CXToken CXTok) {
   case CXToken_Literal: {
     // We have stashed the starting pointer in the ptr_data field. Use it.
     const char *Text = static_cast<const char *>(CXTok.ptr_data);
-    return cxstring::createDup(StringRef(Text, CXTok.int_data[2]));
+    // return cxstring::createDup(StringRef(Text, CXTok.uint_data[2]));
+    return cxstring::createDup(StringRef(Text, CXTok.uint_data[1]));
+
   }
 
   case CXToken_Punctuation:
@@ -7629,7 +7631,7 @@ CXString clang_getTokenSpelling(CXTranslationUnit TU, CXToken CXTok) {
   if (!CXXUnit)
     return cxstring::createEmpty();
 
-  SourceLocation Loc = SourceLocation::getFromRawEncoding(CXTok.int_data[1]);
+  SourceLocation Loc = SourceLocation::getFromRawEncoding(CXTok.uint_data[0]);
   std::pair<FileID, unsigned> LocInfo =
       CXXUnit->getSourceManager().getDecomposedSpellingLoc(Loc);
   bool Invalid = false;
@@ -7638,7 +7640,7 @@ CXString clang_getTokenSpelling(CXTranslationUnit TU, CXToken CXTok) {
   if (Invalid)
     return cxstring::createEmpty();
 
-  return cxstring::createDup(Buffer.substr(LocInfo.second, CXTok.int_data[2]));
+  return cxstring::createDup(Buffer.substr(LocInfo.second, CXTok.uint_data[1]));
 }
 
 CXSourceLocation clang_getTokenLocation(CXTranslationUnit TU, CXToken CXTok) {
@@ -7653,7 +7655,7 @@ CXSourceLocation clang_getTokenLocation(CXTranslationUnit TU, CXToken CXTok) {
 
   return cxloc::translateSourceLocation(
       CXXUnit->getASTContext(),
-      SourceLocation::getFromRawEncoding(CXTok.int_data[1]));
+      SourceLocation::getFromRawEncoding(CXTok.uint_data[0]));
 }
 
 CXSourceRange clang_getTokenExtent(CXTranslationUnit TU, CXToken CXTok) {
@@ -7668,7 +7670,7 @@ CXSourceRange clang_getTokenExtent(CXTranslationUnit TU, CXToken CXTok) {
 
   return cxloc::translateSourceRange(
       CXXUnit->getASTContext(),
-      SourceLocation::getFromRawEncoding(CXTok.int_data[1]));
+      SourceLocation::getFromRawEncoding(CXTok.uint_data[0]));
 }
 
 static void getTokens(ASTUnit *CXXUnit, SourceRange Range,
@@ -7708,30 +7710,30 @@ static void getTokens(ASTUnit *CXXUnit, SourceRange Range,
     CXToken CXTok;
 
     //   - Common fields
-    CXTok.int_data[1] = Tok.getLocation().getRawEncoding();
-    CXTok.int_data[2] = Tok.getLength();
-    CXTok.int_data[3] = 0;
+    CXTok.uint_data[1] = Tok.getLength();
+    CXTok.ulint_data[0] = Tok.getLocation().getRawEncoding();
+    CXTok.ulint_data[1] = 0;
 
     //   - Kind-specific fields
     if (Tok.isLiteral()) {
-      CXTok.int_data[0] = CXToken_Literal;
+      CXTok.uint_data[0] = CXToken_Literal;
       CXTok.ptr_data = const_cast<char *>(Tok.getLiteralData());
     } else if (Tok.is(tok::raw_identifier)) {
       // Lookup the identifier to determine whether we have a keyword.
       IdentifierInfo *II = CXXUnit->getPreprocessor().LookUpIdentifierInfo(Tok);
 
       if ((II->getObjCKeywordID() != tok::objc_not_keyword) && previousWasAt) {
-        CXTok.int_data[0] = CXToken_Keyword;
+        CXTok.uint_data[0] = CXToken_Keyword;
       } else {
-        CXTok.int_data[0] =
+        CXTok.uint_data[0] =
             Tok.is(tok::identifier) ? CXToken_Identifier : CXToken_Keyword;
       }
       CXTok.ptr_data = II;
     } else if (Tok.is(tok::comment)) {
-      CXTok.int_data[0] = CXToken_Comment;
+      CXTok.uint_data[0] = CXToken_Comment;
       CXTok.ptr_data = nullptr;
     } else {
-      CXTok.int_data[0] = CXToken_Punctuation;
+      CXTok.uint_data[0] = CXToken_Punctuation;
       CXTok.ptr_data = nullptr;
     }
     CXTokens.push_back(CXTok);
@@ -7864,13 +7866,13 @@ class AnnotateTokensWorker {
   unsigned NextToken() const { return TokIdx; }
   void AdvanceToken() { ++TokIdx; }
   SourceLocation GetTokenLoc(unsigned tokI) {
-    return SourceLocation::getFromRawEncoding(getTok(tokI).int_data[1]);
+    return SourceLocation::getFromRawEncoding(getTok(tokI).ulint_data[0]);
   }
   bool isFunctionMacroToken(unsigned tokI) const {
-    return getTok(tokI).int_data[3] != 0;
+    return getTok(tokI).ulint_data[1] != 0;
   }
   SourceLocation getFunctionMacroTokenLoc(unsigned tokI) const {
-    return SourceLocation::getFromRawEncoding(getTok(tokI).int_data[3]);
+    return SourceLocation::getFromRawEncoding(getTok(tokI).ulint_data[1]);
   }
 
   void annotateAndAdvanceTokens(CXCursor, RangeComparisonResult, SourceRange);
@@ -8365,13 +8367,13 @@ private:
   }
 
   SourceLocation getTokenLoc(unsigned tokI) {
-    return SourceLocation::getFromRawEncoding(getTok(tokI).int_data[1]);
+    return SourceLocation::getFromRawEncoding(getTok(tokI).ulint_data[0]);
   }
 
   void setFunctionMacroTokenLoc(unsigned tokI, SourceLocation loc) {
     // The third field is reserved and currently not used. Use it here
     // to mark macro arg expanded tokens with their expanded locations.
-    getTok(tokI).int_data[3] = loc.getRawEncoding();
+    getTok(tokI).ulint_data[1] = loc.getRawEncoding();
   }
 };
 
@@ -8432,7 +8434,7 @@ static void annotatePreprocessorTokens(CXTranslationUnit TU,
       break;
     unsigned TokIdx = NextIdx - 1;
     assert(Tok.getLocation() ==
-           SourceLocation::getFromRawEncoding(Tokens[TokIdx].int_data[1]));
+           SourceLocation::getFromRawEncoding(Tokens[TokIdx].ulint_data[0]));
 
   reprocess:
     if (Tok.is(tok::hash) && Tok.isAtStartOfLine()) {
@@ -8483,7 +8485,7 @@ static void annotatePreprocessorTokens(CXTranslationUnit TU,
       unsigned LastIdx = finished ? NextIdx - 1 : NextIdx - 2;
       assert(TokIdx <= LastIdx);
       SourceLocation EndLoc =
-          SourceLocation::getFromRawEncoding(Tokens[LastIdx].int_data[1]);
+          SourceLocation::getFromRawEncoding(Tokens[LastIdx].ulint_data[0]);
       CXCursor Cursor =
           MakePreprocessingDirectiveCursor(SourceRange(BeginLoc, EndLoc), TU);
 
@@ -8575,7 +8577,7 @@ static void clang_annotateTokensImpl(CXTranslationUnit TU, ASTUnit *CXXUnit,
                   .Case("weak", true)
                   .Case("class", true)
                   .Default(false))
-            Tokens[I].int_data[0] = CXToken_Keyword;
+            Tokens[I].uint_data[0] = CXToken_Keyword;
         }
         continue;
       }
@@ -8591,13 +8593,13 @@ static void clang_annotateTokensImpl(CXTranslationUnit TU, ASTUnit *CXXUnit,
                 .Case("bycopy", true)
                 .Case("byref", true)
                 .Default(false))
-          Tokens[I].int_data[0] = CXToken_Keyword;
+          Tokens[I].uint_data[0] = CXToken_Keyword;
         continue;
       }
 
       if (Cursors[I].kind == CXCursor_CXXFinalAttr ||
           Cursors[I].kind == CXCursor_CXXOverrideAttr) {
-        Tokens[I].int_data[0] = CXToken_Keyword;
+        Tokens[I].uint_data[0] = CXToken_Keyword;
         continue;
       }
     }

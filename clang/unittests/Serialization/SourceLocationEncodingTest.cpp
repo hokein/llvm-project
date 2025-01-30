@@ -62,7 +62,7 @@ void roundTrip(std::vector<SourceLocation::UIntTy> Locs,
 }
 
 constexpr SourceLocation::UIntTy MacroBit =
-    1 << (sizeof(SourceLocation::UIntTy) * CHAR_BIT - 1);
+    1ULL << (sizeof(SourceLocation::UIntTy) * CHAR_BIT - 1);
 constexpr SourceLocation::UIntTy Big = MacroBit >> 1;
 constexpr SourceLocation::UIntTy Biggest = -1;
 

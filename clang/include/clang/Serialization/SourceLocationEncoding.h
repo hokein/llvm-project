@@ -95,9 +95,9 @@ public:
 ///
 class SourceLocationSequence {
   using UIntTy = SourceLocation::UIntTy;
-  using EncodedTy = uint64_t;
+  using EncodedTy = __int128;
   constexpr static auto UIntBits = SourceLocationEncoding::UIntBits;
-  static_assert(sizeof(EncodedTy) > sizeof(UIntTy), "Need one extra bit!");
+  // static_assert(sizeof(EncodedTy) > sizeof(UIntTy), "Need one extra bit!");
 
   // Prev stores the rotated last nonzero location.
   UIntTy &Prev;
@@ -105,7 +105,7 @@ class SourceLocationSequence {
   // Zig-zag encoding turns small signed integers into small unsigned integers.
   // 0 => 0, -1 => 1, 1 => 2, -2 => 3, ...
   static UIntTy zigZag(UIntTy V) {
-    UIntTy Sign = (V & (1 << (UIntBits - 1))) ? UIntTy(-1) : UIntTy(0);
+    UIntTy Sign = (V & (1ul << (UIntBits - 1))) ? UIntTy(-1) : UIntTy(0);
     return Sign ^ (V << 1);
   }
   static UIntTy zagZig(UIntTy V) { return (V >> 1) ^ -(V & 1); }

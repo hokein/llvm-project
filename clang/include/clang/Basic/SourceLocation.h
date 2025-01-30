@@ -93,8 +93,8 @@ class SourceLocation {
   friend class SourceLocationEncoding;
 
 public:
-  using UIntTy = uint32_t;
-  using IntTy = int32_t;
+  using UIntTy = uint64_t;
+  using IntTy = int64_t;
 
 private:
   UIntTy ID = 0;

@@ -4883,7 +4883,9 @@ typedef enum CXTokenKind {
  * Describes a single preprocessing token.
  */
 typedef struct {
-  unsigned int_data[4];
+  // unsigned int_data[4];
+  unsigned long long ulint_data[2];
+  unsigned uint_data[2];
   void *ptr_data;
 } CXToken;
 
@@ -6036,7 +6038,8 @@ typedef void *CXIdxClientASTFile;
  */
 typedef struct {
   void *ptr_data[2];
-  unsigned int_data;
+  // unsigned int_data;
+  unsigned long long int_data;
 } CXIdxLoc;
 
 /**
