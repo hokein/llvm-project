@@ -1269,7 +1269,7 @@ public:
   ///
   /// The first element is the FileID, the second is the offset from the
   /// start of the buffer of the location.
-  std::pair<FileID, unsigned> getDecomposedLoc(SourceLocation Loc) const {
+  std::pair<FileID, SourceLocation::UIntTy> getDecomposedLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
     auto *Entry = getSLocEntryOrNull(FID);
     if (!Entry)
@@ -1281,14 +1281,14 @@ public:
   ///
   /// If the location is an expansion record, walk through it until we find
   /// the final location expanded.
-  std::pair<FileID, unsigned>
+  std::pair<FileID, SourceLocation::UIntTy>
   getDecomposedExpansionLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
     auto *E = getSLocEntryOrNull(FID);
     if (!E)
       return std::make_pair(FileID(), 0);
 
-    unsigned Offset = Loc.getOffset()-E->getOffset();
+    SourceLocation::UIntTy Offset = Loc.getOffset()-E->getOffset();
     if (Loc.isFileID())
       return std::make_pair(FID, Offset);
 
@@ -1299,14 +1299,14 @@ public:
   ///
   /// If the location is an expansion record, walk through it until we find
   /// its spelling record.
-  std::pair<FileID, unsigned>
+  std::pair<FileID, SourceLocation::UIntTy>
   getDecomposedSpellingLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
     auto *E = getSLocEntryOrNull(FID);
     if (!E)
       return std::make_pair(FileID(), 0);
 
-    unsigned Offset = Loc.getOffset()-E->getOffset();
+    SourceLocation::UIntTy Offset = Loc.getOffset()-E->getOffset();
     if (Loc.isFileID())
       return std::make_pair(FID, Offset);
     return getDecomposedSpellingLocSlowCase(E, Offset);
@@ -1320,7 +1320,7 @@ public:
   /// specified SourceLocation represents.
   ///
   /// This is not very meaningful for a macro ID.
-  unsigned getFileOffset(SourceLocation SpellingLoc) const {
+  SourceLocation::UIntTy getFileOffset(SourceLocation SpellingLoc) const {
     return getDecomposedLoc(SpellingLoc).second;
   }
 
@@ -1970,11 +1970,11 @@ private:
   SourceLocation getSpellingLocSlowCase(SourceLocation Loc) const;
   SourceLocation getFileLocSlowCase(SourceLocation Loc) const;
 
-  std::pair<FileID, unsigned>
+  std::pair<FileID, SourceLocation::UIntTy>
   getDecomposedExpansionLocSlowCase(const SrcMgr::SLocEntry *E) const;
-  std::pair<FileID, unsigned>
+  std::pair<FileID, SourceLocation::UIntTy>
   getDecomposedSpellingLocSlowCase(const SrcMgr::SLocEntry *E,
-                                   unsigned Offset) const;
+                                   SourceLocation::UIntTy Offset) const;
   void computeMacroArgsCache(MacroArgsMap &MacroArgsCache, FileID FID) const;
   void associateFileChunkWithMacroArgExp(MacroArgsMap &MacroArgsCache,
                                          FileID FID,

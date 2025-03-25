@@ -934,13 +934,13 @@ SourceLocation SourceManager::getFileLocSlowCase(SourceLocation Loc) const {
 }
 
 
-std::pair<FileID, unsigned>
+std::pair<FileID, SourceLocation::UIntTy>
 SourceManager::getDecomposedExpansionLocSlowCase(
                                              const SrcMgr::SLocEntry *E) const {
   // If this is an expansion record, walk through all the expansion points.
   FileID FID;
   SourceLocation Loc;
-  unsigned Offset;
+  SourceLocation::UIntTy Offset;
   do {
     Loc = E->getExpansion().getExpansionLocStart();
 
@@ -952,9 +952,9 @@ SourceManager::getDecomposedExpansionLocSlowCase(
   return std::make_pair(FID, Offset);
 }
 
-std::pair<FileID, unsigned>
+std::pair<FileID, SourceLocation::UIntTy>
 SourceManager::getDecomposedSpellingLocSlowCase(const SrcMgr::SLocEntry *E,
-                                                unsigned Offset) const {
+  SourceLocation::UIntTy Offset) const {
   // If this is an expansion record, walk through all the expansion points.
   FileID FID;
   SourceLocation Loc;
