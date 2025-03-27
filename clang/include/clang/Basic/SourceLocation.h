@@ -97,7 +97,7 @@ public:
   using IntTy = int32_t;
 
 private:
-  UIntTy ID = 0;
+  uint64_t ID = 0;
 
   enum : UIntTy { MacroIDBit = 1ULL << (8 * sizeof(UIntTy) - 1) };
 
@@ -134,7 +134,7 @@ private:
 public:
   /// Return a source location with the specified offset from this
   /// SourceLocation.
-  SourceLocation getLocWithOffset(IntTy Offset) const {
+  SourceLocation getLocWithOffset(signed Offset) const {
     assert(((getOffset()+Offset) & MacroIDBit) == 0 && "offset overflow");
     SourceLocation L;
     L.ID = ID+Offset;
