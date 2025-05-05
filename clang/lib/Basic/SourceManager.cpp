@@ -840,6 +840,13 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
       GreaterIndex = Last.ID;
   }
 
+  if (LastFileIDLookup2.ID >= 0) {
+    if (LocalSLocEntryTable[LastFileIDLookup2.ID].getOffset() < SLocOffset)
+      LessIndex = std::max((unsigned)LastFileIDLookup2.ID, LessIndex);
+    else
+      GreaterIndex = std::min((unsigned)LastFileIDLookup2.ID, GreaterIndex);
+  }
+
   // Find the FileID that contains this.
   unsigned NumProbes = 0;
   while (true) {
