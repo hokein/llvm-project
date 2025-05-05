@@ -771,7 +771,6 @@ class SourceManager : public RefCountedBase<SourceManager> {
 
   
   FileID updateLastFileIDLookup(FileID newFID) const;
-  FileID getLastFileIDLookup() const;
   /// Holds information for \#line directives.
   ///
   /// This is referenced by indices from SLocEntryTable.

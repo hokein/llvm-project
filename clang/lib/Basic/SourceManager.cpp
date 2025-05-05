@@ -831,13 +831,12 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   unsigned LessIndex = 0;
   // upper bound of the search range.
   unsigned GreaterIndex = LocalSLocEntryTable.size();
-  FileID Last = getLastFileIDLookup();
-  if (Last.ID >= 0) {
+  if (LastFileIDLookup.ID >= 0) {
     // Use the LastFileIDLookup to prune the search space.
-    if (LocalSLocEntryTable[Last.ID].getOffset() < SLocOffset)
-      LessIndex = Last.ID;
+    if (LocalSLocEntryTable[LastFileIDLookup.ID].getOffset() < SLocOffset)
+      LessIndex = LastFileIDLookup.ID;
     else
-      GreaterIndex = Last.ID;
+      GreaterIndex = LastFileIDLookup.ID;
   }
 
   if (LastFileIDLookup2.ID >= 0) {
@@ -900,21 +899,10 @@ FileID SourceManager::updateLastFileIDLookup(FileID FID) const {
     LastFileIDLookup = FID;
     return FID;
   }
-  if (LastFileIDLookup2 == FileID()) {
-    LastFileIDLookup2 = LastFileIDLookup;
-    LastFileIDLookup = FID;
-    return FID;
-  }
-  std::swap(LastFileIDLookup, LastFileIDLookup2);
+  LastFileIDLookup2 = LastFileIDLookup;
   return LastFileIDLookup = FID;
-  // llvm_unreachable("must be unreachabled");
-  // return FID;
 }
 
-FileID SourceManager::getLastFileIDLookup() const {
-  return LastFileIDLookup;
-  // return LastIndex == 0? LastFileIDLookup : LastFileIDLookup2;
-}
 /// Return the FileID for a SourceLocation with a high offset.
 ///
 /// This function knows that the SourceLocation is in a loaded buffer, not a
