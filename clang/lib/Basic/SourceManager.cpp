@@ -895,10 +895,6 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
 }
 
 FileID SourceManager::updateLastFileIDLookup(FileID FID) const {
-  if (LastFileIDLookup == FileID()) {
-    LastFileIDLookup = FID;
-    return FID;
-  }
   LastFileIDLookup2 = LastFileIDLookup;
   return LastFileIDLookup = FID;
 }
