@@ -1900,13 +1900,24 @@ private:
 
   FileID getFileID(SourceLocation::UIntTy SLocOffset) const {
     // If our one-entry cache covers this offset, just return it.
-    if (isOffsetInFileID(LastFileIDLookup, SLocOffset)) {
-      LastIndex = 0;
-      return LastFileIDLookup;
-    }
-    if (isOffsetInFileID(LastFileIDLookup2, SLocOffset)) {
-      LastIndex = 1;
-      return LastFileIDLookup2;
+    if (LastIndex == 0) {
+      if (isOffsetInFileID(LastFileIDLookup, SLocOffset)) {
+        LastIndex = 0;
+        return LastFileIDLookup;
+      }
+      if (isOffsetInFileID(LastFileIDLookup2, SLocOffset)) {
+        LastIndex = 1;
+        return LastFileIDLookup2;
+      }
+    } else if (LastIndex == 1) {
+      if (isOffsetInFileID(LastFileIDLookup2, SLocOffset)) {
+        LastIndex = 1;
+        return LastFileIDLookup2;
+      }
+      if (isOffsetInFileID(LastFileIDLookup, SLocOffset)) {
+        LastIndex = 0;
+        return LastFileIDLookup;
+      }
     }
 
     return getFileIDSlow(SLocOffset);
