@@ -335,6 +335,7 @@ void SourceManager::clearIDTables() {
   LastLineNoFileIDQuery = FileID();
   LastLineNoContentCache = nullptr;
   LastFileIDLookup = FileID();
+  LastFileIDLookup2 = FileID();
 
   IncludedLocMap.clear();
   if (LineTable)
@@ -645,6 +646,8 @@ FileID SourceManager::createFileIDImpl(ContentCache &File, StringRef Filename,
   // Set LastFileIDLookup to the newly created file.  The next getFileID call is
   // almost guaranteed to be from that file.
   FileID FID = FileID::get(LocalSLocEntryTable.size()-1);
+  return updateLastFileIDLookup(FID);
+  assert("unreachable!");
   return LastFileIDLookup = FID;
 }
 
@@ -828,12 +831,13 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   unsigned LessIndex = 0;
   // upper bound of the search range.
   unsigned GreaterIndex = LocalSLocEntryTable.size();
-  if (LastFileIDLookup.ID >= 0) {
+  FileID Last = getLastFileIDLookup();
+  if (Last.ID >= 0) {
     // Use the LastFileIDLookup to prune the search space.
-    if (LocalSLocEntryTable[LastFileIDLookup.ID].getOffset() < SLocOffset)
-      LessIndex = LastFileIDLookup.ID;
+    if (LocalSLocEntryTable[Last.ID].getOffset() < SLocOffset)
+      LessIndex = Last.ID;
     else
-      GreaterIndex = LastFileIDLookup.ID;
+      GreaterIndex = Last.ID;
   }
 
   // Find the FileID that contains this.
@@ -844,7 +848,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
     if (LocalSLocEntryTable[GreaterIndex].getOffset() <= SLocOffset) {
       FileID Res = FileID::get(int(GreaterIndex));
       // Remember it.  We have good locality across FileID lookups.
-      LastFileIDLookup = Res;
+      updateLastFileIDLookup(Res);
       NumLinearScans += NumProbes+1;
       return Res;
     }
@@ -873,7 +877,8 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
       FileID Res = FileID::get(MiddleIndex);
 
       // Remember it.  We have good locality across FileID lookups.
-      LastFileIDLookup = Res;
+      // LastFileIDLookup = Res;
+      updateLastFileIDLookup(Res);
       NumBinaryProbes += NumProbes;
       return Res;
     }
@@ -883,6 +888,32 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   }
 }
 
+FileID SourceManager::updateLastFileIDLookup(FileID FID) const {
+  if (LastFileIDLookup == FileID()) {
+    LastFileIDLookup = FID;
+    LastIndex = 0;
+    return FID;
+  }
+  if (LastFileIDLookup2 == FileID()) {
+    LastFileIDLookup2 = FID;
+    LastIndex = 1;
+    return FID;
+  }
+  if (LastIndex == 0) {
+    LastIndex = 1;
+    return LastFileIDLookup2 = FID;
+  }
+  if (LastIndex == 1) {
+    LastIndex = 0;
+    return LastFileIDLookup = FID;
+  }
+  llvm_unreachable("must be unreachabled");
+  return FID;
+}
+
+FileID SourceManager::getLastFileIDLookup() const {
+  return LastIndex == 0? LastFileIDLookup : LastFileIDLookup2;
+}
 /// Return the FileID for a SourceLocation with a high offset.
 ///
 /// This function knows that the SourceLocation is in a loaded buffer, not a
