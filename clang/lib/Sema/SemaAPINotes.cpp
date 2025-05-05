@@ -963,7 +963,7 @@ void Sema::ProcessAPINotes(Decl *D) {
       // This is only being used to support APINotes lookup for C++
       // NS/CF_OPTIONS when C++-Interop is enabled.
       std::string MacroName =
-          LookupName.empty() && Tag->getOuterLocStart().isMacroID()
+          LookupName.empty() && Tag->getOuterLocStart().isMacroID(Tag->getASTContext().getSourceManager())
               ? clang::Lexer::getImmediateMacroName(
                     Tag->getOuterLocStart(),
                     Tag->getASTContext().getSourceManager(), LangOpts)

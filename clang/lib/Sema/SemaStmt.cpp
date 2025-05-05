@@ -260,13 +260,13 @@ void DiagnoseUnused(Sema &S, const Expr *E, std::optional<unsigned> DiagID) {
     // probably unused because it is a function-like macro that can be used as
     // either an expression or statement. Don't warn, because it is almost
     // certainly a false positive.
-    if (isa<StmtExpr>(E) && Loc.isMacroID())
+    if (isa<StmtExpr>(E) && Loc.isMacroID(S.getSourceManager()))
       return;
 
     // Check if this is the UNREFERENCED_PARAMETER from the Microsoft headers.
     // That macro is frequently used to suppress "unused parameter" warnings,
     // but its implementation makes clang's -Wunused-value fire. Prevent this.
-    if (isa<ParenExpr>(E->IgnoreImpCasts()) && Loc.isMacroID()) {
+    if (isa<ParenExpr>(E->IgnoreImpCasts()) && Loc.isMacroID(S.getSourceManager())) {
       SourceLocation SpellLoc = Loc;
       if (S.findMacroSpelling(SpellLoc, "UNREFERENCED_PARAMETER"))
         return;
@@ -3192,7 +3192,7 @@ static void DiagnoseForRangeVariableCopies(Sema &SemaRef,
   if (!InitExpr)
     return;
 
-  if (InitExpr->getExprLoc().isMacroID())
+  if (InitExpr->getExprLoc().isMacroID(SemaRef.getSourceManager()))
     return;
 
   if (VariableType->isReferenceType()) {

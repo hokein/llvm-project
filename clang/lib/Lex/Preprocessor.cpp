@@ -1204,7 +1204,7 @@ bool Preprocessor::LexAfterModuleImport(Token &Result) {
     //   The ';' preprocessing-token terminating a pp-import shall not have
     //   been produced by macro replacement.
     SourceLocation SemiLoc = Suffix.back().getLocation();
-    if (SemiLoc.isMacroID())
+    if (SemiLoc.isMacroID(getSourceManager()))
       Diag(SemiLoc, diag::err_header_import_semi_in_macro);
 
     // Reconstitute the import token.

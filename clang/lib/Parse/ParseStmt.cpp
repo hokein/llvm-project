@@ -1154,7 +1154,7 @@ bool Parser::ConsumeNullStmt(StmtVector &Stmts) {
   SourceLocation EndLoc;
 
   while (Tok.is(tok::semi) && !Tok.hasLeadingEmptyMacro() &&
-         Tok.getLocation().isValid() && !Tok.getLocation().isMacroID()) {
+         Tok.getLocation().isValid() && !Tok.getLocation().isMacroID(PP.getSourceManager())) {
     EndLoc = Tok.getLocation();
 
     // Don't just ConsumeToken() this tok::semi, do store it in AST.
@@ -1485,12 +1485,13 @@ struct MisleadingIndentationChecker {
 
   void Check() {
     Token Tok = P.getCurToken();
+    SourceManager &SM = P.getPreprocessor().getSourceManager();
     if (P.getActions().getDiagnostics().isIgnored(
             diag::warn_misleading_indentation, Tok.getLocation()) ||
         ShouldSkip || NumDirectives != P.getPreprocessor().getNumDirectives() ||
         Tok.isOneOf(tok::semi, tok::r_brace) || Tok.isAnnotation() ||
-        Tok.getLocation().isMacroID() || PrevLoc.isMacroID() ||
-        StmtLoc.isMacroID() ||
+        Tok.getLocation().isMacroID(SM) || PrevLoc.isMacroID(SM) ||
+        StmtLoc.isMacroID(SM) ||
         (Kind == MSK_else && P.MisleadingIndentationElseLoc.isInvalid())) {
       P.MisleadingIndentationElseLoc = SourceLocation();
       return;
@@ -1498,7 +1499,6 @@ struct MisleadingIndentationChecker {
     if (Kind == MSK_else)
       P.MisleadingIndentationElseLoc = SourceLocation();
 
-    SourceManager &SM = P.getPreprocessor().getSourceManager();
     unsigned PrevColNum = getVisualIndentation(SM, PrevLoc);
     unsigned CurColNum = getVisualIndentation(SM, Tok.getLocation());
     unsigned StmtColNum = getVisualIndentation(SM, StmtLoc);
@@ -2113,7 +2113,7 @@ StmtResult Parser::ParseForStatement(SourceLocation *TrailingElseLoc) {
     ProhibitAttributes(attrs);
     // no first part, eat the ';'.
     SourceLocation SemiLoc = Tok.getLocation();
-    if (!Tok.hasLeadingEmptyMacro() && !SemiLoc.isMacroID())
+    if (!Tok.hasLeadingEmptyMacro() && !SemiLoc.isMacroID(PP.getSourceManager()))
       EmptyInitStmtSemiLoc = SemiLoc;
     ConsumeToken();
   } else if (getLangOpts().CPlusPlus && Tok.is(tok::identifier) &&

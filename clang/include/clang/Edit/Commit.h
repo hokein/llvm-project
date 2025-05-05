@@ -120,7 +120,10 @@ public:
 
   edit_iterator edit_begin() const { return CachedEdits.begin(); }
   edit_iterator edit_end() const { return CachedEdits.end(); }
-
+  
+  const SourceManager& getSourceManager() const {
+    return SourceMgr;
+  }
 private:
   void addInsert(SourceLocation OrigLoc,
                 FileOffset Offs, StringRef text, bool beforePreviousInsertions);

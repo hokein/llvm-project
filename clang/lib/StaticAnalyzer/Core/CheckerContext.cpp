@@ -129,7 +129,7 @@ bool CheckerContext::isHardenedVariantOf(const FunctionDecl *FD,
 }
 
 StringRef CheckerContext::getMacroNameOrSpelling(SourceLocation &Loc) {
-  if (Loc.isMacroID())
+  if (Loc.isMacroID(getSourceManager()))
     return Lexer::getImmediateMacroName(Loc, getSourceManager(),
                                              getLangOpts());
   SmallString<16> buf;

@@ -137,12 +137,12 @@ static bool isDeadReturn(const CFGBlock *B, const Stmt *S) {
 }
 
 static SourceLocation getTopMostMacro(SourceLocation Loc, SourceManager &SM) {
-  assert(Loc.isMacroID());
+  assert(Loc.isMacroID(SM));
   SourceLocation Last;
   do {
     Last = Loc;
     Loc = SM.getImmediateMacroCallerLoc(Loc);
-  } while (Loc.isMacroID());
+  } while (Loc.isMacroID(SM));
   return Last;
 }
 
@@ -155,7 +155,7 @@ static bool isExpandedFromConfigurationMacro(const Stmt *S,
   // to be over conservative.  This logic is factored into a separate function
   // so that we can refine it later.
   SourceLocation L = S->getBeginLoc();
-  if (L.isMacroID()) {
+  if (L.isMacroID(PP.getSourceManager())) {
     SourceManager &SM = PP.getSourceManager();
     if (IgnoreYES_NO) {
       // The Objective-C constant 'YES' and 'NO'
@@ -202,7 +202,7 @@ static bool isConfigurationValue(const Stmt *S,
 
   // Special case looking for the sigil '()' around an integer literal.
   if (const ParenExpr *PE = dyn_cast<ParenExpr>(S))
-    if (!PE->getBeginLoc().isMacroID())
+    if (!PE->getBeginLoc().isMacroID(PP.getSourceManager()))
       return isConfigurationValue(PE->getSubExpr(), PP, SilenceableCondVal,
                                   IncludeIntegers, true);
 
@@ -561,7 +561,7 @@ unsigned DeadCodeScan::scanBackwards(const clang::CFGBlock *Start,
     }
 
     // Specially handle macro-expanded code.
-    if (S->getBeginLoc().isMacroID()) {
+    if (S->getBeginLoc().isMacroID(C.getSourceManager())) {
       count += scanMaybeReachableFromBlock(Block, PP, Reachable);
       continue;
     }

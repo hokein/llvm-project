@@ -57,7 +57,7 @@ llvm::Error clang::tooling::validateRange(const CharSourceRange &Range,
     return llvm::make_error<StringError>(errc::invalid_argument,
                                          "Invalid range");
 
-  if (Range.getBegin().isMacroID() || Range.getEnd().isMacroID())
+  if (Range.getBegin().isMacroID(SM) || Range.getEnd().isMacroID(SM))
     return llvm::make_error<StringError>(
         errc::invalid_argument, "Range starts or ends in a macro expansion");
 
@@ -88,7 +88,7 @@ llvm::Error clang::tooling::validateEditRange(const CharSourceRange &Range,
 
 static bool spelledInMacroDefinition(SourceLocation Loc,
                                      const SourceManager &SM) {
-  while (Loc.isMacroID()) {
+  while (Loc.isMacroID(SM)) {
     const auto &Expansion = SM.getSLocEntry(SM.getFileID(Loc)).getExpansion();
     if (Expansion.isMacroArgExpansion()) {
       // Check the spelling location of the macro arg, in case the arg itself is
@@ -107,7 +107,7 @@ static bool spelledInMacroDefinition(SourceLocation Loc,
 static std::optional<CharSourceRange>
 getExpansionForSplitToken(SourceLocation Loc, const SourceManager &SM,
                           const LangOptions &LangOpts) {
-  if (Loc.isMacroID()) {
+  if (Loc.isMacroID(SM)) {
     bool Invalid = false;
     auto &SLoc = SM.getSLocEntry(SM.getFileID(Loc), &Invalid);
     if (Invalid)
@@ -271,7 +271,7 @@ getEntityEndLoc(const SourceManager &SM, SourceLocation EntityLast,
   Lexer->LexFromRawLexer(Tok);
   if (Terminators.empty() || contains(Terminators, Tok))
     Terminated = true;
-  else if (EntityLast.isMacroID()) {
+  else if (EntityLast.isMacroID(SM)) {
     Terminated = true;
     TerminatedByMacro = true;
   }

@@ -64,11 +64,11 @@ static Expected<DynTypedNode> getNode(const ast_matchers::BoundNodes &Nodes,
 static SourceLocation findPreviousTokenStart(SourceLocation Start,
                                              const SourceManager &SM,
                                              const LangOptions &LangOpts) {
-  if (Start.isInvalid() || Start.isMacroID())
+  if (Start.isInvalid() || Start.isMacroID(SM))
     return SourceLocation();
 
   SourceLocation BeforeStart = Start.getLocWithOffset(-1);
-  if (BeforeStart.isInvalid() || BeforeStart.isMacroID())
+  if (BeforeStart.isInvalid() || BeforeStart.isMacroID(SM))
     return SourceLocation();
 
   return Lexer::GetBeginningOfToken(BeforeStart, SM, LangOpts);
@@ -82,7 +82,7 @@ static SourceLocation findPreviousTokenKind(SourceLocation Start,
                                             tok::TokenKind TK) {
   while (true) {
     SourceLocation L = findPreviousTokenStart(Start, SM, LangOpts);
-    if (L.isInvalid() || L.isMacroID())
+    if (L.isInvalid() || L.isMacroID(SM))
       return SourceLocation();
 
     Token T;

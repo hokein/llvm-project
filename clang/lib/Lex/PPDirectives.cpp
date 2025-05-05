@@ -2669,7 +2669,7 @@ Preprocessor::ImportAction Preprocessor::HandleHeaderIncludeOrImport(
   SourceLocation IncludePos = FilenameTok.getLocation();
   // If the filename string was the result of macro expansions, set the include
   // position on the file where it will be included and after the expansions.
-  if (IncludePos.isMacroID())
+  if (IncludePos.isMacroID(SourceMgr))
     IncludePos = SourceMgr.getExpansionRange(IncludePos).getEnd();
   FileID FID = SourceMgr.createFileID(*File, IncludePos, FileCharacter);
   if (!FID.isValid()) {

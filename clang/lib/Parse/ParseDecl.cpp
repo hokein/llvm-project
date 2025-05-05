@@ -118,10 +118,10 @@ static bool IsAttributeLateParsedStandard(const IdentifierInfo &II) {
 /// Check if the a start and end source location expand to the same macro.
 static bool FindLocsWithCommonFileID(Preprocessor &PP, SourceLocation StartLoc,
                                      SourceLocation EndLoc) {
-  if (!StartLoc.isMacroID() || !EndLoc.isMacroID())
+  SourceManager &SM = PP.getSourceManager();
+  if (!StartLoc.isMacroID(SM) || !EndLoc.isMacroID(SM))
     return false;
 
-  SourceManager &SM = PP.getSourceManager();
   if (SM.getFileID(StartLoc) != SM.getFileID(EndLoc))
     return false;
 

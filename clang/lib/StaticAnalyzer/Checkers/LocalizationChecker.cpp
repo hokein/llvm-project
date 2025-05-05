@@ -1112,7 +1112,7 @@ void EmptyLocalizationContextChecker::MethodCrawler::VisitObjCMessageExpr(
   }
 
   SourceRange R = ME->getSourceRange();
-  if (!R.getBegin().isMacroID())
+  if (!R.getBegin().isMacroID(Mgr.getSourceManager()))
     return;
 
   // getImmediateMacroCallerLoc gets the location of the immediate macro

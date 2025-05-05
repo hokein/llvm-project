@@ -54,6 +54,16 @@ unsigned SourceLocation::getHashValue() const {
   return llvm::DenseMapInfo<UIntTy>::getHashValue(ID);
 }
 
+bool SourceLocation::isMacroID(const SourceManager& SM) const {
+  if (isInvalid()) return false; // invalid sloc is always file loc.
+  return SM.getSLocEntry(SM.getFileID(*this)).isExpansion();
+
+}
+
+bool SourceLocation::isFileID(const SourceManager& SM) const {
+  return !isMacroID(SM);
+}
+
 void llvm::FoldingSetTrait<SourceLocation>::Profile(
     const SourceLocation &X, llvm::FoldingSetNodeID &ID) {
   ID.AddInteger(X.ID);

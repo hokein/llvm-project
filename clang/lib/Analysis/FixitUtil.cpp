@@ -207,7 +207,7 @@ clang::getVarDeclIdentifierText(const DeclaratorDecl *VD,
     ParmIdentBeginLoc = VD->getQualifierLoc().getBeginLoc();
   }
 
-  if (ParmIdentEndLoc.isMacroID() &&
+  if (ParmIdentEndLoc.isMacroID(SM) &&
       !Lexer::isAtEndOfMacroExpansion(ParmIdentEndLoc, SM, LangOpts))
     return std::nullopt;
   return getRangeText({ParmIdentBeginLoc, ParmIdentEndLoc}, SM, LangOpts);

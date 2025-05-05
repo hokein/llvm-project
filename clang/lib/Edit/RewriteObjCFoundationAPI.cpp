@@ -683,8 +683,8 @@ struct LiteralInfo {
 static bool getLiteralInfo(SourceRange literalRange,
                            bool isFloat, bool isIntZero,
                           ASTContext &Ctx, LiteralInfo &Info) {
-  if (literalRange.getBegin().isMacroID() ||
-      literalRange.getEnd().isMacroID())
+  if (literalRange.getBegin().isMacroID(Ctx.getSourceManager()) ||
+      literalRange.getEnd().isMacroID(Ctx.getSourceManager()))
     return false;
   StringRef text = Lexer::getSourceText(
                                   CharSourceRange::getTokenRange(literalRange),
@@ -833,7 +833,7 @@ static bool rewriteToNumberLiteral(const ObjCMessageExpr *Msg,
 
   // We will need to modify the literal suffix to get the same type as the call.
   // Try with boxed expression if it came from a macro.
-  if (ArgRange.getBegin().isMacroID())
+  if (ArgRange.getBegin().isMacroID(commit.getSourceManager()))
     return rewriteToNumericBoxedExpression(Msg, NS, commit);
 
   bool LitIsFloat = ArgTy->isFloatingType();

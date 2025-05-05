@@ -259,7 +259,7 @@ void Parser::checkCompoundToken(SourceLocation FirstTokLoc,
 
   // If either token is in a macro, we expect both tokens to come from the same
   // macro expansion.
-  if ((FirstTokLoc.isMacroID() || SecondTokLoc.isMacroID()) &&
+  if ((FirstTokLoc.isMacroID( PP.getSourceManager()) || SecondTokLoc.isMacroID( PP.getSourceManager())) &&
       PP.getSourceManager().getFileID(FirstTokLoc) !=
           PP.getSourceManager().getFileID(SecondTokLoc)) {
     Diag(FirstTokLoc, diag::warn_compound_token_split_by_macro)

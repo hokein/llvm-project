@@ -142,8 +142,8 @@ class LogicalErrorHandler : public CFGCallback {
 public:
   LogicalErrorHandler(Sema &S) : S(S) {}
 
-  static bool HasMacroID(const Expr *E) {
-    if (E->getExprLoc().isMacroID())
+  bool HasMacroID(const Expr *E) {
+    if (E->getExprLoc().isMacroID(S.getSourceManager()))
       return true;
 
     // Recurse to children.
@@ -753,7 +753,7 @@ static bool SuggestInitializationFixit(Sema &S, const VarDecl *VD) {
     return false;
 
   // Don't suggest a fixit inside macros.
-  if (VD->getEndLoc().isMacroID())
+  if (VD->getEndLoc().isMacroID(S.getSourceManager()))
     return false;
 
   SourceLocation Loc = S.getLocForEndOfToken(VD->getEndLoc());
@@ -1271,7 +1271,7 @@ static void DiagnoseSwitchLabelsFallthrough(Sema &S, AnalysisDeclContext &AC,
 
     if (!AnnotatedCnt) {
       SourceLocation L = Label->getBeginLoc();
-      if (L.isMacroID())
+      if (L.isMacroID(S.getSourceManager()))
         continue;
 
       const Stmt *Term = B->getTerminatorStmt();

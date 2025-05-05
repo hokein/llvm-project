@@ -2763,7 +2763,7 @@ static void CompactMacroExpandedPieces(PathPieces &path,
 
     // Determine the instantiation location, which is the location we group
     // related PathDiagnosticPieces.
-    SourceLocation InstantiationLoc = Loc.isMacroID() ?
+    SourceLocation InstantiationLoc = Loc.isMacroID(SM) ?
                                       SM.getExpansionLoc(Loc) :
                                       SourceLocation();
 
@@ -2773,7 +2773,7 @@ static void CompactMacroExpandedPieces(PathPieces &path,
       continue;
     }
 
-    assert(Loc.isMacroID());
+    assert(Loc.isMacroID(SM));
 
     // Is the PathDiagnosticPiece within the same macro group?
     if (!MacroStack.empty() && InstantiationLoc == MacroStack.back().second) {
@@ -2785,7 +2785,7 @@ static void CompactMacroExpandedPieces(PathPieces &path,
     // or are part of an old one?
     std::shared_ptr<PathDiagnosticMacroPiece> MacroGroup;
 
-    SourceLocation ParentInstantiationLoc = InstantiationLoc.isMacroID() ?
+    SourceLocation ParentInstantiationLoc = InstantiationLoc.isMacroID(SM) ?
                                           SM.getExpansionLoc(Loc) :
                                           SourceLocation();
 
@@ -3315,7 +3315,7 @@ getFirstStackedCallToHeaderFile(PathDiagnosticCallPiece *CP,
   SourceLocation CallLoc = CP->callEnter.asLocation();
 
   // If the call is within a macro, don't do anything (for now).
-  if (CallLoc.isMacroID())
+  if (CallLoc.isMacroID(SMgr))
     return nullptr;
 
   assert(AnalysisManager::isInCodeFile(CallLoc, SMgr) &&

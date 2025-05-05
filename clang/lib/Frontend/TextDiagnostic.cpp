@@ -1512,8 +1512,8 @@ void TextDiagnostic::emitParseableFixits(ArrayRef<FixItHint> Hints,
   // We follow FixItRewriter's example in not (yet) handling
   // fix-its in macros.
   for (const auto &H : Hints) {
-    if (H.RemoveRange.isInvalid() || H.RemoveRange.getBegin().isMacroID() ||
-        H.RemoveRange.getEnd().isMacroID())
+    if (H.RemoveRange.isInvalid() || H.RemoveRange.getBegin().isMacroID(SM) ||
+        H.RemoveRange.getEnd().isMacroID(SM))
       return;
   }
 

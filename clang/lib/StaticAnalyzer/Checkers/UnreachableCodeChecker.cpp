@@ -41,7 +41,7 @@ private:
   static void FindUnreachableEntryPoints(const CFGBlock *CB,
                                          CFGBlocksSet &reachable,
                                          CFGBlocksSet &visited);
-  static bool isInvalidPath(const CFGBlock *CB, const ParentMap &PM);
+  static bool isInvalidPath(const CFGBlock *CB, const ParentMap &PM,  const SourceManager& SM);
   static inline bool isEmptyCFGBlock(const CFGBlock *CB);
 };
 }
@@ -110,7 +110,7 @@ void UnreachableCodeChecker::checkEndAnalysis(ExplodedGraph &G,
       continue;
 
     // Check for false positives
-    if (isInvalidPath(CB, *PM))
+    if (isInvalidPath(CB, *PM, B.getSourceManager()))
       continue;
 
     // It is good practice to always have a "default" label in a "switch", even
@@ -148,7 +148,7 @@ void UnreachableCodeChecker::checkEndAnalysis(ExplodedGraph &G,
     if (const Stmt *S = getUnreachableStmt(CB)) {
       // In macros, 'do {...} while (0)' is often used. Don't warn about the
       // condition 0 when it is unreachable.
-      if (S->getBeginLoc().isMacroID())
+      if (S->getBeginLoc().isMacroID(B.getSourceManager()))
         if (const auto *I = dyn_cast<IntegerLiteral>(S))
           if (I->getValue() == 0ULL)
             if (const Stmt *Parent = PM->getParent(S))
@@ -213,7 +213,8 @@ const Stmt *UnreachableCodeChecker::getUnreachableStmt(const CFGBlock *CB) {
 // find the condition that led to this block (the predecessor of this block.)
 // There will never be more than one predecessor.
 bool UnreachableCodeChecker::isInvalidPath(const CFGBlock *CB,
-                                           const ParentMap &PM) {
+                                           const ParentMap &PM,
+                                           const SourceManager& SM) {
   // We only expect a predecessor size of 0 or 1. If it is >1, then an external
   // condition has broken our assumption (for example, a sink being placed by
   // another check). In these cases, we choose not to report.
@@ -238,7 +239,7 @@ bool UnreachableCodeChecker::isInvalidPath(const CFGBlock *CB,
     return false;
 
   // Run each of the checks on the conditions
-  return containsMacro(cond) || containsEnum(cond) ||
+  return containsMacro(cond, SM) || containsEnum(cond) ||
          containsStaticLocal(cond) || containsBuiltinOffsetOf(cond) ||
          containsStmt<UnaryExprOrTypeTraitExpr>(cond);
 }

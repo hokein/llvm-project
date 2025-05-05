@@ -71,7 +71,7 @@ public:
       SourceLocation Loc = NameRanges[0].getBegin();
       const SourceManager &SM = Context.getSourceManager();
       // TODO: Deal with macro occurrences correctly.
-      if (Loc.isMacroID())
+      if (Loc.isMacroID(SM))
         Loc = SM.getSpellingLoc(Loc);
       checkAndAddLocation(Loc);
     }

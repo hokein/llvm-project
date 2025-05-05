@@ -85,7 +85,7 @@ public:
     const SourceRange DeclRange = D->getSourceRange();
     const SourceManager &SM = Context.getSourceManager();
     SourceLocation FileLoc;
-    if (DeclRange.getBegin().isMacroID() && !DeclRange.getEnd().isMacroID())
+    if (DeclRange.getBegin().isMacroID(SM) && !DeclRange.getEnd().isMacroID(SM))
       FileLoc = DeclRange.getEnd();
     else
       FileLoc = SM.getSpellingLoc(DeclRange.getBegin());

@@ -728,15 +728,15 @@ window.addEventListener("keydown", function (event) {
 )<<<";
 }
 
-static bool shouldDisplayPopUpRange(const SourceRange &Range) {
-  return !(Range.getBegin().isMacroID() || Range.getEnd().isMacroID());
+static bool shouldDisplayPopUpRange(const SourceRange &Range,  const SourceManager& SM) {
+  return !(Range.getBegin().isMacroID(SM) || Range.getEnd().isMacroID(SM));
 }
 
 static void
 HandlePopUpPieceStartTag(Rewriter &R,
                          const std::vector<SourceRange> &PopUpRanges) {
   for (const auto &Range : PopUpRanges) {
-    if (!shouldDisplayPopUpRange(Range))
+    if (!shouldDisplayPopUpRange(Range, R.getSourceMgr()))
       continue;
 
     html::HighlightRange(R, Range.getBegin(), Range.getEnd(), "",
@@ -754,7 +754,7 @@ static void HandlePopUpPieceEndTag(Rewriter &R,
   llvm::raw_svector_ostream Out(Buf);
 
   SourceRange Range(Piece.getLocation().asRange());
-  if (!shouldDisplayPopUpRange(Range))
+  if (!shouldDisplayPopUpRange(Range, R.getSourceMgr()))
     return;
 
   // Write out the path indices with a right arrow and the message as a row.

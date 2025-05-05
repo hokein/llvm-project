@@ -384,7 +384,7 @@ public:
 
     const SourceManager &SM = D->getASTContext().getSourceManager();
     SourceLocation Loc = D->getLocation();
-    if (Loc.isMacroID())
+    if (Loc.isMacroID(SM))
       return false;
     if (SM.isInSystemHeader(Loc))
       return true; // always skip bodies from system headers.

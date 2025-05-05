@@ -404,7 +404,7 @@ static bool BuiltinOverflow(Sema &S, CallExpr *TheCall, unsigned BuiltinID) {
 
   bool CkdOperation = llvm::any_of(Builtins, [&](const std::pair<unsigned,
     const char *> &P) {
-    return BuiltinID == P.first && TheCall->getExprLoc().isMacroID() &&
+    return BuiltinID == P.first && TheCall->getExprLoc().isMacroID(S.getSourceManager()) &&
          Lexer::getImmediateMacroName(TheCall->getExprLoc(),
          S.getSourceManager(), S.getLangOpts()) == P.second;
   });
@@ -9246,7 +9246,7 @@ void Sema::CheckMaxUnsignedZero(const CallExpr *Call,
 
   // Ignore template specializations and macros.
   if (inTemplateInstantiation()) return;
-  if (Call->getExprLoc().isMacroID()) return;
+  if (Call->getExprLoc().isMacroID(getSourceManager())) return;
 
   // Only care about the one template argument, two function parameter std::max
   if (Call->getNumArgs() != 2) return;
@@ -9513,7 +9513,7 @@ static bool doesExprLikelyComputeSize(const Expr *SizeofExpr) {
 static bool isArgumentExpandedFromMacro(SourceManager &SM,
                                         SourceLocation CallLoc,
                                         SourceLocation ArgLoc) {
-  if (!CallLoc.isMacroID())
+  if (!CallLoc.isMacroID(SM))
     return SM.getFileID(CallLoc) != SM.getFileID(ArgLoc);
 
   return SM.getFileID(SM.getImmediateMacroCallerLoc(CallLoc)) !=
@@ -9547,7 +9547,7 @@ static void CheckMemaccessSize(Sema &S, unsigned BId, const CallExpr *Call) {
     // Some platforms #define bzero to __builtin_memset. See if this is the
     // case, and if so, emit a better diagnostic.
     if (BId == Builtin::BIbzero ||
-        (CallLoc.isMacroID() && Lexer::getImmediateMacroName(
+        (CallLoc.isMacroID(SM) && Lexer::getImmediateMacroName(
                                     CallLoc, SM, S.getLangOpts()) == "bzero")) {
       S.Diag(DiagLoc, diag::warn_suspicious_bzero_size);
       S.Diag(DiagLoc, diag::note_suspicious_bzero_size_silence);
@@ -10817,7 +10817,7 @@ static bool IsEnumConstOrFromMacro(Sema &S, Expr *E) {
   // is how a language represents a boolean literal. This is the case in both C
   // and Objective-C.
   SourceLocation BeginLoc = E->getBeginLoc();
-  if (BeginLoc.isMacroID()) {
+  if (BeginLoc.isMacroID(S.getSourceManager())) {
     StringRef MacroName = Lexer::getImmediateMacroName(
         BeginLoc, S.getSourceManager(), S.getLangOpts());
     return MacroName != "YES" && MacroName != "NO" &&
@@ -11715,7 +11715,7 @@ static void DiagnoseNullConversion(Sema &S, Expr *E, QualType T,
   CC = S.SourceMgr.getTopMacroCallerLoc(CC);
 
   // __null is usually wrapped in a macro.  Go up a macro if that is the case.
-  if (IsGNUNullExpr && Loc.isMacroID()) {
+  if (IsGNUNullExpr && Loc.isMacroID(S.SourceMgr)) {
     StringRef MacroName = Lexer::getImmediateMacroNameForDiagnostics(
         Loc, S.SourceMgr, S.getLangOpts());
     if (MacroName == "NULL")
@@ -12607,7 +12607,7 @@ static bool IsInAnyMacroBody(const SourceManager &SM, SourceLocation Loc) {
   if (Loc.isInvalid())
     return false;
 
-  while (Loc.isMacroID()) {
+  while (Loc.isMacroID(SM)) {
     if (SM.isMacroBodyExpansion(Loc))
       return true;
     Loc = SM.getImmediateMacroCallerLoc(Loc);
@@ -12623,7 +12623,7 @@ void Sema::DiagnoseAlwaysNonNullPointer(Expr *E,
     return;
 
   // Don't warn inside macros.
-  if (E->getExprLoc().isMacroID()) {
+  if (E->getExprLoc().isMacroID(getSourceManager())) {
     const SourceManager &SM = getSourceManager();
     if (IsInAnyMacroBody(SM, E->getExprLoc()) ||
         IsInAnyMacroBody(SM, Range.getBegin()))

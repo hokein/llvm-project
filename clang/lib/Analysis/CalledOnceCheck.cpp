@@ -1250,7 +1250,7 @@ private:
     //
     // Additionally, we can't assume a number of basic blocks or the CFG's
     // structure because assertions might include loops and conditions.
-    return llvm::all_of(FunctionCFG, [](const CFGBlock *BB) {
+    return llvm::all_of(FunctionCFG, [SM=&AC.getASTContext().getSourceManager()](const CFGBlock *BB) {
       if (!BB) {
         // Unreachable blocks are totally fine.
         return true;
@@ -1265,10 +1265,10 @@ private:
       return llvm::all_of(
           llvm::reverse(*BB), // we should start with return statements, if we
                               // have any, i.e. from the bottom of the block
-          [&ReturnChildren](const CFGElement &Element) {
+          [SM, &ReturnChildren](const CFGElement &Element) {
             if (std::optional<CFGStmt> S = Element.getAs<CFGStmt>()) {
               const Stmt *SuspiciousStmt = S->getStmt();
-
+            
               if (isa<ReturnStmt>(SuspiciousStmt)) {
                 // Let's initialize this structure to test whether
                 // some further statement is a part of this return.
@@ -1278,7 +1278,7 @@ private:
                 return true;
               }
 
-              return SuspiciousStmt->getBeginLoc().isMacroID() ||
+              return SuspiciousStmt->getBeginLoc().isMacroID(*SM) ||
                      (ReturnChildren &&
                       ReturnChildren->hasParent(SuspiciousStmt));
             }

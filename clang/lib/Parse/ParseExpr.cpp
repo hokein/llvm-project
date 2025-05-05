@@ -2797,7 +2797,7 @@ ExprResult Parser::ParseBuiltinPrimaryExpression() {
   case tok::kw___builtin_offsetof: {
     SourceLocation TypeLoc = Tok.getLocation();
     auto OOK = OffsetOfKind::Builtin;
-    if (Tok.getLocation().isMacroID()) {
+    if (Tok.getLocation().isMacroID(PP.getSourceManager())) {
       StringRef MacroName = Lexer::getImmediateMacroNameForDiagnostics(
           Tok.getLocation(), PP.getSourceManager(), getLangOpts());
       if (MacroName == "offsetof")
@@ -3122,7 +3122,7 @@ Parser::ParseParenExpression(ParenParseOption &ExprType, bool stopIfCastExpr,
   // None of these cases should fall through with an invalid Result
   // unless they've already reported an error.
   if (ExprType >= ParenParseOption::CompoundStmt && Tok.is(tok::l_brace)) {
-    Diag(Tok, OpenLoc.isMacroID() ? diag::ext_gnu_statement_expr_macro
+    Diag(Tok, OpenLoc.isMacroID(PP.getSourceManager()) ? diag::ext_gnu_statement_expr_macro
                                   : diag::ext_gnu_statement_expr);
 
     checkCompoundToken(OpenLoc, tok::l_paren, CompoundToken::StmtExprBegin);

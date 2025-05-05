@@ -183,7 +183,7 @@ static bool EvaluateDefined(PPValue &Result, Token &PeekTok, DefinedTracker &DT,
   //   #endif
   // clang and gcc will pick the #if branch while Visual Studio will take the
   // #else branch.  Emit a warning about this undefined behavior.
-  if (beginLoc.isMacroID()) {
+  if (beginLoc.isMacroID(PP.getSourceManager())) {
     bool IsFunctionTypeMacro =
         PP.getSourceManager()
             .getSLocEntry(PP.getSourceManager().getFileID(beginLoc))

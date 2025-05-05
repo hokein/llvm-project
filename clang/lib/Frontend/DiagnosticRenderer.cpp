@@ -127,7 +127,7 @@ void DiagnosticRenderer::emitDiagnostic(FullSourceLoc Loc,
 
     // If this location is within a macro, walk from UnexpandedLoc up to Loc
     // and produce a macro backtrace.
-    if (UnexpandedLoc.isValid() && UnexpandedLoc.isMacroID()) {
+    if (UnexpandedLoc.isValid() && UnexpandedLoc.isMacroID(Loc.getManager())) {
       emitMacroExpansions(UnexpandedLoc, Level, MutableRanges, FixItHints);
     }
   }
@@ -264,7 +264,7 @@ retrieveMacroLocation(SourceLocation Loc, FileID MacroFileID,
   assert(SM->getFileID(Loc) == MacroFileID);
   if (MacroFileID == CaretFileID)
     return Loc;
-  if (!Loc.isMacroID())
+  if (!Loc.isMacroID(*SM))
     return {};
 
   CharSourceRange MacroRange, MacroArgRange;
@@ -314,7 +314,7 @@ retrieveMacroLocation(SourceLocation Loc, FileID MacroFileID,
 static void getMacroArgExpansionFileIDs(SourceLocation Loc,
                                         SmallVectorImpl<FileID> &IDs,
                                         bool IsBegin, const SourceManager *SM) {
-  while (Loc.isMacroID()) {
+  while (Loc.isMacroID(*SM)) {
     if (SM->isMacroArgExpansion(Loc)) {
       IDs.push_back(SM->getFileID(Loc));
       Loc = SM->getImmediateSpellingLoc(Loc);
@@ -372,7 +372,7 @@ mapDiagnosticRanges(FullSourceLoc CaretLoc, ArrayRef<CharSourceRange> Ranges,
 
     // First, crawl the expansion chain for the beginning of the range.
     llvm::SmallDenseMap<FileID, SourceLocation> BeginLocsMap;
-    while (Begin.isMacroID() && BeginFileID != EndFileID) {
+    while (Begin.isMacroID(*SM) && BeginFileID != EndFileID) {
       BeginLocsMap[BeginFileID] = Begin;
       Begin = SM->getImmediateExpansionRange(Begin).getBegin();
       BeginFileID = SM->getFileID(Begin);
@@ -380,13 +380,13 @@ mapDiagnosticRanges(FullSourceLoc CaretLoc, ArrayRef<CharSourceRange> Ranges,
 
     // Then, crawl the expansion chain for the end of the range.
     if (BeginFileID != EndFileID) {
-      while (End.isMacroID() && !BeginLocsMap.count(EndFileID)) {
+      while (End.isMacroID(*SM) && !BeginLocsMap.count(EndFileID)) {
         auto Exp = SM->getImmediateExpansionRange(End);
         IsTokenRange = Exp.isTokenRange();
         End = Exp.getEnd();
         EndFileID = SM->getFileID(End);
       }
-      if (End.isMacroID()) {
+      if (End.isMacroID(*SM)) {
         Begin = BeginLocsMap[EndFileID];
         BeginFileID = EndFileID;
       }
@@ -459,7 +459,7 @@ void DiagnosticRenderer::emitSingleMacroExpansion(
 static bool
 rangesInsideSameMacroArgExpansion(FullSourceLoc Loc,
                                   ArrayRef<CharSourceRange> Ranges) {
-  assert(Loc.isMacroID() && "Must be a macro expansion!");
+  assert(Loc.isMacroID(Loc.getManager()) && "Must be a macro expansion!");
 
   SmallVector<CharSourceRange> SpellingRanges;
   mapDiagnosticRanges(Loc, Ranges, SpellingRanges);
@@ -515,7 +515,7 @@ void DiagnosticRenderer::emitMacroExpansions(FullSourceLoc Loc,
   // Produce a stack of macro backtraces.
   SmallVector<SourceLocation, 8> LocationStack;
   unsigned IgnoredEnd = 0;
-  while (L.isMacroID()) {
+  while (L.isMacroID(SM)) {
     // If this is the expansion of a macro argument, point the caret at the
     // use of the argument in the definition of the macro, not the expansion.
     if (SM.isMacroArgExpansion(L)) {

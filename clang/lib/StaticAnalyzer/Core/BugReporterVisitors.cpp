@@ -305,7 +305,7 @@ static StringRef getMacroName(SourceLocation Loc,
 /// of a function-like macro.
 static bool isFunctionMacroExpansion(SourceLocation Loc,
                                 const SourceManager &SM) {
-  if (!Loc.isMacroID())
+  if (!Loc.isMacroID(SM))
     return false;
   while (SM.isMacroArgExpansion(Loc))
     Loc = SM.getImmediateExpansionRange(Loc).getBegin();
@@ -835,7 +835,7 @@ public:
       if (isFunctionMacroExpansion(*Loc, SMgr)) {
         std::string MacroName = std::string(getMacroName(*Loc, BRC));
         SourceLocation BugLoc = BugPoint->getStmt()->getBeginLoc();
-        if (!BugLoc.isMacroID() || getMacroName(BugLoc, BRC) != MacroName)
+        if (!BugLoc.isMacroID(SMgr) || getMacroName(BugLoc, BRC) != MacroName)
           BR.markInvalid(getTag(), MacroName.c_str());
       }
     }
@@ -1907,7 +1907,7 @@ SuppressInlineDefensiveChecksVisitor::VisitNode(const ExplodedNode *Succ,
       CurTerminatorStmt = BE->getSrc()->getTerminator().getStmt();
     } else if (auto SP = CurPoint.getAs<StmtPoint>()) {
       const Stmt *CurStmt = SP->getStmt();
-      if (!CurStmt->getBeginLoc().isMacroID())
+      if (!CurStmt->getBeginLoc().isMacroID(CurLC->getAnalysisDeclContext()->getASTContext().getSourceManager()))
         return nullptr;
 
       CFGStmtMap *Map = CurLC->getAnalysisDeclContext()->getCFGStmtMap();
@@ -1920,11 +1920,11 @@ SuppressInlineDefensiveChecksVisitor::VisitNode(const ExplodedNode *Succ,
       return nullptr;
 
     SourceLocation TerminatorLoc = CurTerminatorStmt->getBeginLoc();
-    if (TerminatorLoc.isMacroID()) {
+    if (TerminatorLoc.isMacroID(CurLC->getAnalysisDeclContext()->getASTContext().getSourceManager())) {
       SourceLocation BugLoc = BugPoint->getStmt()->getBeginLoc();
 
       // Suppress reports unless we are in that same macro.
-      if (!BugLoc.isMacroID() ||
+      if (!BugLoc.isMacroID(CurLC->getAnalysisDeclContext()->getASTContext().getSourceManager()) ||
           getMacroName(BugLoc, BRC) != getMacroName(TerminatorLoc, BRC)) {
         BR.markInvalid("Suppress Macro IDC", CurLC);
       }
@@ -2925,7 +2925,7 @@ bool ConditionBRVisitor::patternMatch(const Expr *Ex, const Expr *ParentEx,
     // expanding to a literal and if so, use the macro's name.
     SourceLocation BeginLoc = OriginalExpr->getBeginLoc();
     SourceLocation EndLoc = OriginalExpr->getEndLoc();
-    if (BeginLoc.isMacroID() && EndLoc.isMacroID()) {
+    if (BeginLoc.isMacroID(BRC.getSourceManager()) && EndLoc.isMacroID(BRC.getSourceManager())) {
       const SourceManager &SM = BRC.getSourceManager();
       const LangOptions &LO = BRC.getASTContext().getLangOpts();
       if (Lexer::isAtStartOfMacroExpansion(BeginLoc, SM, LO) &&
@@ -3340,7 +3340,7 @@ void LikelyFalsePositiveSuppressionBRVisitor::finalizeVisitor(
   // reason about data structure shapes.
   const SourceManager &SM = BRC.getSourceManager();
   FullSourceLoc Loc = BR.getLocation().asLocation();
-  while (Loc.isMacroID()) {
+  while (Loc.isMacroID(SM)) {
     Loc = Loc.getSpellingLoc();
     if (SM.getFilename(Loc).ends_with("sys/queue.h")) {
       BR.markInvalid(getTag(), nullptr);

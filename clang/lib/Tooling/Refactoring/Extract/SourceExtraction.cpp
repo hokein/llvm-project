@@ -60,7 +60,7 @@ bool isSemicolonRequiredAfter(const Stmt *S) {
 /// Returns true if the two source locations are on the same line.
 bool areOnSameLine(SourceLocation Loc1, SourceLocation Loc2,
                    const SourceManager &SM) {
-  return !Loc1.isMacroID() && !Loc2.isMacroID() &&
+  return !Loc1.isMacroID(SM) && !Loc2.isMacroID(SM) &&
          SM.getSpellingLineNumber(Loc1) == SM.getSpellingLineNumber(Loc2);
 }
 

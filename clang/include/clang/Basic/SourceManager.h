@@ -1543,7 +1543,7 @@ public:
 
   /// Returns whether \p Loc is expanded from a macro in a system header.
   bool isInSystemMacro(SourceLocation loc) const {
-    if (!loc.isMacroID())
+    if (!loc.isMacroID(*this))
       return false;
 
     // This happens when the macro is the result of a paste, in that case
@@ -1822,7 +1822,7 @@ public:
   /// Gets the location of the immediate macro caller, one level up the stack
   /// toward the initial macro typed into the source.
   SourceLocation getImmediateMacroCallerLoc(SourceLocation Loc) const {
-    if (!Loc.isMacroID()) return Loc;
+    if (!Loc.isMacroID(*this)) return Loc;
 
     // When we have the location of (part of) an expanded parameter, its
     // spelling location points to the argument as expanded in the macro call,

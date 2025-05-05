@@ -1945,7 +1945,7 @@ static void handleStandardNoReturnAttr(Sema &S, Decl *D, const ParsedAttr &A) {
   // is defined as a macro which expands to '_Noreturn').
   if (!S.getLangOpts().CPlusPlus &&
       A.getSemanticSpelling() == CXX11NoReturnAttr::C23_Noreturn &&
-      !(A.getLoc().isMacroID() &&
+      !(A.getLoc().isMacroID(S.getSourceManager()) &&
         S.getSourceManager().isInSystemMacro(A.getLoc())))
     S.Diag(A.getLoc(), diag::warn_deprecated_noreturn_spelling) << A.getRange();
 

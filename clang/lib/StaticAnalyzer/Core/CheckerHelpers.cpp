@@ -22,15 +22,15 @@ namespace clang {
 namespace ento {
 
 // Recursively find any substatements containing macros
-bool containsMacro(const Stmt *S) {
-  if (S->getBeginLoc().isMacroID())
+bool containsMacro(const Stmt *S,  const SourceManager& SM) {
+  if (S->getBeginLoc().isMacroID(SM))
     return true;
 
-  if (S->getEndLoc().isMacroID())
+  if (S->getEndLoc().isMacroID(SM))
     return true;
 
   for (const Stmt *Child : S->children())
-    if (Child && containsMacro(Child))
+    if (Child && containsMacro(Child, SM))
       return true;
 
   return false;

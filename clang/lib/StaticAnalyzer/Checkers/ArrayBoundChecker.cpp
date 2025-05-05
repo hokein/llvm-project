@@ -775,7 +775,7 @@ void ArrayBoundChecker::reportOOB(CheckerContext &C, ProgramStateRef ErrorState,
 
 bool ArrayBoundChecker::isFromCtypeMacro(const Expr *E, ASTContext &ACtx) {
   SourceLocation Loc = E->getBeginLoc();
-  if (!Loc.isMacroID())
+  if (!Loc.isMacroID(ACtx.getSourceManager()))
     return false;
 
   StringRef MacroName = Lexer::getImmediateMacroName(

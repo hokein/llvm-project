@@ -944,7 +944,7 @@ static unsigned PrintExpected(DiagnosticsEngine &Diags,
 /// Determine whether two source locations come from the same file.
 static bool IsFromSameFile(SourceManager &SM, SourceLocation DirectiveLoc,
                            SourceLocation DiagnosticLoc) {
-  while (DiagnosticLoc.isMacroID())
+  while (DiagnosticLoc.isMacroID(SM))
     DiagnosticLoc = SM.getImmediateMacroCallerLoc(DiagnosticLoc);
 
   if (SM.isWrittenInSameFile(DirectiveLoc, DiagnosticLoc))

@@ -206,7 +206,7 @@ getDeclLocsForCommentSearch(const Decl *D, SourceManager &SourceMgr) {
   else
     BaseLocation = D->getLocation();
 
-  if (!D->getLocation().isMacroID()) {
+  if (!D->getLocation().isMacroID(SourceMgr)) {
     Locations.emplace_back(BaseLocation);
   } else {
     const auto *DeclCtx = D->getDeclContext();
@@ -219,7 +219,10 @@ getDeclLocsForCommentSearch(const Decl *D, SourceManager &SourceMgr) {
     // expansion site, the second value is the spelling location of the
     // beginning of the declaration defined inside the macro.
     if (!(DeclCtx &&
-          Decl::castFromDeclContext(DeclCtx)->getLocation().isMacroID())) {
+          Decl::castFromDeclContext(DeclCtx)->getLocation().isMacroID(SourceMgr))) {
+      // auto t = Decl::castFromDeclContext(DeclCtx)->getLocation();
+      // t.dump(SourceMgr);
+      // llvm::errs() << "DEBUG " << t.isMacroID() << " " << t.isMacroID(SourceMgr)<< "\n";
       Locations.emplace_back(SourceMgr.getExpansionLoc(BaseLocation));
     }
 

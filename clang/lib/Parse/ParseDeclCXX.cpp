@@ -4590,7 +4590,7 @@ IdentifierInfo *Parser::TryParseCXX11AttributeIdentifier(
     // If we got a numeric constant, check to see if it comes from a macro that
     // corresponds to the predefined __clang__ macro. If it does, warn the user
     // and recover by pretending they said _Clang instead.
-    if (Tok.getLocation().isMacroID()) {
+    if (Tok.getLocation().isMacroID(PP.getSourceManager())) {
       SmallString<8> ExpansionBuf;
       SourceLocation ExpansionLoc =
           PP.getSourceManager().getExpansionLoc(Tok.getLocation());

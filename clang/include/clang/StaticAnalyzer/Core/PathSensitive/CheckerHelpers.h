@@ -30,7 +30,7 @@ class Preprocessor;
 
 namespace ento {
 
-bool containsMacro(const Stmt *S);
+bool containsMacro(const Stmt *S, const SourceManager&);
 bool containsEnum(const Stmt *S);
 bool containsStaticLocal(const Stmt *S);
 bool containsBuiltinOffsetOf(const Stmt *S);

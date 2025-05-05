@@ -3384,7 +3384,7 @@ static Expr *lookThroughRangesV3Condition(Preprocessor &PP, Expr *Cond) {
   // CONCEPT_REQUIRES or CONCEPT_REQUIRES_, return the right-hand side
   // of the '||', which is the real, user-provided condition.
   SourceLocation Loc = InnerBinOp->getExprLoc();
-  if (!Loc.isMacroID()) return Cond;
+  if (!Loc.isMacroID(PP.getSourceManager())) return Cond;
 
   StringRef MacroName = PP.getImmediateMacroName(Loc);
   if (MacroName == "CONCEPT_REQUIRES" || MacroName == "CONCEPT_REQUIRES_")

@@ -703,7 +703,7 @@ static std::optional<SourceLocation> getExpansionLocOfMacroRecursive(
     llvm::DenseSet<SourceLocation> &CheckedLocations) {
   auto &SM = Context.getSourceManager();
   const LangOptions &LangOpts = Context.getLangOpts();
-  while (Loc.isMacroID()) {
+  while (Loc.isMacroID(SM)) {
     if (CheckedLocations.count(Loc))
       return std::nullopt;
     CheckedLocations.insert(Loc);

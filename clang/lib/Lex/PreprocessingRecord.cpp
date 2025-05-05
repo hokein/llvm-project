@@ -385,7 +385,7 @@ void PreprocessingRecord::addMacroExpansion(const Token &Id,
                                             const MacroInfo *MI,
                                             SourceRange Range) {
   // We don't record nested macro expansions.
-  if (Id.getLocation().isMacroID())
+  if (Id.getLocation().isMacroID(getSourceManager()))
     return;
 
   if (MI->isBuiltinMacro())

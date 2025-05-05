@@ -306,7 +306,7 @@ makePropertyAttributesAsWritten(unsigned Attributes) {
 
 static bool LocPropertyAttribute( ASTContext &Context, const char *attrName,
                                  SourceLocation LParenLoc, SourceLocation &Loc) {
-  if (LParenLoc.isMacroID())
+  if (LParenLoc.isMacroID(Context.getSourceManager()))
     return false;
 
   SourceManager &SM = Context.getSourceManager();

@@ -2194,7 +2194,7 @@ Parser::ParseCXXCondition(StmtResult *InitStmt, SourceLocation Loc,
     if (InitStmt && Tok.is(tok::semi)) {
       WarnOnInit();
       SourceLocation SemiLoc = Tok.getLocation();
-      if (!Tok.hasLeadingEmptyMacro() && !SemiLoc.isMacroID()) {
+      if (!Tok.hasLeadingEmptyMacro() && !SemiLoc.isMacroID(PP.getSourceManager())) {
         Diag(SemiLoc, diag::warn_empty_init_statement)
             << (CK == Sema::ConditionKind::Switch)
             << FixItHint::CreateRemoval(SemiLoc);

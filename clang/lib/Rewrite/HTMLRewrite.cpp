@@ -665,7 +665,7 @@ static void HighlightMacrosImpl(
   TmpPP.Lex(Tok);
   while (Tok.isNot(tok::eof)) {
     // Ignore non-macro tokens.
-    if (!Tok.getLocation().isMacroID()) {
+    if (!Tok.getLocation().isMacroID(R.getSourceMgr())) {
       TmpPP.Lex(Tok);
       continue;
     }

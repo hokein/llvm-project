@@ -286,14 +286,14 @@ public:
 
   /// Return the start location of an included file or expanded macro.
   SourceLocation getStartOfFileOrMacro(SourceLocation Loc) {
-    if (Loc.isMacroID())
+    if (Loc.isMacroID(SM))
       return Loc.getLocWithOffset(-SM.getFileOffset(Loc));
     return SM.getLocForStartOfFile(SM.getFileID(Loc));
   }
 
   /// Return the end location of an included file or expanded macro.
   SourceLocation getEndOfFileOrMacro(SourceLocation Loc) {
-    if (Loc.isMacroID())
+    if (Loc.isMacroID(SM))
       return Loc.getLocWithOffset(SM.getFileIDSize(SM.getFileID(Loc)) -
                                   SM.getFileOffset(Loc));
     return SM.getLocForEndOfFile(SM.getFileID(Loc));
@@ -309,7 +309,7 @@ public:
   std::pair<SourceLocation, std::optional<SourceLocation>>
   getNonScratchExpansionLoc(SourceLocation Loc) {
     std::optional<SourceLocation> EndLoc = std::nullopt;
-    while (Loc.isMacroID() &&
+    while (Loc.isMacroID(SM) &&
            SM.isWrittenInScratchSpace(SM.getSpellingLoc(Loc))) {
       auto ExpansionRange = SM.getImmediateExpansionRange(Loc);
       Loc = ExpansionRange.getBegin();
@@ -323,7 +323,7 @@ public:
   /// found sloc is not a <scratch space>.
   SourceLocation getIncludeOrExpansionLoc(SourceLocation Loc,
                                           bool AcceptScratch = true) {
-    if (!Loc.isMacroID())
+    if (!Loc.isMacroID(SM))
       return SM.getIncludeLoc(SM.getFileID(Loc));
     Loc = SM.getImmediateExpansionRange(Loc).getBegin();
     if (AcceptScratch)
@@ -1330,7 +1330,7 @@ struct CounterCoverageMappingBuilder
 
     // If AfterLoc is in function-like macro, use the right parenthesis
     // location.
-    if (AfterLoc.isMacroID()) {
+    if (AfterLoc.isMacroID(SM)) {
       FileID FID = SM.getFileID(AfterLoc);
       const SrcMgr::ExpansionInfo *EI = &SM.getSLocEntry(FID).getExpansion();
       if (EI->isFunctionMacroExpansion())
@@ -1364,7 +1364,7 @@ struct CounterCoverageMappingBuilder
     AfterLoc = getPreciseTokenLocEnd(AfterLoc);
     // If the start and end locations of the gap are both within the same macro
     // file, the range may not be in source order.
-    if (AfterLoc.isMacroID() || BeforeLoc.isMacroID())
+    if (AfterLoc.isMacroID(SM) || BeforeLoc.isMacroID(SM))
       return std::nullopt;
     if (!SM.isWrittenInSameFile(AfterLoc, BeforeLoc) ||
         !SpellingRegion(SM, AfterLoc, BeforeLoc).isInSourceOrder())
@@ -1390,7 +1390,7 @@ struct CounterCoverageMappingBuilder
   std::optional<SourceRange> findAreaStartingFromTo(SourceLocation StartingLoc,
                                                     SourceLocation BeforeLoc) {
     // If StartingLoc is in function-like macro, use its start location.
-    if (StartingLoc.isMacroID()) {
+    if (StartingLoc.isMacroID(SM)) {
       FileID FID = SM.getFileID(StartingLoc);
       const SrcMgr::ExpansionInfo *EI = &SM.getSLocEntry(FID).getExpansion();
       if (EI->isFunctionMacroExpansion())
@@ -1421,7 +1421,7 @@ struct CounterCoverageMappingBuilder
     }
     // If the start and end locations of the gap are both within the same macro
     // file, the range may not be in source order.
-    if (StartingLoc.isMacroID() || BeforeLoc.isMacroID())
+    if (StartingLoc.isMacroID(SM) || BeforeLoc.isMacroID(SM))
       return std::nullopt;
     if (!SM.isWrittenInSameFile(StartingLoc, BeforeLoc) ||
         !SpellingRegion(SM, StartingLoc, BeforeLoc).isInSourceOrder())

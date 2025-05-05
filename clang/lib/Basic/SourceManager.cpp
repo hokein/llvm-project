@@ -989,7 +989,7 @@ StringRef SourceManager::getFilename(SourceLocation SpellingLoc) const {
 /// Return the start/end of the expansion information.
 CharSourceRange
 SourceManager::getImmediateExpansionRange(SourceLocation Loc) const {
-  assert(Loc.isMacroID() && "Not a macro expansion loc!");
+  assert(Loc.isMacroID(*this) && "Not a macro expansion loc!");
   const ExpansionInfo &Expansion = getSLocEntry(getFileID(Loc)).getExpansion();
   return Expansion.getExpansionLocRange();
 }
@@ -1022,7 +1022,7 @@ CharSourceRange SourceManager::getExpansionRange(SourceLocation Loc) const {
 
 bool SourceManager::isMacroArgExpansion(SourceLocation Loc,
                                         SourceLocation *StartLoc) const {
-  if (!Loc.isMacroID()) return false;
+  if (!Loc.isMacroID(*this)) return false;
 
   FileID FID = getFileID(Loc);
   const SrcMgr::ExpansionInfo &Expansion = getSLocEntry(FID).getExpansion();
@@ -1034,7 +1034,7 @@ bool SourceManager::isMacroArgExpansion(SourceLocation Loc,
 }
 
 bool SourceManager::isMacroBodyExpansion(SourceLocation Loc) const {
-  if (!Loc.isMacroID()) return false;
+  if (!Loc.isMacroID(*this)) return false;
 
   FileID FID = getFileID(Loc);
   const SrcMgr::ExpansionInfo &Expansion = getSLocEntry(FID).getExpansion();
@@ -1043,7 +1043,7 @@ bool SourceManager::isMacroBodyExpansion(SourceLocation Loc) const {
 
 bool SourceManager::isAtStartOfImmediateMacroExpansion(SourceLocation Loc,
                                              SourceLocation *MacroBegin) const {
-  assert(Loc.isValid() && Loc.isMacroID() && "Expected a valid macro loc");
+  assert(Loc.isValid() && Loc.isMacroID(*this) && "Expected a valid macro loc");
 
   std::pair<FileID, unsigned> DecompLoc = getDecomposedLoc(Loc);
   if (DecompLoc.second > 0)
@@ -1078,7 +1078,7 @@ bool SourceManager::isAtStartOfImmediateMacroExpansion(SourceLocation Loc,
 
 bool SourceManager::isAtEndOfImmediateMacroExpansion(SourceLocation Loc,
                                                SourceLocation *MacroEnd) const {
-  assert(Loc.isValid() && Loc.isMacroID() && "Expected a valid macro loc");
+  assert(Loc.isValid() && Loc.isMacroID(*this) && "Expected a valid macro loc");
 
   FileID FID = getFileID(Loc);
   SourceLocation NextLoc = Loc.getLocWithOffset(1);

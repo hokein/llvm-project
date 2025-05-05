@@ -226,13 +226,13 @@ bool Commit::canInsert(SourceLocation loc, FileOffset &offs) {
   if (loc.isInvalid())
     return false;
 
-  if (loc.isMacroID())
+  if (loc.isMacroID(SourceMgr))
     isAtStartOfMacroExpansion(loc, &loc);
 
   const SourceManager &SM = SourceMgr;
   loc = SM.getTopMacroCallerLoc(loc);
 
-  if (loc.isMacroID())
+  if (loc.isMacroID(SourceMgr))
     if (!isAtStartOfMacroExpansion(loc, &loc))
       return false;
 
@@ -256,13 +256,13 @@ bool Commit::canInsertAfterToken(SourceLocation loc, FileOffset &offs,
   unsigned tokLen = Lexer::MeasureTokenLength(spellLoc, SourceMgr, LangOpts);
   AfterLoc = loc.getLocWithOffset(tokLen);
 
-  if (loc.isMacroID())
+  if (loc.isMacroID(SourceMgr))
     isAtEndOfMacroExpansion(loc, &loc);
 
   const SourceManager &SM = SourceMgr;
   loc = SM.getTopMacroCallerLoc(loc);
 
-  if (loc.isMacroID())
+  if (loc.isMacroID(SourceMgr))
     if (!isAtEndOfMacroExpansion(loc, &loc))
       return false;
 
@@ -300,7 +300,7 @@ bool Commit::canRemoveRange(CharSourceRange range,
   if (range.isInvalid())
     return false;
 
-  if (range.getBegin().isMacroID() || range.getEnd().isMacroID())
+  if (range.getBegin().isMacroID(SourceMgr) || range.getEnd().isMacroID(SourceMgr))
     return false;
   if (SM.isInSystemHeader(range.getBegin()) ||
       SM.isInSystemHeader(range.getEnd()))

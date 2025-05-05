@@ -12064,7 +12064,7 @@ static void diagnoseTautologicalComparison(Sema &S, SourceLocation Loc,
     // non-weak declaration, and so on.
   }
 
-  if (!LHS->getBeginLoc().isMacroID() && !RHS->getBeginLoc().isMacroID()) {
+  if (!LHS->getBeginLoc().isMacroID(S.getSourceManager()) && !RHS->getBeginLoc().isMacroID(S.getSourceManager())) {
     if (Expr::isSameComparisonOperand(LHS, RHS)) {
       unsigned Result;
       switch (Opc) {
@@ -13014,13 +13014,14 @@ QualType Sema::CheckSizelessVectorCompareOperands(ExprResult &LHS,
 static void diagnoseXorMisusedAsPow(Sema &S, const ExprResult &XorLHS,
                                     const ExprResult &XorRHS,
                                     const SourceLocation Loc) {
+  const auto& SM = S.getSourceManager();
   // Do not diagnose macros.
-  if (Loc.isMacroID())
+  if (Loc.isMacroID(SM))
     return;
 
   // Do not diagnose if both LHS and RHS are macros.
-  if (XorLHS.get()->getExprLoc().isMacroID() &&
-      XorRHS.get()->getExprLoc().isMacroID())
+  if (XorLHS.get()->getExprLoc().isMacroID(SM) &&
+      XorRHS.get()->getExprLoc().isMacroID(SM))
     return;
 
   bool Negative = false;
@@ -13367,7 +13368,7 @@ inline QualType Sema::CheckLogicalOperands(ExprResult &LHS, ExprResult &RHS,
       !LHS.get()->getType()->isBooleanType() &&
       RHS.get()->getType()->isIntegerType() && !RHS.get()->isValueDependent() &&
       // Don't warn in macros or template instantiations.
-      !Loc.isMacroID() && !inTemplateInstantiation()) {
+      !Loc.isMacroID(getSourceManager()) && !inTemplateInstantiation()) {
     // If the RHS can be constant folded, and if it constant folds to something
     // that isn't 0 or 1 (which indicate a potential logical operation that
     // happened to fold to true/false) then warn.
@@ -13376,7 +13377,7 @@ inline QualType Sema::CheckLogicalOperands(ExprResult &LHS, ExprResult &RHS,
     if (RHS.get()->EvaluateAsInt(EVResult, Context)) {
       llvm::APSInt Result = EVResult.Val.getInt();
       if ((getLangOpts().CPlusPlus && !RHS.get()->getType()->isBooleanType() &&
-           !RHS.get()->getExprLoc().isMacroID()) ||
+           !RHS.get()->getExprLoc().isMacroID(getSourceManager())) ||
           (Result != 0 && Result != 1)) {
         Diag(Loc, diag::warn_logical_instead_of_bitwise)
             << RHS.get()->getSourceRange() << (Opc == BO_LAnd ? "&&" : "||");
@@ -13852,9 +13853,10 @@ static void CheckIdentityFieldAssignment(Expr *LHSExpr, Expr *RHSExpr,
     return;
   if (Sema.isUnevaluatedContext())
     return;
-  if (Loc.isInvalid() || Loc.isMacroID())
+  const auto& SM = Sema.getSourceManager();
+  if (Loc.isInvalid() || Loc.isMacroID(SM))
     return;
-  if (LHSExpr->getExprLoc().isMacroID() || RHSExpr->getExprLoc().isMacroID())
+  if (LHSExpr->getExprLoc().isMacroID(SM) || RHSExpr->getExprLoc().isMacroID(SM))
     return;
 
   // C / C++ fields
@@ -14071,7 +14073,7 @@ static bool IgnoreCommaOperand(const Expr *E, const ASTContext &Context) {
 
 void Sema::DiagnoseCommaOperator(const Expr *LHS, SourceLocation Loc) {
   // No warnings in macros
-  if (Loc.isMacroID())
+  if (Loc.isMacroID(getSourceManager()))
     return;
 
   // Don't warn in template instantiations.
@@ -14784,15 +14786,15 @@ static void DiagnoseSelfAssignment(Sema &S, Expr *LHSExpr, Expr *RHSExpr,
     return;
   if (S.isUnevaluatedContext())
     return;
-  if (OpLoc.isInvalid() || OpLoc.isMacroID())
+  if (OpLoc.isInvalid() || OpLoc.isMacroID(S.getSourceManager()))
     return;
   LHSExpr = LHSExpr->IgnoreParenImpCasts();
   RHSExpr = RHSExpr->IgnoreParenImpCasts();
   const DeclRefExpr *LHSDeclRef = dyn_cast<DeclRefExpr>(LHSExpr);
   const DeclRefExpr *RHSDeclRef = dyn_cast<DeclRefExpr>(RHSExpr);
   if (!LHSDeclRef || !RHSDeclRef ||
-      LHSDeclRef->getLocation().isMacroID() ||
-      RHSDeclRef->getLocation().isMacroID())
+      LHSDeclRef->getLocation().isMacroID(S.getSourceManager()) ||
+      RHSDeclRef->getLocation().isMacroID(S.getSourceManager()))
     return;
   const ValueDecl *LHSDecl =
     cast<ValueDecl>(LHSDeclRef->getDecl()->getCanonicalDecl());
@@ -15401,17 +15403,17 @@ static void DiagnoseBinOpPrecedence(Sema &Self, BinaryOperatorKind Opc,
   // Diagnose "arg1 'bitwise' arg2 'eq' arg3".
   if (BinaryOperator::isBitwiseOp(Opc))
     DiagnoseBitwisePrecedence(Self, Opc, OpLoc, LHSExpr, RHSExpr);
-
+  const auto& SM = Self.getSourceManager();
   // Diagnose "arg1 & arg2 | arg3"
   if ((Opc == BO_Or || Opc == BO_Xor) &&
-      !OpLoc.isMacroID()/* Don't warn in macros. */) {
+      !OpLoc.isMacroID(SM)/* Don't warn in macros. */) {
     DiagnoseBitwiseOpInBitwiseOp(Self, Opc, OpLoc, LHSExpr);
     DiagnoseBitwiseOpInBitwiseOp(Self, Opc, OpLoc, RHSExpr);
   }
 
   // Warn about arg1 || arg2 && arg3, as GCC 4.3+ does.
   // We don't warn for 'assert(a || b && "bad")' since this is safe.
-  if (Opc == BO_LOr && !OpLoc.isMacroID()/* Don't warn in macros. */) {
+  if (Opc == BO_LOr && !OpLoc.isMacroID(SM)/* Don't warn in macros. */) {
     DiagnoseLogicalAndInLogicalOrLHS(Self, OpLoc, LHSExpr, RHSExpr);
     DiagnoseLogicalAndInLogicalOrRHS(Self, OpLoc, LHSExpr, RHSExpr);
   }
@@ -20548,7 +20550,7 @@ void Sema::DiagnoseAssignmentAsCondition(Expr *E) {
 void Sema::DiagnoseEqualityWithExtraParens(ParenExpr *ParenE) {
   // Don't warn if the parens came from a macro.
   SourceLocation parenLoc = ParenE->getBeginLoc();
-  if (parenLoc.isInvalid() || parenLoc.isMacroID())
+  if (parenLoc.isInvalid() || parenLoc.isMacroID(getSourceManager()))
     return;
   // Don't warn for dependent expressions.
   if (ParenE->isTypeDependent())

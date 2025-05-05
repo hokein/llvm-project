@@ -85,7 +85,7 @@ SourceRange spelledForExpandedSlow(SourceLocation First, SourceLocation Last,
   // SourceLocation stack of a token inside C shows us the expansion of A first,
   // then B, then any macros inside C's body, then C itself.
   // (This is the reverse of the order the PP applies the expansions in).
-  while (First.isMacroID() && Last.isMacroID()) {
+  while (First.isMacroID(SM) && Last.isMacroID(SM)) {
     auto DecFirst = SM.getDecomposedLoc(First);
     auto DecLast = SM.getDecomposedLoc(Last);
     auto &ExpFirst = SM.getSLocEntry(DecFirst.first).getExpansion();

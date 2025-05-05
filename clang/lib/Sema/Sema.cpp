@@ -2257,7 +2257,7 @@ void Sema::checkTypeSupport(QualType Ty, SourceLocation Loc, ValueDecl *D) {
 
 bool Sema::findMacroSpelling(SourceLocation &locref, StringRef name) {
   SourceLocation loc = locref;
-  if (!loc.isMacroID()) return false;
+  if (!loc.isMacroID(getSourceManager())) return false;
 
   // There's no good way right now to look at the intermediate
   // expansions, so just jump to the expansion location.

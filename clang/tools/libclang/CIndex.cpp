@@ -155,7 +155,7 @@ CXSourceRange cxloc::translateSourceRange(const SourceManager &SM,
   // location accordingly.
   SourceLocation EndLoc = R.getEnd();
   bool IsTokenRange = R.isTokenRange();
-  if (EndLoc.isValid() && EndLoc.isMacroID() &&
+  if (EndLoc.isValid() && EndLoc.isMacroID(SM) &&
       !SM.isMacroArgExpansion(EndLoc)) {
     CharSourceRange Expansion = SM.getExpansionRange(EndLoc);
     EndLoc = Expansion.getEnd();
@@ -8521,7 +8521,7 @@ static void clang_annotateTokensImpl(CXTranslationUnit TU, ASTUnit *CXXUnit,
     SourceManager &SM = CXXUnit->getSourceManager();
     SourceLocation Loc =
         SM.getMacroArgExpandedLocation(RegionOfInterest.getBegin());
-    if (Loc.isMacroID())
+    if (Loc.isMacroID(SM))
       RegionOfInterest.setBegin(SM.getExpansionLoc(Loc));
   }
 

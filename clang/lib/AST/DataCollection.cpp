@@ -36,7 +36,7 @@ std::string getMacroStack(SourceLocation Loc, ASTContext &Context) {
   SourceManager &SM = Context.getSourceManager();
 
   // Iterate over all macros that expanded into the given SourceLocation.
-  while (Loc.isMacroID()) {
+  while (Loc.isMacroID(SM)) {
     // Add the macro name to the stream.
     printMacroName(MacroStackStream, Context, Loc);
     Loc = SM.getImmediateMacroCallerLoc(Loc);

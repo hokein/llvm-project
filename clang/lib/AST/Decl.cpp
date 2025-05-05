@@ -5661,9 +5661,9 @@ bool TypedefNameDecl::isTransparentTagSlow() const {
           return false;
         SourceLocation TTLoc = getLocation();
         SourceLocation TDLoc = TD->getLocation();
-        if (!TTLoc.isMacroID() || !TDLoc.isMacroID())
-          return false;
         SourceManager &SM = getASTContext().getSourceManager();
+        if (!TTLoc.isMacroID(SM) || !TDLoc.isMacroID(SM))
+          return false;
         return SM.getSpellingLoc(TTLoc) == SM.getSpellingLoc(TDLoc);
       }
     }

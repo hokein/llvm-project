@@ -485,7 +485,7 @@ static ExprResult CheckObjCCollectionLiteralElement(Sema &S, Expr *Element,
           // Only warn if the concatenated string doesn't come from a macro.
           bool hasMacro = false;
           for (unsigned i = 0; i < numConcat ; ++i)
-            if (SL->getStrTokenLoc(i).isMacroID()) {
+            if (SL->getStrTokenLoc(i).isMacroID(S.getSourceManager())) {
               hasMacro = true;
               break;
             }

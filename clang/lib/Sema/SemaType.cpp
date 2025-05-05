@@ -101,7 +101,7 @@ static void diagnoseBadTypeAttribute(Sema &S, const ParsedAttr &attr,
   // The GC attributes are usually written with macros;  special-case them.
   IdentifierInfo *II =
       attr.isArgIdent(0) ? attr.getArgAsIdent(0)->getIdentifierInfo() : nullptr;
-  if (useExpansionLoc && loc.isMacroID() && II) {
+  if (useExpansionLoc && loc.isMacroID(S.getSourceManager()) && II) {
     if (II->isStr("strong")) {
       if (S.findMacroSpelling(loc, "__strong")) name = "__strong";
     } else if (II->isStr("weak")) {
@@ -4042,7 +4042,7 @@ static void fixItNullability(Sema &S, DiagBuilderT &Diag,
                              SourceLocation PointerLoc,
                              NullabilityKind Nullability) {
   assert(PointerLoc.isValid());
-  if (PointerLoc.isMacroID())
+  if (PointerLoc.isMacroID(S.getSourceManager()))
     return;
 
   SourceLocation FixItLoc = S.getLocForEndOfToken(PointerLoc);
@@ -4087,7 +4087,7 @@ static void emitNullabilityConsistencyWarning(Sema &S,
   }
 
   auto FixItLoc = PointerEndLoc.isValid() ? PointerEndLoc : PointerLoc;
-  if (FixItLoc.isMacroID())
+  if (FixItLoc.isMacroID(S.getSourceManager()))
     return;
 
   auto addFixIt = [&](NullabilityKind Nullability) {
@@ -5090,7 +5090,7 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
           // The ownership attributes are almost always written via
           // the predefined
           // __strong/__weak/__autoreleasing/__unsafe_unretained.
-          if (AttrLoc.isMacroID())
+          if (AttrLoc.isMacroID(S.getSourceManager()))
             AttrLoc =
                 S.SourceMgr.getImmediateExpansionRange(AttrLoc).getBegin();
 
@@ -6621,7 +6621,7 @@ static bool handleObjCOwnershipTypeAttr(TypeProcessingState &state,
 
   Sema &S = state.getSema();
   SourceLocation AttrLoc = attr.getLoc();
-  if (AttrLoc.isMacroID())
+  if (AttrLoc.isMacroID(S.getSourceManager()))
     AttrLoc =
         S.getSourceManager().getImmediateExpansionRange(AttrLoc).getBegin();
 

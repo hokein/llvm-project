@@ -174,7 +174,7 @@ static bool ShouldDiagnoseAvailabilityInContext(
   // If this was defined using CF_OPTIONS, etc. then ignore the diagnostic.
   auto DeclLoc = Ctx->getBeginLoc();
   // This is only a problem in Foundation's C++ implementation for CF_OPTIONS.
-  if (DeclLoc.isMacroID() && S.getLangOpts().CPlusPlus &&
+  if (DeclLoc.isMacroID(S.getSourceManager()) && S.getLangOpts().CPlusPlus &&
       isa<TypedefDecl>(OffendingDecl)) {
     StringRef MacroName = S.getPreprocessor().getImmediateMacroName(DeclLoc);
     if (MacroName == "CF_OPTIONS" || MacroName == "OBJC_OPTIONS" ||

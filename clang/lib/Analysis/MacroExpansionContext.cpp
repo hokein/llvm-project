@@ -99,7 +99,7 @@ void MacroExpansionContext::registerForPreprocessor(Preprocessor &NewPP) {
 
 std::optional<StringRef>
 MacroExpansionContext::getExpandedText(SourceLocation MacroExpansionLoc) const {
-  if (MacroExpansionLoc.isMacroID())
+  if (MacroExpansionLoc.isMacroID(*SM))
     return std::nullopt;
 
   // If there was no macro expansion at that location, return std::nullopt.
@@ -117,7 +117,7 @@ MacroExpansionContext::getExpandedText(SourceLocation MacroExpansionLoc) const {
 
 std::optional<StringRef>
 MacroExpansionContext::getOriginalText(SourceLocation MacroExpansionLoc) const {
-  if (MacroExpansionLoc.isMacroID())
+  if (MacroExpansionLoc.isMacroID(*SM))
     return std::nullopt;
 
   const auto It = ExpansionRanges.find_as(MacroExpansionLoc);

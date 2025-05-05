@@ -318,7 +318,7 @@ public:
     currentBlock = block;
 
     // Skip statements in macros.
-    if (S->getBeginLoc().isMacroID())
+    if (S->getBeginLoc().isMacroID(BR.getSourceManager()))
       return;
 
     // Only cover dead stores from regular assignments.  ++/-- dead stores

@@ -77,7 +77,7 @@ void Callback::run(const MatchFinder::MatchResult &Result) {
     // FIXME: Introduce an AST matcher to implement the macro-related logic?
     bool MacroIndicatesWeShouldSkipTheCheck = false;
     SourceLocation Loc = CheckIfNull->getBeginLoc();
-    if (Loc.isMacroID()) {
+    if (Loc.isMacroID(ACtx.getSourceManager())) {
       StringRef MacroName = Lexer::getImmediateMacroName(
           Loc, ACtx.getSourceManager(), ACtx.getLangOpts());
       if (MacroName == "NULL" || MacroName == "nil")

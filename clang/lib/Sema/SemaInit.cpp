@@ -4197,7 +4197,7 @@ maybeRecoverWithZeroInitialization(Sema &S, InitializationSequence &Sequence,
     return false;
 
   VarDecl *VD = cast<VarDecl>(Entity.getDecl());
-  if (VD->getInit() || VD->getEndLoc().isMacroID())
+  if (VD->getInit() || VD->getEndLoc().isMacroID(S.getSourceManager()))
     return false;
 
   QualType VariableTy = VD->getType().getCanonicalType();
@@ -7655,10 +7655,10 @@ static void CheckMoveOnConstruction(Sema &S, const Expr *InitExpr,
   // Get all the locations for a fix-it.  Don't emit the fix-it if any location
   // is within a macro.
   SourceLocation CallBegin = CE->getCallee()->getBeginLoc();
-  if (CallBegin.isMacroID())
+  if (CallBegin.isMacroID(S.getSourceManager()))
     return;
   SourceLocation RParen = CE->getRParenLoc();
-  if (RParen.isMacroID())
+  if (RParen.isMacroID(S.getSourceManager()))
     return;
   SourceLocation LParen;
   SourceLocation ArgLoc = Arg->getBeginLoc();
@@ -7666,12 +7666,12 @@ static void CheckMoveOnConstruction(Sema &S, const Expr *InitExpr,
   // Special testing for the argument location.  Since the fix-it needs the
   // location right before the argument, the argument location can be in a
   // macro only if it is at the beginning of the macro.
-  while (ArgLoc.isMacroID() &&
+  while (ArgLoc.isMacroID(S.getSourceManager()) &&
          S.getSourceManager().isAtStartOfImmediateMacroExpansion(ArgLoc)) {
     ArgLoc = S.getSourceManager().getImmediateExpansionRange(ArgLoc).getBegin();
   }
 
-  if (LParen.isMacroID())
+  if (LParen.isMacroID(S.getSourceManager()))
     return;
 
   LParen = ArgLoc.getLocWithOffset(-1);

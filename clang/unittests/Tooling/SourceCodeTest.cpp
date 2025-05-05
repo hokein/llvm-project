@@ -69,11 +69,11 @@ MATCHER_P(EqualsRange, R, "") {
 }
 
 MATCHER_P2(EqualsAnnotatedRange, Context, R, "") {
-  if (arg.getBegin().isMacroID()) {
+  if (arg.getBegin().isMacroID(Context->getSourceManager())) {
     *result_listener << "which starts in a macro";
     return false;
   }
-  if (arg.getEnd().isMacroID()) {
+  if (arg.getEnd().isMacroID(Context->getSourceManager())) {
     *result_listener << "which ends in a macro";
     return false;
   }

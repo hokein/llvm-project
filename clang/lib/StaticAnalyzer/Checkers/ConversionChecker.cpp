@@ -61,7 +61,7 @@ void ConversionChecker::checkPreStmt(const ImplicitCastExpr *Cast,
     return;
 
   // Don't warn for loss of sign/precision in macros.
-  if (Cast->getExprLoc().isMacroID())
+  if (Cast->getExprLoc().isMacroID(C.getSourceManager()))
     return;
 
   // Get Parent.

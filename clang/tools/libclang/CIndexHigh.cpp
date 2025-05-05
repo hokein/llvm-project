@@ -133,9 +133,9 @@ private:
 static SourceLocation getFileSpellingLoc(SourceManager &SM,
                                          SourceLocation Loc,
                                          bool &isMacroArg) {
-  assert(Loc.isMacroID());
+  assert(Loc.isMacroID(SM));
   SourceLocation SpellLoc = SM.getImmediateSpellingLoc(Loc);
-  if (SpellLoc.isMacroID())
+  if (SpellLoc.isMacroID(SM))
     return getFileSpellingLoc(SM, SpellLoc, isMacroArg);
   
   isMacroArg = SM.isMacroArgExpansion(Loc);
@@ -186,7 +186,7 @@ static enum CXChildVisitResult findFileIdRefVisit(CXCursor cursor,
     ASTContext &Ctx = data->getASTContext();
     SourceManager &SM = Ctx.getSourceManager();
     bool isInMacroDef = false;
-    if (Loc.isMacroID()) {
+    if (Loc.isMacroID(SM)) {
       bool isMacroArg;
       Loc = getFileSpellingLoc(SM, Loc, isMacroArg);
       isInMacroDef = !isMacroArg;
@@ -281,7 +281,7 @@ static enum CXChildVisitResult findFileMacroRefVisit(CXCursor cursor,
   ASTContext &Ctx = data->getASTContext();
   SourceManager &SM = Ctx.getSourceManager();
   bool isInMacroDef = false;
-  if (Loc.isMacroID()) {
+  if (Loc.isMacroID(SM)) {
     bool isMacroArg;
     Loc = getFileSpellingLoc(SM, Loc, isMacroArg);
     isInMacroDef = !isMacroArg;

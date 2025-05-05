@@ -103,8 +103,9 @@ private:
 
 public:
   bool isFileID() const  { return (ID & MacroIDBit) == 0; }
-  bool isMacroID() const { return (ID & MacroIDBit) != 0; }
-
+  // bool isMacroID() const { return (ID & MacroIDBit) != 0; }
+  bool isMacroID(const SourceManager& SM) const;
+  bool isFileID(const SourceManager& SM) const;
   /// Return true if this is a valid SourceLocation object.
   ///
   /// Invalid SourceLocations are often used when events have no corresponding

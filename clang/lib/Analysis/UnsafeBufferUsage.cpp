@@ -3718,12 +3718,12 @@ fixVariable(const VarDecl *VD, FixitStrategy::Kind K,
 
 // Returns true iff there exists a `FixItHint` 'h' in `FixIts` such that the
 // `RemoveRange` of 'h' overlaps with a macro use.
-static bool overlapWithMacro(const FixItList &FixIts) {
+static bool overlapWithMacro(const FixItList &FixIts, const SourceManager& SM) {
   // FIXME: For now we only check if the range (or the first token) is (part of)
   // a macro expansion.  Ideally, we want to check for all tokens in the range.
-  return llvm::any_of(FixIts, [](const FixItHint &Hint) {
+  return llvm::any_of(FixIts, [&SM](const FixItHint &Hint) {
     auto Range = Hint.RemoveRange;
-    if (Range.getBegin().isMacroID() || Range.getEnd().isMacroID())
+    if (Range.getBegin().isMacroID(SM) || Range.getEnd().isMacroID(SM))
       // If the range (or the first token) is (part of) a macro expansion:
       return true;
     return false;
@@ -3882,7 +3882,7 @@ getFixIts(FixableGadgetSets &FixablesForAllVars, const FixitStrategy &S,
   // Otherwise, the fix-its will be dropped.
   for (auto Iter = FinalFixItsForVariable.begin();
        Iter != FinalFixItsForVariable.end();)
-    if (overlapWithMacro(Iter->second) ||
+    if (overlapWithMacro(Iter->second, Ctx.getSourceManager()) ||
         clang::internal::anyConflict(Iter->second, Ctx.getSourceManager())) {
       Iter = FinalFixItsForVariable.erase(Iter);
     } else

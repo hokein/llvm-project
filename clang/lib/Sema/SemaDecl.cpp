@@ -14647,7 +14647,7 @@ void Sema::CheckCompleteVariableDeclaration(VarDecl *var) {
         // Diagnose missing comma in string array initialization.
         // Do not warn when all the elements in the initializer are concatenated
         // together. Do not warn for macros too.
-        if (NumConcat == 2 && !SL->getBeginLoc().isMacroID()) {
+        if (NumConcat == 2 && !SL->getBeginLoc().isMacroID(getSourceManager())) {
           bool OnlyOneMissingComma = true;
           for (unsigned J = I + 1; J < NumInits; ++J) {
             const auto *Init = ILE->getInit(J);

@@ -3604,7 +3604,7 @@ bool Expr::HasSideEffects(const ASTContext &Ctx,
   // In circumstances where we care about definite side effects instead of
   // potential side effects, we want to ignore expressions that are part of a
   // macro expansion as a potential side effect.
-  if (!IncludePossibleEffects && getExprLoc().isMacroID())
+  if (!IncludePossibleEffects && getExprLoc().isMacroID(Ctx.getSourceManager()))
     return false;
 
   switch (getStmtClass()) {
