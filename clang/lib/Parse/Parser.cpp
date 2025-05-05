@@ -110,7 +110,7 @@ DiagnosticBuilder Parser::DiagCompat(const Token &Tok, unsigned CompatDiagId) {
 void Parser::SuggestParentheses(SourceLocation Loc, unsigned DK,
                                 SourceRange ParenRange) {
   SourceLocation EndLoc = PP.getLocForEndOfToken(ParenRange.getEnd());
-  if (!ParenRange.getEnd().isFileID() || EndLoc.isInvalid()) {
+  if (!ParenRange.getEnd().isFileID(PP.getSourceManager()) || EndLoc.isInvalid()) {
     // We can't display the parentheses, so just dig the
     // warning/error and return.
     Diag(Loc, DK);

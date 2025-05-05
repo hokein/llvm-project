@@ -560,7 +560,7 @@ static const char *findBeginningOfLine(StringRef Buffer, unsigned Offset) {
 static SourceLocation getBeginningOfFileToken(SourceLocation Loc,
                                               const SourceManager &SM,
                                               const LangOptions &LangOpts) {
-  assert(Loc.isFileID());
+  assert(Loc.isFileID(SM));
   std::pair<FileID, unsigned> LocInfo = SM.getDecomposedLoc(Loc);
   if (LocInfo.first.isInvalid())
     return Loc;
@@ -608,7 +608,7 @@ static SourceLocation getBeginningOfFileToken(SourceLocation Loc,
 SourceLocation Lexer::GetBeginningOfToken(SourceLocation Loc,
                                           const SourceManager &SM,
                                           const LangOptions &LangOpts) {
-  if (Loc.isFileID())
+  if (Loc.isFileID(SM))
     return getBeginningOfFileToken(Loc, SM, LangOpts);
 
   if (!SM.isMacroArgExpansion(Loc))
@@ -878,7 +878,7 @@ bool Lexer::isAtStartOfMacroExpansion(SourceLocation loc,
   if (!SM.isAtStartOfImmediateMacroExpansion(loc, &expansionLoc))
     return false;
 
-  if (expansionLoc.isFileID()) {
+  if (expansionLoc.isFileID(SM)) {
     // No other macro expansions, this is the first.
     if (MacroBegin)
       *MacroBegin = expansionLoc;
@@ -906,7 +906,7 @@ bool Lexer::isAtEndOfMacroExpansion(SourceLocation loc,
   if (!SM.isAtEndOfImmediateMacroExpansion(afterLoc, &expansionLoc))
     return false;
 
-  if (expansionLoc.isFileID()) {
+  if (expansionLoc.isFileID(SM)) {
     // No other macro expansions.
     if (MacroEnd)
       *MacroEnd = expansionLoc;
@@ -921,7 +921,7 @@ static CharSourceRange makeRangeFromFileLocs(CharSourceRange Range,
                                              const LangOptions &LangOpts) {
   SourceLocation Begin = Range.getBegin();
   SourceLocation End = Range.getEnd();
-  assert(Begin.isFileID() && End.isFileID());
+  assert(Begin.isFileID(SM) && End.isFileID(SM));
   if (Range.isTokenRange()) {
     End = Lexer::getLocForEndOfToken(End, 0, SM,LangOpts);
     if (End.isInvalid())
@@ -959,17 +959,17 @@ CharSourceRange Lexer::makeFileCharRange(CharSourceRange Range,
   if (Begin.isInvalid() || End.isInvalid())
     return {};
 
-  if (Begin.isFileID() && End.isFileID())
+  if (Begin.isFileID(SM) && End.isFileID(SM))
     return makeRangeFromFileLocs(Range, SM, LangOpts);
 
-  if (Begin.isMacroID(SM) && End.isFileID()) {
+  if (Begin.isMacroID(SM) && End.isFileID(SM)) {
     if (!isAtStartOfMacroExpansion(Begin, SM, LangOpts, &Begin))
       return {};
     Range.setBegin(Begin);
     return makeRangeFromFileLocs(Range, SM, LangOpts);
   }
 
-  if (Begin.isFileID() && End.isMacroID(SM)) {
+  if (Begin.isFileID(SM) && End.isMacroID(SM)) {
     if (Range.isTokenRange()) {
       if (!isAtEndOfMacroExpansion(End, SM, LangOpts, &End))
         return {};
@@ -1077,7 +1077,7 @@ StringRef Lexer::getImmediateMacroName(SourceLocation Loc,
     // macro expansion.
     Loc = SM.getImmediateExpansionRange(Loc).getBegin();
     SourceLocation SpellLoc = Expansion.getSpellingLoc();
-    if (SpellLoc.isFileID())
+    if (SpellLoc.isFileID(SM))
       break; // No inner macro.
 
     // If spelling location resides in the same FileID as macro expansion
@@ -1114,7 +1114,7 @@ StringRef Lexer::getImmediateMacroNameForDiagnostics(
   // actually a token paste or stringization (or similar) and not a macro at
   // all.
   SourceLocation SpellLoc = SM.getSpellingLoc(Loc);
-  if (!SpellLoc.isFileID() || SM.isWrittenInScratchSpace(SpellLoc))
+  if (!SpellLoc.isFileID(SM) || SM.isWrittenInScratchSpace(SpellLoc))
     return {};
 
   // Find the spelling location of the start of the non-argument expansion

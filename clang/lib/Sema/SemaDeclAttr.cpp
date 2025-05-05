@@ -1294,7 +1294,7 @@ static void handleNonNullAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   // arguments have a nonnull attribute; warn if there aren't any. Skip this
   // check if the attribute came from a macro expansion or a template
   // instantiation.
-  if (NonNullArgs.empty() && AL.getLoc().isFileID() &&
+  if (NonNullArgs.empty() && AL.getLoc().isFileID(S.getSourceManager()) &&
       !S.inTemplateInstantiation()) {
     bool AnyPointers = isFunctionOrMethodVariadic(D);
     for (unsigned I = 0, E = getFunctionOrMethodNumParams(D);

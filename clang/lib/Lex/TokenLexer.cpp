@@ -63,7 +63,7 @@ void TokenLexer::Init(Token &Tok, SourceLocation ELEnd, MacroInfo *MI,
 
   if (NumTokens > 0) {
     assert(Tokens[0].getLocation().isValid());
-    assert((Tokens[0].getLocation().isFileID() || Tokens[0].is(tok::comment)) &&
+    assert((Tokens[0].getLocation().isFileID(SM) || Tokens[0].is(tok::comment)) &&
            "Macro defined in macro?");
     assert(ExpandLocStart.isValid());
 
@@ -814,9 +814,9 @@ bool TokenLexer::pasteTokens(Token &LHSTok, ArrayRef<Token> TokenStream,
     } else {
       PP.IncrementPasteCounter(false);
 
-      assert(ResultTokLoc.isFileID() &&
-             "Should be a raw location into scratch buffer");
       SourceManager &SourceMgr = PP.getSourceManager();
+      assert(ResultTokLoc.isFileID(SourceMgr) &&
+             "Should be a raw location into scratch buffer");
       FileID LocFileID = SourceMgr.getFileID(ResultTokLoc);
 
       bool Invalid = false;
@@ -896,9 +896,9 @@ bool TokenLexer::pasteTokens(Token &LHSTok, ArrayRef<Token> TokenStream,
   // expanded from the full ## expression. Pull this information together into
   // a new SourceLocation that captures all of this.
   SourceManager &SM = PP.getSourceManager();
-  if (StartLoc.isFileID())
+  if (StartLoc.isFileID(SM))
     StartLoc = getExpansionLocForMacroDefLoc(StartLoc);
-  if (EndLoc.isFileID())
+  if (EndLoc.isFileID(SM))
     EndLoc = getExpansionLocForMacroDefLoc(EndLoc);
   FileID MacroFID = SM.getFileID(MacroExpansionStart);
   while (SM.getFileID(StartLoc) != MacroFID)
@@ -963,9 +963,9 @@ SourceLocation
 TokenLexer::getExpansionLocForMacroDefLoc(SourceLocation loc) const {
   assert(ExpandLocStart.isValid() && MacroExpansionStart.isValid() &&
          "Not appropriate for token streams");
-  assert(loc.isValid() && loc.isFileID());
+         SourceManager &SM = PP.getSourceManager();
+  assert(loc.isValid() && loc.isFileID(SM));
 
-  SourceManager &SM = PP.getSourceManager();
   assert(SM.isInSLocAddrSpace(loc, MacroDefStart, MacroDefLength) &&
          "Expected loc to come from the macro definition");
 
@@ -1005,11 +1005,11 @@ static void updateConsecutiveMacroArgTokens(SourceManager &SM,
   // Partition the tokens by their FileID.
   // This is a hot function, and calling getFileID can be expensive, the
   // implementation is optimized by reducing the number of getFileID.
-  if (BeginLoc.isFileID()) {
+  if (BeginLoc.isFileID(SM)) {
     // Consecutive tokens not written in macros must be from the same file.
     // (Neither #include nor eof can occur inside a macro argument.)
     Partition = All.take_while([&](const Token &T) {
-      return T.getLocation().isFileID() && NearLast(T.getLocation());
+      return T.getLocation().isFileID(SM) && NearLast(T.getLocation());
     });
   } else {
     // Call getFileID once to calculate the bounds, and use the cheaper

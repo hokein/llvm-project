@@ -80,8 +80,8 @@ public:
 
   /// isRewritable - Return true if this location is a raw file location, which
   /// is rewritable.  Locations from macros, etc are not rewritable.
-  static bool isRewritable(SourceLocation Loc) {
-    return Loc.isFileID();
+  static bool isRewritable(SourceLocation Loc, const SourceManager& SM) {
+    return Loc.isFileID(SM);
   }
 
   /// getRangeSize - Return the size in bytes of the specified range if they

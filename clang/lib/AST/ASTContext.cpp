@@ -242,7 +242,7 @@ RawComment *ASTContext::getRawCommentForDeclNoCacheImpl(
   // If the declaration doesn't map directly to a location in a file, we
   // can't find the comment.
   if (RepresentativeLocForDecl.isInvalid() ||
-      !RepresentativeLocForDecl.isFileID())
+      !RepresentativeLocForDecl.isFileID(getSourceManager()))
     return nullptr;
 
   // If there are no comments anywhere, we won't find anything.
@@ -320,7 +320,7 @@ RawComment *ASTContext::getRawCommentForDeclNoCache(const Decl *D) const {
   for (const auto DeclLoc : DeclLocs) {
     // If the declaration doesn't map directly to a location in a file, we
     // can't find the comment.
-    if (DeclLoc.isInvalid() || !DeclLoc.isFileID())
+    if (DeclLoc.isInvalid() || !DeclLoc.isFileID(getSourceManager()))
       continue;
 
     if (ExternalSource && !CommentsLoaded) {
@@ -579,7 +579,7 @@ void ASTContext::attachCommentsToJustParsedDecls(ArrayRef<Decl *> Decls,
     const auto DeclLocs = getDeclLocsForCommentSearch(D, SourceMgr);
 
     for (const auto DeclLoc : DeclLocs) {
-      if (DeclLoc.isInvalid() || !DeclLoc.isFileID())
+      if (DeclLoc.isInvalid() || !DeclLoc.isFileID(SourceMgr))
         continue;
 
       if (RawComment *const DocComment = getRawCommentForDeclNoCacheImpl(

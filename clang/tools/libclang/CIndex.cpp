@@ -8029,7 +8029,7 @@ bool AnnotateTokensWorker::annotateAndAdvanceFunctionMacroTokens(
   unsigned I = NextToken();
   for (; I < NumTokens && isFunctionMacroToken(I); ++I) {
     SourceLocation TokLoc = getFunctionMacroTokenLoc(I);
-    if (TokLoc.isFileID())
+    if (TokLoc.isFileID(SrcMgr))
       continue; // not macro arg token, it's parens or comma.
     if (LocationCompare(SrcMgr, TokLoc, range) == compResult) {
       if (clang_isInvalid(clang_getCursorKind(Cursors[I])))

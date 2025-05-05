@@ -484,7 +484,7 @@ void Preprocessor::SuggestTypoedDirective(const Token &Tok,
 
   if (std::optional<StringRef> Sugg = findSimilarStr(Directive, Candidates)) {
     // Directive cannot be coming from macro.
-    assert(Tok.getLocation().isFileID());
+    assert(Tok.getLocation().isFileID(getSourceManager()));
     CharSourceRange DirectiveRange = CharSourceRange::getCharRange(
         Tok.getLocation(),
         Tok.getLocation().getLocWithOffset(Directive.size()));

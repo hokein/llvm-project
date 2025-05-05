@@ -45,8 +45,8 @@ static inline bool isWhitespaceExceptNL(unsigned char c) {
 /// are in the same file.  If not, this returns -1.
 int Rewriter::getRangeSize(const CharSourceRange &Range,
                            RewriteOptions opts) const {
-  if (!isRewritable(Range.getBegin()) ||
-      !isRewritable(Range.getEnd())) return -1;
+  if (!isRewritable(Range.getBegin(), getSourceMgr()) ||
+      !isRewritable(Range.getEnd(), getSourceMgr())) return -1;
 
   FileID StartFileID, EndFileID;
   unsigned StartOff = getLocationOffsetAndFileID(Range.getBegin(), StartFileID);
@@ -83,8 +83,8 @@ int Rewriter::getRangeSize(SourceRange Range, RewriteOptions opts) const {
 ///
 /// Note that this method is not particularly efficient.
 std::string Rewriter::getRewrittenText(CharSourceRange Range) const {
-  if (!isRewritable(Range.getBegin()) ||
-      !isRewritable(Range.getEnd()))
+  if (!isRewritable(Range.getBegin(), getSourceMgr()) ||
+      !isRewritable(Range.getEnd(), getSourceMgr()))
     return {};
 
   FileID StartFileID, EndFileID;
@@ -156,7 +156,7 @@ RewriteBuffer &Rewriter::getEditBuffer(FileID FID) {
 /// original buffer.
 bool Rewriter::InsertText(SourceLocation Loc, StringRef Str,
                           bool InsertAfter, bool indentNewLines) {
-  if (!isRewritable(Loc)) return true;
+  if (!isRewritable(Loc, getSourceMgr())) return true;
   FileID FID;
   unsigned StartOffs = getLocationOffsetAndFileID(Loc, FID);
 
@@ -196,7 +196,7 @@ bool Rewriter::InsertText(SourceLocation Loc, StringRef Str,
 }
 
 bool Rewriter::InsertTextAfterToken(SourceLocation Loc, StringRef Str) {
-  if (!isRewritable(Loc)) return true;
+  if (!isRewritable(Loc, getSourceMgr())) return true;
   FileID FID;
   unsigned StartOffs = getLocationOffsetAndFileID(Loc, FID);
   RewriteOptions rangeOpts;
@@ -209,7 +209,7 @@ bool Rewriter::InsertTextAfterToken(SourceLocation Loc, StringRef Str) {
 /// RemoveText - Remove the specified text region.
 bool Rewriter::RemoveText(SourceLocation Start, unsigned Length,
                           RewriteOptions opts) {
-  if (!isRewritable(Start)) return true;
+  if (!isRewritable(Start, getSourceMgr())) return true;
   FileID FID;
   unsigned StartOffs = getLocationOffsetAndFileID(Start, FID);
   getEditBuffer(FID).RemoveText(StartOffs, Length, opts.RemoveLineIfEmpty);
@@ -221,7 +221,7 @@ bool Rewriter::RemoveText(SourceLocation Start, unsigned Length,
 /// operation.
 bool Rewriter::ReplaceText(SourceLocation Start, unsigned OrigLength,
                            StringRef NewStr) {
-  if (!isRewritable(Start)) return true;
+  if (!isRewritable(Start, getSourceMgr())) return true;
   FileID StartFileID;
   unsigned StartOffs = getLocationOffsetAndFileID(Start, StartFileID);
 
@@ -230,8 +230,8 @@ bool Rewriter::ReplaceText(SourceLocation Start, unsigned OrigLength,
 }
 
 bool Rewriter::ReplaceText(SourceRange range, SourceRange replacementRange) {
-  if (!isRewritable(range.getBegin())) return true;
-  if (!isRewritable(range.getEnd())) return true;
+  if (!isRewritable(range.getBegin(), getSourceMgr())) return true;
+  if (!isRewritable(range.getEnd(), getSourceMgr())) return true;
   if (replacementRange.isInvalid()) return true;
   SourceLocation start = range.getBegin();
   unsigned origLength = getRangeSize(range);
@@ -246,9 +246,9 @@ bool Rewriter::ReplaceText(SourceRange range, SourceRange replacementRange) {
 bool Rewriter::IncreaseIndentation(CharSourceRange range,
                                    SourceLocation parentIndent) {
   if (range.isInvalid()) return true;
-  if (!isRewritable(range.getBegin())) return true;
-  if (!isRewritable(range.getEnd())) return true;
-  if (!isRewritable(parentIndent)) return true;
+  if (!isRewritable(range.getBegin(), getSourceMgr())) return true;
+  if (!isRewritable(range.getEnd(), getSourceMgr())) return true;
+  if (!isRewritable(parentIndent, getSourceMgr())) return true;
 
   FileID StartFileID, EndFileID, parentFileID;
   unsigned StartOff, EndOff, parentOff;

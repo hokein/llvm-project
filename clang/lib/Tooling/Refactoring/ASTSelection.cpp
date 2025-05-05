@@ -142,7 +142,7 @@ private:
     const SourceManager &SM = Context.getSourceManager();
     if (Range.isTokenRange())
       End = Lexer::getLocForEndOfToken(End, 0, SM, Context.getLangOpts());
-    if (!SourceLocation::isPairOfFileLocations(Range.getBegin(), End))
+    if (!SourceLocation::isPairOfFileLocations(Range.getBegin(), End, SM))
       return SourceSelectionKind::None;
     if (!SelectionEnd.isValid()) {
       // Do a quick check when the selection is of length 0.
@@ -184,7 +184,7 @@ clang::tooling::findSelectedASTNodes(const ASTContext &Context,
                                      SourceRange SelectionRange) {
   assert(SelectionRange.isValid() &&
          SourceLocation::isPairOfFileLocations(SelectionRange.getBegin(),
-                                               SelectionRange.getEnd()) &&
+                                               SelectionRange.getEnd(), Context.getSourceManager()) &&
          "Expected a file range");
   FileID TargetFile =
       Context.getSourceManager().getFileID(SelectionRange.getBegin());

@@ -2767,7 +2767,7 @@ static void CompactMacroExpandedPieces(PathPieces &path,
                                       SM.getExpansionLoc(Loc) :
                                       SourceLocation();
 
-    if (Loc.isFileID()) {
+    if (Loc.isFileID(SM)) {
       MacroStack.clear();
       Pieces.push_back(piece);
       continue;
@@ -2812,7 +2812,7 @@ static void CompactMacroExpandedPieces(PathPieces &path,
       if (MacroGroup)
         MacroGroup->subPieces.push_back(NewGroup);
       else {
-        assert(InstantiationLoc.isFileID());
+        assert(InstantiationLoc.isFileID(SM));
         Pieces.push_back(NewGroup);
       }
 

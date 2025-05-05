@@ -1194,7 +1194,7 @@ public:
   SourceLocation getExpansionLoc(SourceLocation Loc) const {
     // Handle the non-mapped case inline, defer to out of line code to handle
     // expansions.
-    if (Loc.isFileID()) return Loc;
+    if (Loc.isFileID(*this)) return Loc;
     return getExpansionLocSlowCase(Loc);
   }
 
@@ -1202,7 +1202,7 @@ public:
   /// location or the spelling location, depending on if it comes from a
   /// macro argument or not.
   SourceLocation getFileLoc(SourceLocation Loc) const {
-    if (Loc.isFileID()) return Loc;
+    if (Loc.isFileID(*this)) return Loc;
     return getFileLocSlowCase(Loc);
   }
 
@@ -1242,7 +1242,7 @@ public:
   SourceLocation getSpellingLoc(SourceLocation Loc) const {
     // Handle the non-mapped case inline, defer to out of line code to handle
     // expansions.
-    if (Loc.isFileID()) return Loc;
+    if (Loc.isFileID(*this)) return Loc;
     return getSpellingLocSlowCase(Loc);
   }
 
@@ -1289,7 +1289,7 @@ public:
       return std::make_pair(FileID(), 0);
 
     unsigned Offset = Loc.getOffset()-E->getOffset();
-    if (Loc.isFileID())
+    if (Loc.isFileID(*this))
       return std::make_pair(FID, Offset);
 
     return getDecomposedExpansionLocSlowCase(E);
@@ -1307,7 +1307,7 @@ public:
       return std::make_pair(FileID(), 0);
 
     unsigned Offset = Loc.getOffset()-E->getOffset();
-    if (Loc.isFileID())
+    if (Loc.isFileID(*this))
       return std::make_pair(FID, Offset);
     return getDecomposedSpellingLocSlowCase(E, Offset);
   }

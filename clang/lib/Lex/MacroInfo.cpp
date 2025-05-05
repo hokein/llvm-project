@@ -65,9 +65,9 @@ unsigned MacroInfo::getDefinitionLengthSlow(const SourceManager &SM) const {
   SourceLocation macroStart = firstToken.getLocation();
   SourceLocation macroEnd = lastToken.getLocation();
   assert(macroStart.isValid() && macroEnd.isValid());
-  assert((macroStart.isFileID() || firstToken.is(tok::comment)) &&
+  assert((macroStart.isFileID(SM) || firstToken.is(tok::comment)) &&
          "Macro defined in macro?");
-  assert((macroEnd.isFileID() || lastToken.is(tok::comment)) &&
+  assert((macroEnd.isFileID(SM) || lastToken.is(tok::comment)) &&
          "Macro defined in macro?");
   std::pair<FileID, unsigned>
       startInfo = SM.getDecomposedExpansionLoc(macroStart);

@@ -1621,7 +1621,7 @@ Stmt *RewriteModernObjC::RewriteBreakStmt(BreakStmt *S) {
 void RewriteModernObjC::ConvertSourceLocationToLineDirective(
                                           SourceLocation Loc,
                                           std::string &LineString) {
-  if (Loc.isFileID() && GenerateLineInfo) {
+  if (Loc.isFileID(Context->getSourceManager()) && GenerateLineInfo) {
     LineString += "\n#line ";
     PresumedLoc PLoc = SM->getPresumedLoc(Loc);
     LineString += utostr(PLoc.getLine());
@@ -3056,7 +3056,7 @@ void RewriteModernObjC::RewriteLineDirective(const Decl *D) {
 
   SourceLocation Location = D->getLocation();
 
-  if (Location.isFileID() && GenerateLineInfo) {
+  if (Location.isFileID(Context->getSourceManager()) && GenerateLineInfo) {
     std::string LineString("\n#line ");
     PresumedLoc PLoc = SM->getPresumedLoc(Location);
     LineString += utostr(PLoc.getLine());
@@ -4700,7 +4700,7 @@ void RewriteModernObjC::RewriteCastExpr(CStyleCastExpr *CE) {
   if (LocStart.isInvalid())
     return;
   // Need to avoid trying to rewrite casts contained in macros.
-  if (!Rewriter::isRewritable(LocStart) || !Rewriter::isRewritable(LocEnd))
+  if (!Rewriter::isRewritable(LocStart, Context->getSourceManager()) || !Rewriter::isRewritable(LocEnd, Context->getSourceManager()))
     return;
 
   const char *startBuf = SM->getCharacterData(LocStart);

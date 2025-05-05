@@ -24,7 +24,7 @@ using namespace edit;
 SourceLocation Commit::Edit::getFileLocation(SourceManager &SM) const {
   SourceLocation Loc = SM.getLocForStartOfFile(Offset.getFID());
   Loc = Loc.getLocWithOffset(Offset.getOffset());
-  assert(Loc.isFileID());
+  assert(Loc.isFileID(SM));
   return Loc;
 }
 
@@ -36,7 +36,7 @@ CharSourceRange Commit::Edit::getFileRange(SourceManager &SM) const {
 CharSourceRange Commit::Edit::getInsertFromRange(SourceManager &SM) const {
   SourceLocation Loc = SM.getLocForStartOfFile(InsertFromRangeOffs.getFID());
   Loc = Loc.getLocWithOffset(InsertFromRangeOffs.getOffset());
-  assert(Loc.isFileID());
+  assert(Loc.isFileID(SM));
   return CharSourceRange::getCharRange(Loc, Loc.getLocWithOffset(Length));
 }
 

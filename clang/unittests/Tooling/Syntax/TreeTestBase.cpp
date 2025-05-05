@@ -173,7 +173,7 @@ syntax::Node *SyntaxTreeTest::nodeByRange(llvm::Annotations::Range R,
                                           syntax::Node *Root) {
   ArrayRef<syntax::Token> Toks = tokens(Root, *TM);
 
-  if (Toks.front().location().isFileID() && Toks.back().location().isFileID() &&
+  if (Toks.front().location().isFileID(*SourceMgr) && Toks.back().location().isFileID(*SourceMgr) &&
       syntax::Token::range(*SourceMgr, Toks.front(), Toks.back()) ==
           syntax::FileRange(SourceMgr->getMainFileID(), R.Begin, R.End))
     return Root;

@@ -118,6 +118,7 @@ namespace clang {
   class VAOptExpansionContext : VAOptDefinitionContext {
 
     Token SyntheticEOFToken;
+    const SourceManager& SM;
 
     // The (spelling) location of the current __VA_OPT__ in the replacement list
     // of the function-like macro being expanded.
@@ -154,9 +155,10 @@ namespace clang {
 
   public:
     VAOptExpansionContext(Preprocessor &PP)
-        : VAOptDefinitionContext(PP), LeadingSpaceForStringifiedToken(false),
-          StringifyBefore(false), CharifyBefore(false),
-          BeginsWithPlaceholder(false), EndsWithPlaceholder(false) {
+        : VAOptDefinitionContext(PP), SM(PP.getSourceManager()),
+          LeadingSpaceForStringifiedToken(false), StringifyBefore(false),
+          CharifyBefore(false), BeginsWithPlaceholder(false),
+          EndsWithPlaceholder(false) {
       SyntheticEOFToken.startToken();
       SyntheticEOFToken.setKind(tok::eof);
     }
@@ -222,7 +224,7 @@ namespace clang {
 
     void sawVAOptFollowedByOpeningParens(const SourceLocation VAOptLoc,
                                          const unsigned int NumPriorTokens) {
-      assert(VAOptLoc.isFileID() && "Must not come from a macro expansion");
+      assert(VAOptLoc.isFileID(SM) && "Must not come from a macro expansion");
       assert(isReset() && "Must only be called if the state has been reset");
       VAOptDefinitionContext::sawVAOptFollowedByOpeningParens(SourceLocation());
       this->VAOptLoc = VAOptLoc;

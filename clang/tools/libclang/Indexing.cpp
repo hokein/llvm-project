@@ -208,7 +208,7 @@ private:
     };
 
     SourceLocation RegionLoc = PPRec.findConditionalDirectiveRegionLoc(Loc);
-    assert(RegionLoc.isFileID());
+    assert(RegionLoc.isFileID(PPRec.getSourceManager()));
     if (RegionLoc.isInvalid())
       return Bail();
 

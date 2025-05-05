@@ -8681,11 +8681,12 @@ static void SuggestParentheses(Sema &Self, SourceLocation Loc,
                                const PartialDiagnostic &Note,
                                SourceRange ParenRange) {
   SourceLocation EndLoc = Self.getLocForEndOfToken(ParenRange.getEnd());
-  if (ParenRange.getBegin().isFileID() && ParenRange.getEnd().isFileID() &&
+  if (ParenRange.getBegin().isFileID(Self.getSourceManager()) &&
+      ParenRange.getEnd().isFileID(Self.getSourceManager()) &&
       EndLoc.isValid()) {
-    Self.Diag(Loc, Note)
-      << FixItHint::CreateInsertion(ParenRange.getBegin(), "(")
-      << FixItHint::CreateInsertion(EndLoc, ")");
+    Self.Diag(Loc, Note) << FixItHint::CreateInsertion(ParenRange.getBegin(),
+                                                       "(")
+                         << FixItHint::CreateInsertion(EndLoc, ")");
   } else {
     // We can't display the parentheses, so just show the bare note.
     Self.Diag(Loc, Note) << ParenRange;
@@ -13970,13 +13971,13 @@ QualType Sema::CheckAssignmentOperands(Expr *LHSExpr, ExprResult &RHS,
       RHSCheck = ICE->getSubExpr();
     if (UnaryOperator *UO = dyn_cast<UnaryOperator>(RHSCheck)) {
       if ((UO->getOpcode() == UO_Plus || UO->getOpcode() == UO_Minus) &&
-          Loc.isFileID() && UO->getOperatorLoc().isFileID() &&
+          Loc.isFileID(getSourceManager()) && UO->getOperatorLoc().isFileID(getSourceManager()) &&
           // Only if the two operators are exactly adjacent.
           Loc.getLocWithOffset(1) == UO->getOperatorLoc() &&
           // And there is a space or other character before the subexpr of the
           // unary +/-.  We don't want to warn on "x=-1".
           Loc.getLocWithOffset(2) != UO->getSubExpr()->getBeginLoc() &&
-          UO->getSubExpr()->getBeginLoc().isFileID()) {
+          UO->getSubExpr()->getBeginLoc().isFileID(getSourceManager())) {
         Diag(Loc, diag::warn_not_compound_assign)
           << (UO->getOpcode() == UO_Plus ? "+" : "-")
           << SourceRange(UO->getOperatorLoc(), UO->getOperatorLoc());

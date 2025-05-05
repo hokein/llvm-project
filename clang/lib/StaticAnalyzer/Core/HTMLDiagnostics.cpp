@@ -1038,7 +1038,7 @@ void HTMLDiagnostics::HandlePiece(Rewriter &R, FileID BugFileID,
     // Get the name of the macro by relexing it.
     {
       FullSourceLoc L = MP->getLocation().asLocation().getExpansionLoc();
-      assert(L.isFileID());
+      assert(L.isFileID(SM));
       StringRef BufferInfo = L.getBufferData();
       std::pair<FileID, unsigned> LocInfo = L.getDecomposedLoc();
       const char* MacroName = LocInfo.second + BufferInfo.data();

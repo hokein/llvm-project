@@ -75,7 +75,7 @@ void SourceLocation::print(raw_ostream &OS, const SourceManager &SM)const{
     return;
   }
 
-  if (isFileID()) {
+  if (isFileID(SM)) {
     PresumedLoc PLoc = SM.getPresumedLoc(*this);
 
     if (PLoc.isInvalid()) {
@@ -115,7 +115,7 @@ LLVM_DUMP_METHOD void SourceRange::dump(const SourceManager &SM) const {
 
 static PresumedLoc PrintDifference(raw_ostream &OS, const SourceManager &SM,
                                    SourceLocation Loc, PresumedLoc Previous) {
-  if (Loc.isFileID()) {
+  if (Loc.isFileID(SM)) {
 
     PresumedLoc PLoc = SM.getPresumedLoc(Loc);
 

@@ -159,8 +159,8 @@ TEST_F(SourceManagerTest, isBeforeInTranslationUnit) {
   
   SourceLocation macroExpStartLoc = SourceMgr.translateLineCol(mainFileID, 2, 1);
   SourceLocation macroExpEndLoc = SourceMgr.translateLineCol(mainFileID, 2, 6);
-  ASSERT_TRUE(macroExpStartLoc.isFileID());
-  ASSERT_TRUE(macroExpEndLoc.isFileID());
+  ASSERT_TRUE(macroExpStartLoc.isFileID(SourceMgr));
+  ASSERT_TRUE(macroExpEndLoc.isFileID(SourceMgr));
 
   SmallString<32> str;
   ASSERT_EQ("M", PP.getSpelling(macroExpStartLoc, str));
@@ -570,13 +570,13 @@ TEST_F(SourceManagerTest, getMacroArgExpandedLocation) {
   loc3 = SourceMgr.getMacroArgExpandedLocation(loc3);
   defLoc2 = SourceMgr.getMacroArgExpandedLocation(defLoc2);
 
-  EXPECT_TRUE(defLoc.isFileID());
-  EXPECT_TRUE(loc1.isFileID());
+  EXPECT_TRUE(defLoc.isFileID(SourceMgr));
+  EXPECT_TRUE(loc1.isFileID(SourceMgr));
   EXPECT_TRUE(SourceMgr.isMacroArgExpansion(loc2));
   EXPECT_TRUE(SourceMgr.isMacroArgExpansion(loc3));
   EXPECT_EQ(loc2, toks[1].getLocation());
   EXPECT_EQ(loc3, toks[2].getLocation());
-  EXPECT_TRUE(defLoc2.isFileID());
+  EXPECT_TRUE(defLoc2.isFileID(SourceMgr));
 }
 
 namespace {

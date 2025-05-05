@@ -906,7 +906,7 @@ getExpansionLocSlowCase(SourceLocation Loc) const {
     // with.  This is unlike when we get the spelling loc, because the offset
     // directly correspond to the token whose spelling we're inspecting.
     Loc = getSLocEntry(getFileID(Loc)).getExpansion().getExpansionLocStart();
-  } while (!Loc.isFileID());
+  } while (!Loc.isFileID(*this));
 
   return Loc;
 }
@@ -916,7 +916,7 @@ SourceLocation SourceManager::getSpellingLocSlowCase(SourceLocation Loc) const {
     std::pair<FileID, unsigned> LocInfo = getDecomposedLoc(Loc);
     Loc = getSLocEntry(LocInfo.first).getExpansion().getSpellingLoc();
     Loc = Loc.getLocWithOffset(LocInfo.second);
-  } while (!Loc.isFileID());
+  } while (!Loc.isFileID(*this));
   return Loc;
 }
 
@@ -926,7 +926,7 @@ SourceLocation SourceManager::getFileLocSlowCase(SourceLocation Loc) const {
       Loc = getImmediateSpellingLoc(Loc);
     else
       Loc = getImmediateExpansionRange(Loc).getBegin();
-  } while (!Loc.isFileID());
+  } while (!Loc.isFileID(*this));
   return Loc;
 }
 
@@ -944,7 +944,7 @@ SourceManager::getDecomposedExpansionLocSlowCase(
     FID = getFileID(Loc);
     E = &getSLocEntry(FID);
     Offset = Loc.getOffset()-E->getOffset();
-  } while (!Loc.isFileID());
+  } while (!Loc.isFileID(*this));
 
   return std::make_pair(FID, Offset);
 }
@@ -962,7 +962,7 @@ SourceManager::getDecomposedSpellingLocSlowCase(const SrcMgr::SLocEntry *E,
     FID = getFileID(Loc);
     E = &getSLocEntry(FID);
     Offset = Loc.getOffset()-E->getOffset();
-  } while (!Loc.isFileID());
+  } while (!Loc.isFileID(*this));
 
   return std::make_pair(FID, Offset);
 }
@@ -972,7 +972,7 @@ SourceManager::getDecomposedSpellingLocSlowCase(const SrcMgr::SLocEntry *E,
 /// towards the place where the characters that make up the lexed token can be
 /// found.  This should not generally be used by clients.
 SourceLocation SourceManager::getImmediateSpellingLoc(SourceLocation Loc) const{
-  if (Loc.isFileID()) return Loc;
+  if (Loc.isFileID(*this)) return Loc;
   std::pair<FileID, unsigned> LocInfo = getDecomposedLoc(Loc);
   Loc = getSLocEntry(LocInfo.first).getExpansion().getSpellingLoc();
   return Loc.getLocWithOffset(LocInfo.second);
@@ -1003,16 +1003,16 @@ SourceLocation SourceManager::getTopMacroCallerLoc(SourceLocation Loc) const {
 /// getExpansionRange - Given a SourceLocation object, return the range of
 /// tokens covered by the expansion in the ultimate file.
 CharSourceRange SourceManager::getExpansionRange(SourceLocation Loc) const {
-  if (Loc.isFileID())
+  if (Loc.isFileID(*this))
     return CharSourceRange(SourceRange(Loc, Loc), true);
 
   CharSourceRange Res = getImmediateExpansionRange(Loc);
 
   // Fully resolve the start and end locations to their ultimate expansion
   // points.
-  while (!Res.getBegin().isFileID())
+  while (!Res.getBegin().isFileID(*this))
     Res.setBegin(getImmediateExpansionRange(Res.getBegin()).getBegin());
-  while (!Res.getEnd().isFileID()) {
+  while (!Res.getEnd().isFileID(*this)) {
     CharSourceRange EndRange = getImmediateExpansionRange(Res.getEnd());
     Res.setEnd(EndRange.getEnd());
     Res.setTokenRange(EndRange.isTokenRange());
@@ -1772,7 +1772,7 @@ void SourceManager::computeMacroArgsCache(MacroArgsMap &MacroArgsCache,
 
     const ExpansionInfo &ExpInfo = Entry.getExpansion();
 
-    if (ExpInfo.getExpansionLocStart().isFileID()) {
+    if (ExpInfo.getExpansionLocStart().isFileID(*this)) {
       if (!isInFileID(ExpInfo.getExpansionLocStart(), FID))
         return; // No more files/macros that may be "contained" in this file.
     }
@@ -1793,7 +1793,7 @@ void SourceManager::associateFileChunkWithMacroArgExp(
                                          SourceLocation SpellLoc,
                                          SourceLocation ExpansionLoc,
                                          unsigned ExpansionLength) const {
-  if (!SpellLoc.isFileID()) {
+  if (!SpellLoc.isFileID(*this)) {
     SourceLocation::UIntTy SpellBeginOffs = SpellLoc.getOffset();
     SourceLocation::UIntTy SpellEndOffs = SpellBeginOffs + ExpansionLength;
 
@@ -1834,7 +1834,7 @@ void SourceManager::associateFileChunkWithMacroArgExp(
     }
   }
 
-  assert(SpellLoc.isFileID());
+  assert(SpellLoc.isFileID(*this));
 
   unsigned BeginOffs;
   if (!isInFileID(SpellLoc, FID, &BeginOffs))
@@ -1883,7 +1883,7 @@ void SourceManager::updateSlocUsageStats() const {
 /// where 'foo' was expanded into.
 SourceLocation
 SourceManager::getMacroArgExpandedLocation(SourceLocation Loc) const {
-  if (Loc.isInvalid() || !Loc.isFileID())
+  if (Loc.isInvalid() || !Loc.isFileID(*this))
     return Loc;
 
   FileID FID;

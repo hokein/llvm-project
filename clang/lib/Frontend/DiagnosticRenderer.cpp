@@ -531,7 +531,7 @@ void DiagnosticRenderer::emitMacroExpansions(FullSourceLoc Loc,
     // Once the location no longer points into a macro, try stepping through
     // the last found location.  This sometimes produces additional useful
     // backtraces.
-    if (L.isFileID())
+    if (L.isFileID(SM))
       L = SM.getImmediateMacroCallerLoc(LocationStack.back());
     assert(L.isValid() && "must have a valid source location here");
   }

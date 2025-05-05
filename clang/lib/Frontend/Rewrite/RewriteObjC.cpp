@@ -3879,7 +3879,8 @@ void RewriteObjC::RewriteCastExpr(CStyleCastExpr *CE) {
   if (LocStart.isInvalid())
     return;
   // Need to avoid trying to rewrite casts contained in macros.
-  if (!Rewriter::isRewritable(LocStart) || !Rewriter::isRewritable(LocEnd))
+  if (!Rewriter::isRewritable(LocStart, Context->getSourceManager()) ||
+      !Rewriter::isRewritable(LocEnd, Context->getSourceManager()))
     return;
 
   const char *startBuf = SM->getCharacterData(LocStart);

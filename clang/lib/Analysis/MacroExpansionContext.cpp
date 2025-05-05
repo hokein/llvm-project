@@ -204,7 +204,7 @@ static void dumpTokenInto(const Preprocessor &PP, raw_ostream &OS, Token Tok) {
 
 void MacroExpansionContext::onTokenLexed(const Token &Tok) {
   SourceLocation SLoc = Tok.getLocation();
-  if (SLoc.isFileID())
+  if (SLoc.isFileID(PP->getSourceManager()))
     return;
 
   LLVM_DEBUG(llvm::dbgs() << "lexed macro expansion token '";

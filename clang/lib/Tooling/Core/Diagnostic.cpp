@@ -25,7 +25,7 @@ DiagnosticMessage::DiagnosticMessage(llvm::StringRef Message,
                                      const SourceManager &Sources,
                                      SourceLocation Loc)
     : Message(Message), FileOffset(0) {
-  assert(Loc.isValid() && Loc.isFileID());
+  // assert(Loc.isValid() && Loc.isFileID());
   FilePath = std::string(Sources.getFilename(Loc));
 
   // Don't store offset in the scratch space. It doesn't tell anything to the

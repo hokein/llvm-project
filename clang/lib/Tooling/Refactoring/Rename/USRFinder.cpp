@@ -47,8 +47,8 @@ public:
     for (const auto &Range : NameRanges) {
       SourceLocation Start = Range.getBegin();
       SourceLocation End = Range.getEnd();
-      if (!Start.isValid() || !Start.isFileID() || !End.isValid() ||
-          !End.isFileID() || !isPointWithin(Start, End))
+      if (!Start.isValid() || !Start.isFileID(Context.getSourceManager()) || !End.isValid() ||
+          !End.isFileID(Context.getSourceManager()) || !isPointWithin(Start, End))
         return true;
     }
     Result = ND;

@@ -1135,7 +1135,7 @@ void clang::DoPrintPreprocessedInput(Preprocessor &PP, raw_ostream *OS,
   Token Tok;
   do {
     PP.Lex(Tok);
-    if (Tok.is(tok::eof) || !Tok.getLocation().isFileID())
+    if (Tok.is(tok::eof) || !Tok.getLocation().isFileID(SourceMgr))
       break;
 
     PresumedLoc PLoc = SourceMgr.getPresumedLoc(Tok.getLocation());

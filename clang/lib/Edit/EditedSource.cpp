@@ -386,7 +386,7 @@ static void applyRewrite(EditsReceiver &receiver,
   assert(offs.getFID().isValid());
   SourceLocation Loc = SM.getLocForStartOfFile(offs.getFID());
   Loc = Loc.getLocWithOffset(offs.getOffset());
-  assert(Loc.isFileID());
+  assert(Loc.isFileID(SM));
 
   if (text.empty() && shouldAdjustRemovals)
     adjustRemoval(SM, LangOpts, Loc, offs, len, text);
@@ -457,7 +457,7 @@ StringRef EditedSource::getSourceText(FileOffset BeginOffs, FileOffset EndOffs,
   assert(BeginOffs <= EndOffs);
   SourceLocation BLoc = SourceMgr.getLocForStartOfFile(BeginOffs.getFID());
   BLoc = BLoc.getLocWithOffset(BeginOffs.getOffset());
-  assert(BLoc.isFileID());
+  assert(BLoc.isFileID(SourceMgr));
   SourceLocation
     ELoc = BLoc.getLocWithOffset(EndOffs.getOffset() - BeginOffs.getOffset());
   return Lexer::getSourceText(CharSourceRange::getCharRange(BLoc, ELoc),

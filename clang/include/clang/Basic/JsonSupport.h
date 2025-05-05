@@ -88,7 +88,7 @@ inline void printSourceLocationAsJson(raw_ostream &Out, SourceLocation Loc,
     return;
   }
 
-  if (Loc.isFileID()) {
+  if (Loc.isFileID(SM)) {
     PresumedLoc PLoc = SM.getPresumedLoc(Loc);
 
     if (PLoc.isInvalid()) {

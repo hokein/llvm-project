@@ -487,7 +487,7 @@ bool LocationContext::isParentOf(const LocationContext *LC) const {
 
 static void printLocation(raw_ostream &Out, const SourceManager &SM,
                           SourceLocation Loc) {
-  if (Loc.isFileID() && SM.isInMainFile(Loc))
+  if (Loc.isFileID(SM) && SM.isInMainFile(Loc))
     Out << SM.getExpansionLineNumber(Loc);
   else
     Loc.print(Out, SM);

@@ -176,9 +176,9 @@ public:
     return getFromRawEncoding((SourceLocation::UIntTy)(uintptr_t)Encoding);
   }
 
-  static bool isPairOfFileLocations(SourceLocation Start, SourceLocation End) {
-    return Start.isValid() && Start.isFileID() && End.isValid() &&
-           End.isFileID();
+  static bool isPairOfFileLocations(SourceLocation Start, SourceLocation End, const SourceManager& SM) {
+    return Start.isValid() && Start.isFileID(SM) && End.isValid() &&
+           End.isFileID(SM);
   }
 
   unsigned getHashValue() const;

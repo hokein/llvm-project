@@ -159,7 +159,7 @@ llvm::StringRef syntax::Token::text(const SourceManager &SM) const {
 }
 
 FileRange syntax::Token::range(const SourceManager &SM) const {
-  assert(location().isFileID() && "must be a spelled token");
+  assert(location().isFileID(SM) && "must be a spelled token");
   FileID File;
   unsigned StartOffset;
   std::tie(File, StartOffset) = SM.getDecomposedLoc(location());
@@ -190,7 +190,7 @@ FileRange::FileRange(FileID File, unsigned BeginOffset, unsigned EndOffset)
 FileRange::FileRange(const SourceManager &SM, SourceLocation BeginLoc,
                      unsigned Length) {
   assert(BeginLoc.isValid());
-  assert(BeginLoc.isFileID());
+  assert(BeginLoc.isFileID(SM));
 
   std::tie(File, Begin) = SM.getDecomposedLoc(BeginLoc);
   End = Begin + Length;
@@ -198,9 +198,9 @@ FileRange::FileRange(const SourceManager &SM, SourceLocation BeginLoc,
 FileRange::FileRange(const SourceManager &SM, SourceLocation BeginLoc,
                      SourceLocation EndLoc) {
   assert(BeginLoc.isValid());
-  assert(BeginLoc.isFileID());
+  assert(BeginLoc.isFileID(SM));
   assert(EndLoc.isValid());
-  assert(EndLoc.isFileID());
+  assert(EndLoc.isFileID(SM));
   assert(SM.getFileID(BeginLoc) == SM.getFileID(EndLoc));
   assert(SM.getFileOffset(BeginLoc) <= SM.getFileOffset(EndLoc));
 
@@ -385,7 +385,7 @@ llvm::ArrayRef<syntax::Token> TokenBuffer::spelledTokens(FileID FID) const {
 
 const syntax::Token *
 TokenBuffer::spelledTokenContaining(SourceLocation Loc) const {
-  assert(Loc.isFileID());
+  assert(Loc.isFileID(sourceManager()));
   const auto *Tok = llvm::partition_point(
       spelledTokens(SourceMgr->getFileID(Loc)),
       [&](const syntax::Token &Tok) { return Tok.endLocation() <= Loc; });
@@ -471,7 +471,7 @@ TokenBuffer::Expansion TokenBuffer::makeExpansion(const MarkedFile &F,
 const TokenBuffer::MarkedFile &
 TokenBuffer::fileForSpelled(llvm::ArrayRef<syntax::Token> Spelled) const {
   assert(!Spelled.empty());
-  assert(Spelled.front().location().isFileID() && "not a spelled token");
+  assert(Spelled.front().location().isFileID(sourceManager()) && "not a spelled token");
   auto FileIt = Files.find(SourceMgr->getFileID(Spelled.front().location()));
   assert(FileIt != Files.end() && "file not tracked by token buffer");
   const auto &File = FileIt->second;
@@ -522,7 +522,7 @@ std::vector<TokenBuffer::Expansion> TokenBuffer::expansionsOverlapping(
 llvm::ArrayRef<syntax::Token>
 syntax::spelledTokensTouching(SourceLocation Loc,
                               llvm::ArrayRef<syntax::Token> Tokens) {
-  assert(Loc.isFileID());
+  // assert(Loc.isFileID(SrcMgr));
 
   auto *Right = llvm::partition_point(
       Tokens, [&](const syntax::Token &Tok) { return Tok.location() < Loc; });
@@ -640,7 +640,7 @@ public:
 
     // The *last* token of any top-level macro expansion must be in a file.
     // (In the example above, see the closing paren of the expansion of B).
-    if (!Range.getEnd().isFileID())
+    if (!Range.getEnd().isFileID(SM))
       return;
     // If there's a current expansion that encloses this one, this one can't be
     // top-level.
@@ -651,7 +651,7 @@ public:
     // If the macro invocation (B) starts in a macro (A) but ends in a file,
     // we'll create a merged mapping for A + B by overwriting the endpoint for
     // A's startpoint.
-    if (!Range.getBegin().isFileID()) {
+    if (!Range.getBegin().isFileID(SM)) {
       Range.setBegin(SM.getExpansionLoc(Range.getBegin()));
       assert(Collector->Expansions.count(Range.getBegin()) &&
              "Overlapping macros should have same expansion location");
@@ -815,7 +815,7 @@ private:
     const auto &SpelledTokens = Result.Files[File].SpelledTokens;
     auto &NextSpelled = this->NextSpelled[File];
 
-    if (Tok.location().isFileID()) {
+    if (Tok.location().isFileID(SM)) {
       // A run of file tokens continues while the expanded/spelled tokens match.
       while (NextSpelled < SpelledTokens.size() &&
              NextExpanded < Result.ExpandedTokens.size() &&

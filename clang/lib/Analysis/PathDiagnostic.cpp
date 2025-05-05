@@ -178,12 +178,12 @@ void PathDiagnosticConsumer::HandlePathDiagnostic(
         ArrayRef<SourceRange> Ranges = piece->getRanges();
         for (const auto &I : Ranges) {
           SourceLocation L = SMgr.getExpansionLoc(I.getBegin());
-          if (!L.isFileID() || SMgr.getFileID(L) != FID) {
+          if (!L.isFileID(SMgr) || SMgr.getFileID(L) != FID) {
             llvm::errs() << warning.str();
             return;
           }
           L = SMgr.getExpansionLoc(I.getEnd());
-          if (!L.isFileID() || SMgr.getFileID(L) != FID) {
+          if (!L.isFileID(SMgr) || SMgr.getFileID(L) != FID) {
             llvm::errs() << warning.str();
             return;
           }
