@@ -891,28 +891,22 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
 FileID SourceManager::updateLastFileIDLookup(FileID FID) const {
   if (LastFileIDLookup == FileID()) {
     LastFileIDLookup = FID;
-    LastIndex = 0;
     return FID;
   }
   if (LastFileIDLookup2 == FileID()) {
-    LastFileIDLookup2 = FID;
-    LastIndex = 1;
+    LastFileIDLookup2 = LastFileIDLookup;
+    LastFileIDLookup = FID;
     return FID;
   }
-  if (LastIndex == 0) {
-    LastIndex = 1;
-    return LastFileIDLookup2 = FID;
-  }
-  if (LastIndex == 1) {
-    LastIndex = 0;
-    return LastFileIDLookup = FID;
-  }
-  llvm_unreachable("must be unreachabled");
-  return FID;
+  std::swap(LastFileIDLookup, LastFileIDLookup2);
+  return LastFileIDLookup = FID;
+  // llvm_unreachable("must be unreachabled");
+  // return FID;
 }
 
 FileID SourceManager::getLastFileIDLookup() const {
-  return LastIndex == 0? LastFileIDLookup : LastFileIDLookup2;
+  return LastFileIDLookup;
+  // return LastIndex == 0? LastFileIDLookup : LastFileIDLookup2;
 }
 /// Return the FileID for a SourceLocation with a high offset.
 ///

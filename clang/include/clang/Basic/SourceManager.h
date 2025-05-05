@@ -768,7 +768,6 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// is very common to look up many tokens from the same file.
   mutable FileID LastFileIDLookup;
   mutable FileID LastFileIDLookup2;
-  mutable unsigned int LastIndex = 0;
 
   
   FileID updateLastFileIDLookup(FileID newFID) const;
@@ -1900,24 +1899,12 @@ private:
 
   FileID getFileID(SourceLocation::UIntTy SLocOffset) const {
     // If our one-entry cache covers this offset, just return it.
-    if (LastIndex == 0) {
-      if (isOffsetInFileID(LastFileIDLookup, SLocOffset)) {
-        LastIndex = 0;
-        return LastFileIDLookup;
-      }
-      if (isOffsetInFileID(LastFileIDLookup2, SLocOffset)) {
-        LastIndex = 1;
-        return LastFileIDLookup2;
-      }
-    } else if (LastIndex == 1) {
-      if (isOffsetInFileID(LastFileIDLookup2, SLocOffset)) {
-        LastIndex = 1;
-        return LastFileIDLookup2;
-      }
-      if (isOffsetInFileID(LastFileIDLookup, SLocOffset)) {
-        LastIndex = 0;
-        return LastFileIDLookup;
-      }
+    if (isOffsetInFileID(LastFileIDLookup, SLocOffset)) {
+      return LastFileIDLookup;
+    }
+    if (isOffsetInFileID(LastFileIDLookup2, SLocOffset)) {
+      std::swap(LastFileIDLookup, LastFileIDLookup2);
+      return LastFileIDLookup;
     }
 
     return getFileIDSlow(SLocOffset);
