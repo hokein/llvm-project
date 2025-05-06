@@ -828,13 +828,12 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   unsigned LessIndex = 0;
   // upper bound of the search range.
   unsigned GreaterIndex = LocalSLocEntryTable.size();
-  if (LastFileIDLookup.ID >= 0) {
-    // Use the LastFileIDLookup to prune the search space.
-    if (LocalSLocEntryTable[LastFileIDLookup.ID].getOffset() < SLocOffset)
-      LessIndex = LastFileIDLookup.ID;
-    else
-      GreaterIndex = LastFileIDLookup.ID;
-  }
+  assert(LastFileIDLookup.ID >= 0);
+  // Use the LastFileIDLookup to prune the search space.
+  if (LocalSLocEntryTable[LastFileIDLookup.ID].getOffset() < SLocOffset)
+    LessIndex = LastFileIDLookup.ID;
+  else
+    GreaterIndex = LastFileIDLookup.ID;
 
   // Find the FileID that contains this.
   unsigned NumProbes = 0;
