@@ -634,9 +634,13 @@ FileID SourceManager::createFileIDImpl(ContentCache &File, StringRef Filename,
     noteSLocAddressSpaceUsage(Diag);
     return FileID();
   }
-  LocalSLocEntryTable.push_back(
-      SLocEntry::get(NextLocalOffset,
-                     FileInfo::get(IncludePos, File, FileCharacter, Filename)));
+  LocalSLocEntryTable.add(
+      NextLocalOffset,
+      FileInfo::get(IncludePos, File, FileCharacter, Filename));
+
+  // LocalSLocEntryTable.push_back(
+  //     SLocEntry::get(NextLocalOffset,
+  //                    FileInfo::get(IncludePos, File, FileCharacter, Filename)));
   // We do a +1 here because we want a SourceLocation that means "the end of the
   // file", e.g. for the "no newline at the end of the file" diagnostic.
   NextLocalOffset += FileSize + 1;
@@ -688,7 +692,8 @@ SourceManager::createExpansionLocImpl(const ExpansionInfo &Info,
     SLocEntryLoaded[Index] = SLocEntryOffsetLoaded[Index] = true;
     return SourceLocation::getMacroLoc(LoadedOffset);
   }
-  LocalSLocEntryTable.push_back(SLocEntry::get(NextLocalOffset, Info));
+  LocalSLocEntryTable.add(NextLocalOffset, Info);
+  // LocalSLocEntryTable.push_back(SLocEntry::get(NextLocalOffset, Info));
   if (NextLocalOffset + Length + 1 <= NextLocalOffset ||
       NextLocalOffset + Length + 1 > CurrentLoadedOffset) {
     Diag.Report(diag::err_sloc_space_too_large);
@@ -829,8 +834,10 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   // upper bound of the search range.
   unsigned GreaterIndex = LocalSLocEntryTable.size();
   assert(LastFileIDLookup.ID >= 0);
+  auto Indexes = LocalSLocEntryTable.getIndexes();
   // Use the LastFileIDLookup to prune the search space.
-  if (LocalSLocEntryTable[LastFileIDLookup.ID].getOffset() < SLocOffset)
+  if (Indexes[LastFileIDLookup.ID].Offset < SLocOffset)
+  // if (LocalSLocEntryTable[LastFileIDLookup.ID].getOffset() < SLocOffset)
     LessIndex = LastFileIDLookup.ID;
   else
     GreaterIndex = LastFileIDLookup.ID;
@@ -840,7 +847,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   while (true) {
     --GreaterIndex;
     assert(GreaterIndex < LocalSLocEntryTable.size());
-    if (LocalSLocEntryTable[GreaterIndex].getOffset() <= SLocOffset) {
+    if (Indexes[GreaterIndex].Offset <= SLocOffset) {
       FileID Res = FileID::get(int(GreaterIndex));
       // Remember it.  We have good locality across FileID lookups.
       LastFileIDLookup = Res;
@@ -853,9 +860,8 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
 
   NumProbes = 0;
   while (true) {
-    unsigned MiddleIndex = (GreaterIndex-LessIndex)/2+LessIndex;
-    SourceLocation::UIntTy MidOffset =
-        getLocalSLocEntry(MiddleIndex).getOffset();
+    unsigned MiddleIndex = (GreaterIndex - LessIndex) / 2 + LessIndex;
+    SourceLocation::UIntTy MidOffset = Indexes[MiddleIndex].Offset;
 
     ++NumProbes;
 
@@ -868,7 +874,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
 
     // If the middle index contains the value, succeed and return.
     if (MiddleIndex + 1 == LocalSLocEntryTable.size() ||
-        SLocOffset < getLocalSLocEntry(MiddleIndex + 1).getOffset()) {
+        SLocOffset < Indexes[MiddleIndex + 1].Offset) {
       FileID Res = FileID::get(MiddleIndex);
 
       // Remember it.  We have good locality across FileID lookups.
@@ -2171,7 +2177,7 @@ void SourceManager::PrintStats() const {
   llvm::errs() << FileInfos.size() << " files mapped, " << MemBufferInfos.size()
                << " mem buffers mapped.\n";
   llvm::errs() << LocalSLocEntryTable.size() << " local SLocEntries allocated ("
-               << llvm::capacity_in_bytes(LocalSLocEntryTable)
+              //  << llvm::capacity_in_bytes(LocalSLocEntryTable)
                << " bytes of capacity), " << NextLocalOffset
                << "B of SLoc address space used.\n";
   llvm::errs() << LoadedSLocEntryTable.size()
@@ -2235,9 +2241,9 @@ LLVM_DUMP_METHOD void SourceManager::dump() const {
 
   // Dump local SLocEntries.
   for (unsigned ID = 0, NumIDs = LocalSLocEntryTable.size(); ID != NumIDs; ++ID) {
-    DumpSLocEntry(ID, LocalSLocEntryTable[ID],
-                  ID == NumIDs - 1 ? NextLocalOffset
-                                   : LocalSLocEntryTable[ID + 1].getOffset());
+    // DumpSLocEntry(ID, LocalSLocEntryTable[ID],
+    //               ID == NumIDs - 1 ? NextLocalOffset
+    //                                : LocalSLocEntryTable[ID + 1].getOffset());
   }
   // Dump loaded SLocEntries.
   std::optional<SourceLocation::UIntTy> NextStart;
@@ -2365,7 +2371,7 @@ SourceManager::MemoryBufferSizes SourceManager::getMemoryBufferSizes() const {
 
 size_t SourceManager::getDataStructureSizes() const {
   size_t size = llvm::capacity_in_bytes(MemBufferInfos) +
-                llvm::capacity_in_bytes(LocalSLocEntryTable) +
+                // llvm::capacity_in_bytes(LocalSLocEntryTable) +
                 llvm::capacity_in_bytes(LoadedSLocEntryTable) +
                 llvm::capacity_in_bytes(SLocEntryLoaded) +
                 llvm::capacity_in_bytes(FileInfos);

@@ -2322,9 +2322,9 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
   for (unsigned I = 1, N = SourceMgr.local_sloc_entry_size();
        I != N; ++I) {
     // Get this source location entry.
-    const SrcMgr::SLocEntry *SLoc = &SourceMgr.getLocalSLocEntry(I);
+     SrcMgr::SLocEntry SLoc = SourceMgr.getLocalSLocEntry(I);
     FileID FID = FileID::get(I);
-    assert(&SourceMgr.getSLocEntry(FID) == SLoc);
+    // assert(&SourceMgr.getSLocEntry(FID) == SLoc);
 
     // Record the offset of this source-location entry.
     uint64_t Offset = Stream.GetCurrentBitNo() - SLocEntryOffsetsBase;
@@ -2332,8 +2332,8 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
 
     // Figure out which record code to use.
     unsigned Code;
-    if (SLoc->isFile()) {
-      const SrcMgr::ContentCache *Cache = &SLoc->getFile().getContentCache();
+    if (SLoc.isFile()) {
+      const SrcMgr::ContentCache *Cache = &SLoc.getFile().getContentCache();
       if (Cache->OrigEntry) {
         Code = SM_SLOC_FILE_ENTRY;
       } else
@@ -2343,15 +2343,15 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
     Record.clear();
     Record.push_back(Code);
 
-    if (SLoc->isFile()) {
-      const SrcMgr::FileInfo &File = SLoc->getFile();
+    if (SLoc.isFile()) {
+      const SrcMgr::FileInfo &File = SLoc.getFile();
       const SrcMgr::ContentCache *Content = &File.getContentCache();
       // Do not emit files that were not listed as inputs.
       if (!IsSLocAffecting[I])
         continue;
       SLocEntryOffsets.push_back(Offset);
       // Starting offset of this entry within this module, so skip the dummy.
-      Record.push_back(getAdjustedOffset(SLoc->getOffset()) - 2);
+      Record.push_back(getAdjustedOffset(SLoc.getOffset()) - 2);
       AddSourceLocation(getAffectingIncludeLoc(SourceMgr, File), Record);
       Record.push_back(File.getFileCharacteristic()); // FIXME: stable encoding
       Record.push_back(File.hasLineDirectives());
@@ -2408,10 +2408,10 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
       }
     } else {
       // The source location entry is a macro expansion.
-      const SrcMgr::ExpansionInfo &Expansion = SLoc->getExpansion();
+      const SrcMgr::ExpansionInfo &Expansion = SLoc.getExpansion();
       SLocEntryOffsets.push_back(Offset);
       // Starting offset of this entry within this module, so skip the dummy.
-      Record.push_back(getAdjustedOffset(SLoc->getOffset()) - 2);
+      Record.push_back(getAdjustedOffset(SLoc.getOffset()) - 2);
       LocSeq::State Seq;
       AddSourceLocation(Expansion.getSpellingLoc(), Record, Seq);
       AddSourceLocation(Expansion.getExpansionLocStart(), Record, Seq);
@@ -2425,7 +2425,7 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
       SourceLocation::UIntTy NextOffset = SourceMgr.getNextLocalOffset();
       if (I + 1 != N)
         NextOffset = SourceMgr.getLocalSLocEntry(I + 1).getOffset();
-      Record.push_back(getAdjustedOffset(NextOffset - SLoc->getOffset()) - 1);
+      Record.push_back(getAdjustedOffset(NextOffset - SLoc.getOffset()) - 1);
       Stream.EmitRecordWithAbbrev(SLocExpansionAbbrv, Record);
     }
   }

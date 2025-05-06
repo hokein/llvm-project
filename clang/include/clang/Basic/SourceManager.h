@@ -474,12 +474,14 @@ public:
 static_assert(sizeof(FileInfo) <= sizeof(ExpansionInfo),
               "FileInfo must be no larger than ExpansionInfo.");
 
+
 /// This is a discriminated union of FileInfo and ExpansionInfo.
 ///
 /// SourceManager keeps an array of these objects, and they are uniquely
 /// identified by the FileID datatype.
 class SLocEntry {
   static constexpr int OffsetBits = 8 * sizeof(SourceLocation::UIntTy) - 1;
+  
   SourceLocation::UIntTy Offset : OffsetBits;
   LLVM_PREFERRED_TYPE(bool)
   SourceLocation::UIntTy IsExpansion : 1;
@@ -487,8 +489,9 @@ class SLocEntry {
     FileInfo File;
     ExpansionInfo Expansion;
   };
-
+  friend struct SLocEntryTable;
 public:
+  static constexpr unsigned Invalid = (1u << OffsetBits) - 1;
   SLocEntry() : Offset(), IsExpansion(), File() {}
 
   SourceLocation::UIntTy getOffset() const { return Offset; }
@@ -533,10 +536,76 @@ public:
     SLocEntry E;
     E.Offset = Offset;
     E.IsExpansion = true;
+    E.Expansion = Expansion;
     new (&E.Expansion) ExpansionInfo(Expansion);
     return E;
   }
 };
+
+struct SLocEntryTable {
+  struct MetaData {
+    static constexpr int OffsetBits = 8 * sizeof(SourceLocation::UIntTy) - 1;
+    SourceLocation::UIntTy Offset : OffsetBits;
+    LLVM_PREFERRED_TYPE(bool)
+    SourceLocation::UIntTy IsExpansion : 1;
+  };
+  union UnderlyingStorage {
+    FileInfo File;
+    ExpansionInfo Expansion;
+  };
+
+  SLocEntry get(int Index) const {
+    // SLocEntry Entry;
+    // Entry.Offset = Indexes[Index].Offset;
+    // Entry.IsExpansion = Indexes[Index].IsExpansion;
+    if ( Indexes[Index].IsExpansion)
+      return SLocEntry::get(Indexes[Index].Offset, Storage[Index].Expansion);
+    return SLocEntry::get(Indexes[Index].Offset, Storage[Index].File);
+  }
+  ArrayRef<MetaData> getIndexes() const {
+    return Indexes;
+  } 
+  // FileID.ID
+  SourceLocation::UIntTy getOffset(int ID) const {
+    return Indexes[ID].Offset;
+  }
+
+  FileInfo* getFile(int ID) {
+    if (Indexes[ID].IsExpansion)
+      return nullptr;
+    return &Storage[ID].File;
+  }
+
+  unsigned size() const {
+    return Indexes.size();
+  }
+  
+  void add(SourceLocation::UIntTy Offset, const FileInfo &FI) {
+    assert(!(Offset & (1ULL << MetaData::OffsetBits)) && "Offset is too large");
+    MetaData D {Offset, false};
+    Indexes.push_back(D);
+    Storage.push_back({FI});
+    assert(Indexes.size() == Storage.size());
+  }
+
+  void add(SourceLocation::UIntTy Offset,
+                       const ExpansionInfo &Expansion) {
+    assert(!(Offset & (1ULL << MetaData::OffsetBits)) && "Offset is too large");
+    MetaData D {Offset, true};
+    Indexes.push_back(D);
+    Storage.push_back({.Expansion=Expansion});
+    assert(Indexes.size() == Storage.size());
+  }
+
+  void clear() {
+    Indexes.clear();
+    Storage.clear();
+  }
+  
+  llvm::SmallVector<MetaData> Indexes;
+  llvm::SmallVector<UnderlyingStorage> Storage;
+};
+
 
 } // namespace SrcMgr
 
@@ -718,8 +787,8 @@ class SourceManager : public RefCountedBase<SourceManager> {
   ///
   /// Positive FileIDs are indexes into this table. Entry 0 indicates an invalid
   /// expansion.
-  SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
-
+  // SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
+  SrcMgr::SLocEntryTable LocalSLocEntryTable;
   /// The table of SLocEntries that are loaded from other modules.
   ///
   /// Negative FileIDs are indexes into this table. To get from ID to an index,
@@ -1128,6 +1197,7 @@ public:
     auto *Entry = getSLocEntryForFile(FID);
     if (!Entry)
       return;
+    // auto *File = 
     assert((Force || Entry->getFile().NumCreatedFIDs == 0) && "Already set!");
     Entry->getFile().NumCreatedFIDs = NumFIDs;
   }
@@ -1738,14 +1808,14 @@ public:
   unsigned local_sloc_entry_size() const { return LocalSLocEntryTable.size(); }
 
   /// Get a local SLocEntry. This is exposed for indexing.
-  const SrcMgr::SLocEntry &getLocalSLocEntry(unsigned Index) const {
+  SrcMgr::SLocEntry getLocalSLocEntry(unsigned Index) const {
     return const_cast<SourceManager *>(this)->getLocalSLocEntry(Index);
   }
 
   /// Get a local SLocEntry. This is exposed for indexing.
-  SrcMgr::SLocEntry &getLocalSLocEntry(unsigned Index) {
+  SrcMgr::SLocEntry getLocalSLocEntry(unsigned Index) {
     assert(Index < LocalSLocEntryTable.size() && "Invalid index");
-    return LocalSLocEntryTable[Index];
+    return LocalSLocEntryTable.get(Index);
   }
 
   /// Get the number of loaded SLocEntries we have.
@@ -1772,10 +1842,10 @@ public:
     return const_cast<SourceManager *>(this)->getSLocEntry(FID, Invalid);
   }
 
-  SrcMgr::SLocEntry &getSLocEntry(FileID FID, bool *Invalid = nullptr) {
+  SrcMgr::SLocEntry getSLocEntry(FileID FID, bool *Invalid = nullptr) {
     if (FID.ID == 0 || FID.ID == -1) {
       if (Invalid) *Invalid = true;
-      return LocalSLocEntryTable[0];
+      return LocalSLocEntryTable.get(0); // FIXME: 
     }
     return getSLocEntryByID(FID.ID, Invalid);
   }
@@ -1854,7 +1924,7 @@ private:
 
   SrcMgr::SLocEntry *getSLocEntryOrNull(FileID FID) {
     bool Invalid = false;
-    SrcMgr::SLocEntry &Entry = getSLocEntry(FID, &Invalid);
+    SrcMgr::SLocEntry Entry = getSLocEntry(FID, &Invalid);
     return Invalid ? nullptr : &Entry;
   }
 
@@ -1871,12 +1941,12 @@ private:
 
   /// Get the entry with the given unwrapped FileID.
   /// Invalid will not be modified for Local IDs.
-  const SrcMgr::SLocEntry &getSLocEntryByID(int ID,
+  SrcMgr::SLocEntry getSLocEntryByID(int ID,
                                             bool *Invalid = nullptr) const {
     return const_cast<SourceManager *>(this)->getSLocEntryByID(ID, Invalid);
   }
 
-  SrcMgr::SLocEntry &getSLocEntryByID(int ID, bool *Invalid = nullptr) {
+  SrcMgr::SLocEntry getSLocEntryByID(int ID, bool *Invalid = nullptr) {
     assert(ID != -1 && "Using FileID sentinel value");
     if (ID < 0)
       return getLoadedSLocEntryByID(ID, Invalid);
