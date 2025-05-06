@@ -1123,7 +1123,7 @@ void EmptyLocalizationContextChecker::MethodCrawler::VisitObjCMessageExpr(
   std::pair<FileID, unsigned> SLInfo =
       Mgr.getSourceManager().getDecomposedLoc(SL);
 
-  SrcMgr::SLocEntry SE = Mgr.getSourceManager().getSLocEntry(SLInfo.first);
+  auto SE = Mgr.getSourceManager().getSLocEntry(SLInfo.first);
 
   // If NSLocalizedString macro is wrapped in another macro, we need to
   // unwrap the expansion until we get to the NSLocalizedStringMacro.

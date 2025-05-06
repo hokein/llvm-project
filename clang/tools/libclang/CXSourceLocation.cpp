@@ -257,7 +257,7 @@ void clang_getExpansionLocation(CXSourceLocation location,
   // This can manifest in invalid code.
   FileID fileID = SM.getFileID(ExpansionLoc);
   bool Invalid = false;
-  const SrcMgr::SLocEntry &sloc = SM.getSLocEntry(fileID, &Invalid);
+  auto sloc = SM.getSLocEntry(fileID, &Invalid);
   if (Invalid || !sloc.isFile()) {
     createNullLocation(file, line, column, offset);
     return;

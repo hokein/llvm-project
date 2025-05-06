@@ -328,7 +328,7 @@ bool CursorVisitor::visitDeclsFromFileRegion(FileID File, unsigned Offset,
   // file that it was included from.
   while (Decls.empty() || Decls.front()->isTopLevelDeclInObjCContainer()) {
     bool Invalid = false;
-    const SrcMgr::SLocEntry &SLEntry = SM.getSLocEntry(File, &Invalid);
+    auto SLEntry = SM.getSLocEntry(File, &Invalid);
     if (Invalid)
       return false;
 

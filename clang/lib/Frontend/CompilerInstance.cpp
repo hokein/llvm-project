@@ -1378,7 +1378,7 @@ std::unique_ptr<CompilerInstance> CompilerInstance::cloneForModuleCompile(
     // IsSystem attribute of the module. If the module has [system] but the
     // module map is not in a system path, then this would incorrectly parse
     // any other modules in that module map as system too.
-    const SrcMgr::SLocEntry &SLoc = SourceMgr.getSLocEntry(ModuleMapFID);
+    auto SLoc = SourceMgr.getSLocEntry(ModuleMapFID);
     bool IsSystem = isSystem(SLoc.getFile().getFileCharacteristic());
 
     // Use the module map where this module resides.

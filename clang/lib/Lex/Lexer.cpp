@@ -997,13 +997,13 @@ CharSourceRange Lexer::makeFileCharRange(CharSourceRange Range,
   }
 
   bool Invalid = false;
-  const SrcMgr::SLocEntry &BeginEntry = SM.getSLocEntry(SM.getFileID(Begin),
+  auto BeginEntry = SM.getSLocEntry(SM.getFileID(Begin),
                                                         &Invalid);
   if (Invalid)
     return {};
 
   if (BeginEntry.getExpansion().isMacroArgExpansion()) {
-    const SrcMgr::SLocEntry &EndEntry = SM.getSLocEntry(SM.getFileID(End),
+    auto EndEntry = SM.getSLocEntry(SM.getFileID(End),
                                                         &Invalid);
     if (Invalid)
       return {};
@@ -1064,8 +1064,8 @@ StringRef Lexer::getImmediateMacroName(SourceLocation Loc,
   // Find the location of the immediate macro expansion.
   while (true) {
     FileID FID = SM.getFileID(Loc);
-    const SrcMgr::SLocEntry *E = &SM.getSLocEntry(FID);
-    const SrcMgr::ExpansionInfo &Expansion = E->getExpansion();
+    auto E = SM.getSLocEntry(FID);
+    const SrcMgr::ExpansionInfo &Expansion = E.getExpansion();
     Loc = Expansion.getExpansionLocStart();
     if (!Expansion.isMacroArgExpansion())
       break;

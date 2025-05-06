@@ -4018,7 +4018,7 @@ static FileID getNullabilityCompletenessCheckFileID(Sema &S,
 
   // Retrieve file information.
   bool invalid = false;
-  const SrcMgr::SLocEntry &sloc = S.SourceMgr.getSLocEntry(file, &invalid);
+  auto sloc = S.SourceMgr.getSLocEntry(file, &invalid);
   if (invalid || !sloc.isFile())
     return FileID();
 

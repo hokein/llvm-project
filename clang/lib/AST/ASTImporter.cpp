@@ -9977,7 +9977,7 @@ Expected<FileID> ASTImporter::Import(FileID FromID, bool IsBuiltin) {
 
   SourceManager &FromSM = FromContext.getSourceManager();
   SourceManager &ToSM = ToContext.getSourceManager();
-  const SrcMgr::SLocEntry &FromSLoc = FromSM.getSLocEntry(FromID);
+  auto FromSLoc = FromSM.getSLocEntry(FromID);
 
   // Map the FromID to the "to" source manager.
   FileID ToID;

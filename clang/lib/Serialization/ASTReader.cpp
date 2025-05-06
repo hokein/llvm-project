@@ -1739,11 +1739,13 @@ int ASTReader::getSLocEntryID(SourceLocation::UIntTy SLocOffset) {
             Invalid = true;
             return true;
           }
-          SourceMgr.LoadedSLocEntryTable[Index] =
-              SrcMgr::SLocEntry::getOffsetOnly(*MaybeEntryOffset);
+          SourceMgr.LoadedSLocEntryTable.Indexes[Index].Offset = *MaybeEntryOffset;
+          SourceMgr.LoadedSLocEntryTable.Indexes[Index].IsExpansion = false;
+          SourceMgr.LoadedSLocEntryTable.Payload[Index].File = SrcMgr::FileInfo();
+              // SrcMgr::SLocEntry::getOffsetOnly(*MaybeEntryOffset);
           SourceMgr.SLocEntryOffsetLoaded[Index] = true;
         }
-        return Offset < SourceMgr.LoadedSLocEntryTable[Index].getOffset();
+        return Offset < SourceMgr.LoadedSLocEntryTable.get(Index).getOffset();
       });
 
   if (Invalid)

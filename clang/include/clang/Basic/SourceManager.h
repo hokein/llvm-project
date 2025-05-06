@@ -474,6 +474,92 @@ public:
 static_assert(sizeof(FileInfo) <= sizeof(ExpansionInfo),
               "FileInfo must be no larger than ExpansionInfo.");
 
+struct SLocEntryMetadata {
+  static constexpr int OffsetBits = 8 * sizeof(SourceLocation::UIntTy) - 1;
+  SourceLocation::UIntTy Offset : OffsetBits;
+  LLVM_PREFERRED_TYPE(bool)
+  SourceLocation::UIntTy IsExpansion : 1;
+};
+union SLocEntryPayload {
+  FileInfo File;
+  ExpansionInfo Expansion;
+
+  SLocEntryPayload() : File() {}
+};
+// a light-weight proxy of SLocEntry.
+struct SLocEntryProxy {
+  static constexpr int OffsetBits = 8 * sizeof(SourceLocation::UIntTy) - 1;
+  SourceLocation::UIntTy Offset : OffsetBits ;
+  LLVM_PREFERRED_TYPE(bool)
+  SourceLocation::UIntTy IsExpansion : 1;
+  SLocEntryPayload* Payload = nullptr;
+  
+  SLocEntryProxy() : Offset(0), IsExpansion(0), Payload(nullptr) {}
+  SourceLocation::UIntTy getOffset() const { return Offset; }
+  bool isExpansion() const { return IsExpansion; }
+  bool isFile() const { return !isExpansion(); }
+
+  const FileInfo &getFile() const {
+    return const_cast<SLocEntryProxy *>(this)->getFile();
+  }
+
+  FileInfo &getFile() {
+    assert(isFile() && "Not a file SLocEntry!");
+    return Payload->File;
+  }
+
+  const ExpansionInfo &getExpansion() const {
+    assert(isExpansion() && "Not a macro expansion SLocEntry!");
+    return Payload->Expansion;
+  }
+};
+
+struct LocalSLocEntryTable {
+
+  SLocEntryProxy get(int ID) {
+    SLocEntryProxy R;
+    R.Offset = Indexes[ID].Offset;
+    R.IsExpansion = Indexes[ID].IsExpansion;
+    R.Payload = &Payload[ID];
+    return R;
+  }
+  void clear() {
+    Indexes.clear();
+    Payload.clear();
+  }
+  unsigned size() const {
+    return Indexes.size();
+  }
+
+  llvm::SmallVector<SLocEntryMetadata> Indexes;
+  llvm::SmallVector<SLocEntryPayload> Payload;
+};
+struct LoadSLocEntryTable {
+  SLocEntryProxy get(int ID) const {
+    SLocEntryProxy R;
+    R.Offset = Indexes[ID].Offset;
+    R.IsExpansion = Indexes[ID].IsExpansion;
+    R.Payload = &Payload[ID];
+    return R;
+  }
+  bool empty() const {
+    return size() == 0;
+  }
+  unsigned size() const {
+    return Indexes.size();
+  }
+  void resize(unsigned Num) {
+    Indexes.resize(Num);
+    Payload.resize(Num);
+  } 
+
+  void clear() {
+    Indexes.clear();
+    Payload.clear();
+  }
+  llvm::PagedVector<SLocEntryMetadata, 32> Indexes;
+  llvm::PagedVector<SLocEntryPayload, 32> Payload;
+};
 /// This is a discriminated union of FileInfo and ExpansionInfo.
 ///
 /// SourceManager keeps an array of these objects, and they are uniquely
@@ -510,13 +596,13 @@ public:
     return Expansion;
   }
 
-  /// Creates an incomplete SLocEntry that is only able to report its offset.
-  static SLocEntry getOffsetOnly(SourceLocation::UIntTy Offset) {
-    assert(!(Offset & (1ULL << OffsetBits)) && "Offset is too large");
-    SLocEntry E;
-    E.Offset = Offset;
-    return E;
-  }
+  // /// Creates an incomplete SLocEntry that is only able to report its offset.
+  // static SLocEntry getOffsetOnly(SourceLocation::UIntTy Offset) {
+  //   assert(!(Offset & (1ULL << OffsetBits)) && "Offset is too large");
+  //   SLocEntry E;
+  //   E.Offset = Offset;
+  //   return E;
+  // }
 
   static SLocEntry get(SourceLocation::UIntTy Offset, const FileInfo &FI) {
     assert(!(Offset & (1ULL << OffsetBits)) && "Offset is too large");
@@ -718,13 +804,15 @@ class SourceManager : public RefCountedBase<SourceManager> {
   ///
   /// Positive FileIDs are indexes into this table. Entry 0 indicates an invalid
   /// expansion.
-  SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
+  // SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
+  SrcMgr::LocalSLocEntryTable LocalSLocEntryTable;
 
   /// The table of SLocEntries that are loaded from other modules.
   ///
   /// Negative FileIDs are indexes into this table. To get from ID to an index,
   /// use (-ID - 2).
-  llvm::PagedVector<SrcMgr::SLocEntry, 32> LoadedSLocEntryTable;
+  // llvm::PagedVector<SrcMgr::SLocEntry, 32> LoadedSLocEntryTable;
+  SrcMgr::LoadSLocEntryTable LoadedSLocEntryTable;
 
   /// For each allocation in LoadedSLocEntryTable, we keep the first FileID.
   /// We assume exactly one allocation per AST file, and use that to determine
@@ -1049,8 +1137,8 @@ public:
   /// std::nullopt.
   std::optional<llvm::MemoryBufferRef>
   getBufferOrNone(FileID FID, SourceLocation Loc = SourceLocation()) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return Entry->getFile().getContentCache().getBufferOrNone(
+    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
+      return Entry.getFile().getContentCache().getBufferOrNone(
           Diag, getFileManager(), Loc);
     return std::nullopt;
   }
@@ -1075,8 +1163,8 @@ public:
 
   /// Returns the FileEntryRef for the provided FileID.
   OptionalFileEntryRef getFileEntryRefForID(FileID FID) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return Entry->getFile().getContentCache().OrigEntry;
+    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
+      return Entry.getFile().getContentCache().OrigEntry;
     return std::nullopt;
   }
 
@@ -1116,8 +1204,8 @@ public:
   /// Get the number of FileIDs (files and macros) that were created
   /// during preprocessing of \p FID, including it.
   unsigned getNumCreatedFIDsForFileID(FileID FID) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return Entry->getFile().NumCreatedFIDs;
+    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
+      return Entry.getFile().NumCreatedFIDs;
     return 0;
   }
 
@@ -1125,11 +1213,11 @@ public:
   /// during preprocessing of \p FID, including it.
   void setNumCreatedFIDsForFileID(FileID FID, unsigned NumFIDs,
                                   bool Force = false) {
-    auto *Entry = getSLocEntryForFile(FID);
-    if (!Entry)
+    auto Entry = getSLocEntryForFile(FID);
+    if (!Entry.Payload)
       return;
-    assert((Force || Entry->getFile().NumCreatedFIDs == 0) && "Already set!");
-    Entry->getFile().NumCreatedFIDs = NumFIDs;
+    assert((Force || Entry.getFile().NumCreatedFIDs == 0) && "Already set!");
+    Entry.getFile().NumCreatedFIDs = NumFIDs;
   }
 
   //===--------------------------------------------------------------------===//
@@ -1152,16 +1240,16 @@ public:
   /// Return the source location corresponding to the first byte of
   /// the specified file.
   SourceLocation getLocForStartOfFile(FileID FID) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return SourceLocation::getFileLoc(Entry->getOffset());
+    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
+      return SourceLocation::getFileLoc(Entry.getOffset());
     return SourceLocation();
   }
 
   /// Return the source location corresponding to the last byte of the
   /// specified file.
   SourceLocation getLocForEndOfFile(FileID FID) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return SourceLocation::getFileLoc(Entry->getOffset() +
+    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
+      return SourceLocation::getFileLoc(Entry.getOffset() +
                                         getFileIDSize(FID));
     return SourceLocation();
   }
@@ -1169,8 +1257,8 @@ public:
   /// Returns the include location if \p FID is a \#include'd file
   /// otherwise it returns an invalid location.
   SourceLocation getIncludeLoc(FileID FID) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return Entry->getFile().getIncludeLoc();
+    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
+      return Entry.getFile().getIncludeLoc();
     return SourceLocation();
   }
 
@@ -1256,12 +1344,12 @@ public:
 
   /// Form a SourceLocation from a FileID and Offset pair.
   SourceLocation getComposedLoc(FileID FID, unsigned Offset) const {
-    auto *Entry = getSLocEntryOrNull(FID);
-    if (!Entry)
+    auto Entry = getSLocEntryOrNull(FID);
+    if (!Entry.Payload)
       return SourceLocation();
 
-    SourceLocation::UIntTy GlobalOffset = Entry->getOffset() + Offset;
-    return Entry->isFile() ? SourceLocation::getFileLoc(GlobalOffset)
+    SourceLocation::UIntTy GlobalOffset = Entry.getOffset() + Offset;
+    return Entry.isFile() ? SourceLocation::getFileLoc(GlobalOffset)
                            : SourceLocation::getMacroLoc(GlobalOffset);
   }
 
@@ -1271,10 +1359,10 @@ public:
   /// start of the buffer of the location.
   std::pair<FileID, unsigned> getDecomposedLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
-    auto *Entry = getSLocEntryOrNull(FID);
-    if (!Entry)
+    auto Entry = getSLocEntryOrNull(FID);
+    if (!Entry.Payload)
       return std::make_pair(FileID(), 0);
-    return std::make_pair(FID, Loc.getOffset() - Entry->getOffset());
+    return std::make_pair(FID, Loc.getOffset() - Entry.getOffset());
   }
 
   /// Decompose the specified location into a raw FileID + Offset pair.
@@ -1284,11 +1372,11 @@ public:
   std::pair<FileID, unsigned>
   getDecomposedExpansionLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
-    auto *E = getSLocEntryOrNull(FID);
-    if (!E)
+    auto E = getSLocEntryOrNull(FID);
+    if (!E.Payload)
       return std::make_pair(FileID(), 0);
 
-    unsigned Offset = Loc.getOffset()-E->getOffset();
+    unsigned Offset = Loc.getOffset()-E.getOffset();
     if (Loc.isFileID())
       return std::make_pair(FID, Offset);
 
@@ -1302,11 +1390,11 @@ public:
   std::pair<FileID, unsigned>
   getDecomposedSpellingLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
-    auto *E = getSLocEntryOrNull(FID);
-    if (!E)
+    auto E = getSLocEntryOrNull(FID);
+    if (!E.Payload)
       return std::make_pair(FileID(), 0);
 
-    unsigned Offset = Loc.getOffset()-E->getOffset();
+    unsigned Offset = Loc.getOffset()-E.getOffset();
     if (Loc.isFileID())
       return std::make_pair(FID, Offset);
     return getDecomposedSpellingLocSlowCase(E, Offset);
@@ -1738,44 +1826,52 @@ public:
   unsigned local_sloc_entry_size() const { return LocalSLocEntryTable.size(); }
 
   /// Get a local SLocEntry. This is exposed for indexing.
-  const SrcMgr::SLocEntry &getLocalSLocEntry(unsigned Index) const {
+  SrcMgr::SLocEntryProxy getLocalSLocEntry(unsigned Index) const {
     return const_cast<SourceManager *>(this)->getLocalSLocEntry(Index);
   }
 
   /// Get a local SLocEntry. This is exposed for indexing.
-  SrcMgr::SLocEntry &getLocalSLocEntry(unsigned Index) {
+  SrcMgr::SLocEntryProxy getLocalSLocEntry(unsigned Index) {
     assert(Index < LocalSLocEntryTable.size() && "Invalid index");
-    return LocalSLocEntryTable[Index];
+    return LocalSLocEntryTable.get(Index);
   }
 
   /// Get the number of loaded SLocEntries we have.
   unsigned loaded_sloc_entry_size() const { return LoadedSLocEntryTable.size();}
 
   /// Get a loaded SLocEntry. This is exposed for indexing.
-  const SrcMgr::SLocEntry &getLoadedSLocEntry(unsigned Index,
+  SrcMgr::SLocEntryProxy getLoadedSLocEntry(unsigned Index,
                                               bool *Invalid = nullptr) const {
     return const_cast<SourceManager *>(this)->getLoadedSLocEntry(Index,
                                                                  Invalid);
   }
 
   /// Get a loaded SLocEntry. This is exposed for indexing.
-  SrcMgr::SLocEntry &getLoadedSLocEntry(unsigned Index,
+  // SrcMgr::SLocEntry &getLoadedSLocEntry(unsigned Index,
+  //                                       bool *Invalid = nullptr) {
+  //   assert(Index < LoadedSLocEntryTable.size() && "Invalid index");
+  //   if (SLocEntryLoaded[Index])
+  //     return LoadedSLocEntryTable[Index];
+  //   return loadSLocEntry(Index, Invalid);
+  // }
+
+  SrcMgr::SLocEntryProxy getLoadedSLocEntry(unsigned Index,
                                         bool *Invalid = nullptr) {
     assert(Index < LoadedSLocEntryTable.size() && "Invalid index");
     if (SLocEntryLoaded[Index])
-      return LoadedSLocEntryTable[Index];
+      return LoadedSLocEntryTable.get(Index);
     return loadSLocEntry(Index, Invalid);
   }
 
-  const SrcMgr::SLocEntry &getSLocEntry(FileID FID,
+  SrcMgr::SLocEntryProxy getSLocEntry(FileID FID,
                                         bool *Invalid = nullptr) const {
     return const_cast<SourceManager *>(this)->getSLocEntry(FID, Invalid);
   }
 
-  SrcMgr::SLocEntry &getSLocEntry(FileID FID, bool *Invalid = nullptr) {
+  SrcMgr::SLocEntryProxy getSLocEntry(FileID FID, bool *Invalid = nullptr) {
     if (FID.ID == 0 || FID.ID == -1) {
       if (Invalid) *Invalid = true;
-      return LocalSLocEntryTable[0];
+      return LocalSLocEntryTable.get(0);
     }
     return getSLocEntryByID(FID.ID, Invalid);
   }
@@ -1845,51 +1941,57 @@ private:
   llvm::MemoryBufferRef getFakeBufferForRecovery() const;
   SrcMgr::ContentCache &getFakeContentCacheForRecovery() const;
 
-  const SrcMgr::SLocEntry &loadSLocEntry(unsigned Index, bool *Invalid) const;
-  SrcMgr::SLocEntry &loadSLocEntry(unsigned Index, bool *Invalid);
+  void loadSLocEntry(unsigned Index, bool *Invalid) const;
+  SrcMgr::SLocEntryProxy loadSLocEntry(unsigned Index, bool *Invalid);
 
-  const SrcMgr::SLocEntry *getSLocEntryOrNull(FileID FID) const {
+  SrcMgr::SLocEntryProxy getSLocEntryOrNull(FileID FID) const {
     return const_cast<SourceManager *>(this)->getSLocEntryOrNull(FID);
   }
 
-  SrcMgr::SLocEntry *getSLocEntryOrNull(FileID FID) {
+  SrcMgr::SLocEntryProxy getSLocEntryOrNull(FileID FID) {
     bool Invalid = false;
-    SrcMgr::SLocEntry &Entry = getSLocEntry(FID, &Invalid);
-    return Invalid ? nullptr : &Entry;
+    auto Entry = getSLocEntry(FID, &Invalid);
+    return Invalid ?  SrcMgr::SLocEntryProxy() : Entry;
   }
 
-  const SrcMgr::SLocEntry *getSLocEntryForFile(FileID FID) const {
+  SrcMgr::SLocEntryProxy getSLocEntryForFile(FileID FID) const {
     return const_cast<SourceManager *>(this)->getSLocEntryForFile(FID);
   }
 
-  SrcMgr::SLocEntry *getSLocEntryForFile(FileID FID) {
-    if (auto *Entry = getSLocEntryOrNull(FID))
-      if (Entry->isFile())
-        return Entry;
-    return nullptr;
+  SrcMgr::SLocEntryProxy getSLocEntryForFile(FileID FID) {
+    
+    auto Entry = getSLocEntryOrNull(FID);
+    if (Entry.Payload && Entry.isFile())
+      return Entry;
+    return {};
+    // if (!Entry.Payload)
+      
+    //   if (Entry.isFile())
+    //     return Entry;
+    // return nullptr;
   }
 
   /// Get the entry with the given unwrapped FileID.
   /// Invalid will not be modified for Local IDs.
-  const SrcMgr::SLocEntry &getSLocEntryByID(int ID,
+  SrcMgr::SLocEntryProxy getSLocEntryByID(int ID,
                                             bool *Invalid = nullptr) const {
     return const_cast<SourceManager *>(this)->getSLocEntryByID(ID, Invalid);
   }
 
-  SrcMgr::SLocEntry &getSLocEntryByID(int ID, bool *Invalid = nullptr) {
+  SrcMgr::SLocEntryProxy getSLocEntryByID(int ID, bool *Invalid = nullptr) {
     assert(ID != -1 && "Using FileID sentinel value");
     if (ID < 0)
-      return getLoadedSLocEntryByID(ID, Invalid);
+      return getLoadedSLocEntryByID(ID, Invalid); // FIXME
     return getLocalSLocEntry(static_cast<unsigned>(ID));
   }
 
-  const SrcMgr::SLocEntry &
-  getLoadedSLocEntryByID(int ID, bool *Invalid = nullptr) const {
-    return const_cast<SourceManager *>(this)->getLoadedSLocEntryByID(ID,
-                                                                     Invalid);
-  }
+  // const SrcMgr::SLocEntry &
+  // getLoadedSLocEntryByID(int ID, bool *Invalid = nullptr) const {
+  //   return const_cast<SourceManager *>(this)->getLoadedSLocEntryByID(ID,
+  //                                                                    Invalid);
+  // }
 
-  SrcMgr::SLocEntry &getLoadedSLocEntryByID(int ID, bool *Invalid = nullptr) {
+  SrcMgr::SLocEntryProxy getLoadedSLocEntryByID(int ID, bool *Invalid = nullptr) {
     return getLoadedSLocEntry(static_cast<unsigned>(-ID - 2), Invalid);
   }
 
@@ -1920,7 +2022,7 @@ private:
   /// specified SourceLocation offset.  This is a very hot method.
   inline bool isOffsetInFileID(FileID FID,
                                SourceLocation::UIntTy SLocOffset) const {
-    const SrcMgr::SLocEntry &Entry = getSLocEntry(FID);
+    auto Entry = getSLocEntry(FID);
     // If the entry is after the offset, it can't contain it.
     if (SLocOffset < Entry.getOffset()) return false;
 
@@ -1971,9 +2073,9 @@ private:
   SourceLocation getFileLocSlowCase(SourceLocation Loc) const;
 
   std::pair<FileID, unsigned>
-  getDecomposedExpansionLocSlowCase(const SrcMgr::SLocEntry *E) const;
+  getDecomposedExpansionLocSlowCase(SrcMgr::SLocEntryProxy E) const;
   std::pair<FileID, unsigned>
-  getDecomposedSpellingLocSlowCase(const SrcMgr::SLocEntry *E,
+  getDecomposedSpellingLocSlowCase(SrcMgr::SLocEntryProxy E,
                                    unsigned Offset) const;
   void computeMacroArgsCache(MacroArgsMap &MacroArgsCache, FileID FID) const;
   void associateFileChunkWithMacroArgExp(MacroArgsMap &MacroArgsCache,

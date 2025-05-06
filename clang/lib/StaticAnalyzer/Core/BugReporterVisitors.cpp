@@ -310,7 +310,7 @@ static bool isFunctionMacroExpansion(SourceLocation Loc,
   while (SM.isMacroArgExpansion(Loc))
     Loc = SM.getImmediateExpansionRange(Loc).getBegin();
   std::pair<FileID, unsigned> TLInfo = SM.getDecomposedLoc(Loc);
-  SrcMgr::SLocEntry SE = SM.getSLocEntry(TLInfo.first);
+  auto SE = SM.getSLocEntry(TLInfo.first);
   const SrcMgr::ExpansionInfo &EInfo = SE.getExpansion();
   return EInfo.isFunctionMacroExpansion();
 }

@@ -109,7 +109,7 @@ getExpansionForSplitToken(SourceLocation Loc, const SourceManager &SM,
                           const LangOptions &LangOpts) {
   if (Loc.isMacroID()) {
     bool Invalid = false;
-    auto &SLoc = SM.getSLocEntry(SM.getFileID(Loc), &Invalid);
+    auto SLoc = SM.getSLocEntry(SM.getFileID(Loc), &Invalid);
     if (Invalid)
       return std::nullopt;
     if (auto &Expansion = SLoc.getExpansion();

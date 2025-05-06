@@ -130,7 +130,7 @@ bool IndexingContext::importedModule(const ImportDecl *ImportD) {
     return true;
 
   bool Invalid = false;
-  const SrcMgr::SLocEntry &SEntry = SM.getSLocEntry(FID, &Invalid);
+  auto SEntry = SM.getSLocEntry(FID, &Invalid);
   if (Invalid || !SEntry.isFile())
     return true;
 
@@ -382,7 +382,7 @@ bool IndexingContext::handleDeclOccurrence(const Decl *D, SourceLocation Loc,
     return true;
 
   bool Invalid = false;
-  const SrcMgr::SLocEntry &SEntry = SM.getSLocEntry(FID, &Invalid);
+  auto SEntry = SM.getSLocEntry(FID, &Invalid);
   if (Invalid || !SEntry.isFile())
     return true;
 
@@ -510,7 +510,7 @@ bool IndexingContext::shouldIndexMacroOccurrence(bool IsRef,
     return false;
 
   bool Invalid = false;
-  const SrcMgr::SLocEntry &SEntry = SM.getSLocEntry(FID, &Invalid);
+  auto SEntry = SM.getSLocEntry(FID, &Invalid);
   if (Invalid || !SEntry.isFile())
     return false;
 

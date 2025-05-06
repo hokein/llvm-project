@@ -30,7 +30,7 @@ void getInclusions(bool IsLocal, unsigned n, CXTranslationUnit TU,
 
   for (unsigned i = 0 ; i < n ; ++i) {
     bool Invalid = false;
-    const SrcMgr::SLocEntry &SL =
+    auto SL =
         IsLocal ? SM.getLocalSLocEntry(i) : SM.getLoadedSLocEntry(i, &Invalid);
     if (!SL.isFile() || Invalid)
       continue;
