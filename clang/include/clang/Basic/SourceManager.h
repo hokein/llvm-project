@@ -766,8 +766,8 @@ class SourceManager : public RefCountedBase<SourceManager> {
   ///
   /// LastFileIDLookup records the last FileID looked up or created, because it
   /// is very common to look up many tokens from the same file.
-  mutable FileID LastFileIDLookup;
-  mutable FileID LastFileIDLookup2;
+  mutable FileID LastFileIDLookup = FileID::getSentinel();
+  mutable FileID LastFileIDLookup2 = FileID::getSentinel();
 
   
   FileID updateLastFileIDLookup(FileID newFID) const;
@@ -1898,10 +1898,10 @@ private:
 
   FileID getFileID(SourceLocation::UIntTy SLocOffset) const {
     // If our one-entry cache covers this offset, just return it.
-    if (isOffsetInFileID(LastFileIDLookup, SLocOffset)) {
+    if (LastFileIDLookup.ID != -1 && isOffsetInFileID(LastFileIDLookup, SLocOffset)) {
       return LastFileIDLookup;
     }
-    if (isOffsetInFileID(LastFileIDLookup2, SLocOffset)) {
+    if (LastFileIDLookup2.ID != -1 && isOffsetInFileID(LastFileIDLookup2, SLocOffset)) {
       std::swap(LastFileIDLookup, LastFileIDLookup2);
       return LastFileIDLookup;
     }

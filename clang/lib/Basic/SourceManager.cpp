@@ -334,8 +334,8 @@ void SourceManager::clearIDTables() {
   SLocEntryOffsetLoaded.clear();
   LastLineNoFileIDQuery = FileID();
   LastLineNoContentCache = nullptr;
-  LastFileIDLookup = FileID();
-  LastFileIDLookup2 = FileID();
+  LastFileIDLookup = FileID::getSentinel();
+  LastFileIDLookup2 = FileID::getSentinel();
 
   IncludedLocMap.clear();
   if (LineTable)
@@ -647,8 +647,6 @@ FileID SourceManager::createFileIDImpl(ContentCache &File, StringRef Filename,
   // almost guaranteed to be from that file.
   FileID FID = FileID::get(LocalSLocEntryTable.size()-1);
   return updateLastFileIDLookup(FID);
-  assert("unreachable!");
-  return LastFileIDLookup = FID;
 }
 
 SourceLocation SourceManager::createMacroArgExpansionLoc(
