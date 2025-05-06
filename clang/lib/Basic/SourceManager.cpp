@@ -848,7 +848,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
       NumLinearScans += NumProbes+1;
       return Res;
     }
-    if (++NumProbes == 8)
+    if (++NumProbes == 16)
       break;
   }
 
