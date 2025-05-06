@@ -1823,14 +1823,17 @@ void ASTWriter::WriteInputFiles(SourceManager &SourceMgr) {
   std::vector<InputFileEntry> SystemFiles;
   for (unsigned I = 1, N = SourceMgr.local_sloc_entry_size(); I != N; ++I) {
     // Get this source location entry.
-    const SrcMgr::SLocEntry *SLoc = &SourceMgr.getLocalSLocEntry(I);
-    assert(&SourceMgr.getSLocEntry(FileID::get(I)) == SLoc);
-
-    // We only care about file entries that were not overridden.
-    if (!SLoc->isFile())
+    const auto* File = SourceMgr.getFileInfoByID(I);
+    if (!File)
       continue;
-    const SrcMgr::FileInfo &File = SLoc->getFile();
-    const SrcMgr::ContentCache *Cache = &File.getContentCache();
+    // const SrcMgr::SLocEntry *SLoc = &SourceMgr.getLocalSLocEntry(I);
+    // assert(&SourceMgr.getSLocEntry(FileID::get(I)) == SLoc);
+
+    // // We only care about file entries that were not overridden.
+    // if (!SLoc->isFile())
+    //   continue;
+    // const SrcMgr::FileInfo &File = SLoc->getFile();
+    const SrcMgr::ContentCache *Cache = &File->getContentCache();
     if (!Cache->OrigEntry)
       continue;
 
@@ -1839,14 +1842,14 @@ void ASTWriter::WriteInputFiles(SourceManager &SourceMgr) {
       continue;
 
     InputFileEntry Entry(*Cache->OrigEntry);
-    Entry.IsSystemFile = isSystem(File.getFileCharacteristic());
+    Entry.IsSystemFile = isSystem(File->getFileCharacteristic());
     Entry.IsTransient = Cache->IsTransient;
     Entry.BufferOverridden = Cache->BufferOverridden;
 
-    FileID IncludeFileID = SourceMgr.getFileID(File.getIncludeLoc());
+    FileID IncludeFileID = SourceMgr.getFileID(File->getIncludeLoc());
     Entry.IsTopLevel = IncludeFileID.isInvalid() || IncludeFileID.ID < 0 ||
                        !IsSLocFileEntryAffecting[IncludeFileID.ID];
-    Entry.IsModuleMap = isModuleMap(File.getFileCharacteristic());
+    Entry.IsModuleMap = isModuleMap(File->getFileCharacteristic());
 
     uint64_t ContentHash = 0;
     if (PP->getHeaderSearchInfo()
@@ -5504,11 +5507,14 @@ void ASTWriter::computeNonAffectingInputFiles() {
     FileMgr.getVirtualFileSystem().exists(Path);
   for (unsigned I = 1; I != N; ++I) {
     if (IsSLocAffecting[I]) {
-      const SrcMgr::SLocEntry *SLoc = &SrcMgr.getLocalSLocEntry(I);
-      if (!SLoc->isFile())
+      // const SrcMgr::SLocEntry *SLoc = &SrcMgr.getLocalSLocEntry(I);
+      // if (!SLoc->isFile())
+      // continue;
+      // const SrcMgr::FileInfo &File = SLoc->getFile();
+      const auto* File = SrcMgr.getFileInfoByID(I);
+      if (!File)
         continue;
-      const SrcMgr::FileInfo &File = SLoc->getFile();
-      const SrcMgr::ContentCache *Cache = &File.getContentCache();
+      const SrcMgr::ContentCache *Cache = &File->getContentCache();
       if (!Cache->OrigEntry)
         continue;
       FileMgr.getVirtualFileSystem().exists(
@@ -6554,9 +6560,9 @@ FileID ASTWriter::getAdjustedFileID(FileID FID) const {
 
 unsigned ASTWriter::getAdjustedNumCreatedFIDs(FileID FID) const {
   unsigned NumCreatedFIDs = PP->getSourceManager()
-                                .getLocalSLocEntry(FID.ID)
-                                .getFile()
-                                .NumCreatedFIDs;
+                                .getFileInfoByID(FID.ID)
+                                // .getLocalSLocEntry(FID.ID)
+                                ->NumCreatedFIDs;
 
   unsigned AdjustedNumCreatedFIDs = 0;
   for (unsigned I = FID.ID, N = I + NumCreatedFIDs; I != N; ++I)

@@ -530,16 +530,16 @@ public:
     return E;
   }
 
-  static SLocEntry get(SourceLocation::UIntTy Offset,
-                       const ExpansionInfo &Expansion) {
-    assert(!(Offset & (1ULL << OffsetBits)) && "Offset is too large");
-    SLocEntry E;
-    E.Offset = Offset;
-    E.IsExpansion = true;
-    E.Expansion = Expansion;
-    new (&E.Expansion) ExpansionInfo(Expansion);
-    return E;
-  }
+  // static SLocEntry get(SourceLocation::UIntTy Offset,
+  //                      const ExpansionInfo &Expansion) {
+  //   assert(!(Offset & (1ULL << OffsetBits)) && "Offset is too large");
+  //   SLocEntry E;
+  //   E.Offset = Offset;
+  //   E.IsExpansion = true;
+  //   E.Expansion = Expansion;
+  //   new (&E.Expansion) ExpansionInfo(Expansion);
+  //   return E;
+  // }
 };
 
 struct SLocEntryTable {
@@ -562,9 +562,15 @@ struct SLocEntryTable {
       return SLocEntry::get(Indexes[Index].Offset, Storage[Index].Expansion);
     return SLocEntry::get(Indexes[Index].Offset, Storage[Index].File);
   }
+
+  const FileInfo* getFileInfo(int ID) const {
+    if ( Indexes[ID].IsExpansion)
+      return nullptr;
+    return &Storage[ID].File;
+  }
   ArrayRef<MetaData> getIndexes() const {
     return Indexes;
-  } 
+  }
   // FileID.ID
   SourceLocation::UIntTy getOffset(int ID) const {
     return Indexes[ID].Offset;
@@ -606,6 +612,48 @@ struct SLocEntryTable {
   llvm::SmallVector<UnderlyingStorage> Storage;
 };
 
+struct LoadSLocEntryTable {
+  SLocEntry get(int Index) const {
+    // SLocEntry Entry;
+    // Entry.Offset = Indexes[Index].Offset;
+    // Entry.IsExpansion = Indexes[Index].IsExpansion;
+    if ( Indexes[Index].IsExpansion)
+      return SLocEntry::get(Indexes[Index].Offset, Storage[Index].Expansion);
+    return SLocEntry::get(Indexes[Index].Offset, Storage[Index].File);
+  }
+
+  const FileInfo* getFileInfo(int ID) const {
+    if ( Indexes[ID].IsExpansion)
+      return nullptr;
+    return &Storage[ID].File;
+  }
+  // FileID.ID
+  SourceLocation::UIntTy getOffset(int ID) const {
+    return Indexes[ID].Offset;
+  }
+
+  FileInfo* getFile(int ID) const {
+    if (Indexes[ID].IsExpansion)
+      return nullptr;
+    return &Storage[ID].File;
+  }
+
+  unsigned size() const {
+    return Indexes.size();
+  }
+  void resize(unsigned Num) {
+    Indexes.resize(Num);
+    Storage.resize(Num);
+  } 
+
+  void clear() {
+    Indexes.clear();
+    Storage.clear();
+  }
+
+  llvm::PagedVector<SLocEntryTable::MetaData, 32> Indexes;
+  llvm::PagedVector<SLocEntryTable::UnderlyingStorage, 32> Storage;
+}
 
 } // namespace SrcMgr
 
@@ -794,6 +842,7 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// Negative FileIDs are indexes into this table. To get from ID to an index,
   /// use (-ID - 2).
   llvm::PagedVector<SrcMgr::SLocEntry, 32> LoadedSLocEntryTable;
+  SrcMgr::LoadSLocEntryTable NewLoadedSlocEntryTable;
 
   /// For each allocation in LoadedSLocEntryTable, we keep the first FileID.
   /// We assume exactly one allocation per AST file, and use that to determine
@@ -1118,8 +1167,8 @@ public:
   /// std::nullopt.
   std::optional<llvm::MemoryBufferRef>
   getBufferOrNone(FileID FID, SourceLocation Loc = SourceLocation()) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return Entry->getFile().getContentCache().getBufferOrNone(
+    if (auto *Entry = getFileInfoForFile(FID))
+      return Entry->getContentCache().getBufferOrNone(
           Diag, getFileManager(), Loc);
     return std::nullopt;
   }
@@ -1144,8 +1193,8 @@ public:
 
   /// Returns the FileEntryRef for the provided FileID.
   OptionalFileEntryRef getFileEntryRefForID(FileID FID) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return Entry->getFile().getContentCache().OrigEntry;
+    if (auto *Entry = getFileInfoForFile(FID))
+      return Entry->getContentCache().OrigEntry;
     return std::nullopt;
   }
 
@@ -1185,21 +1234,33 @@ public:
   /// Get the number of FileIDs (files and macros) that were created
   /// during preprocessing of \p FID, including it.
   unsigned getNumCreatedFIDsForFileID(FileID FID) const {
-    if (auto *Entry = getSLocEntryForFile(FID))
-      return Entry->getFile().NumCreatedFIDs;
+    if (auto *Entry = getFileInfoForFile(FID))
+      return Entry->NumCreatedFIDs;
     return 0;
   }
-
+  SrcMgr::FileInfo* getFileInfoByID(int ID) {
+    // FIXME: handle loaded file entry.
+    assert(ID != -1 && "Using FileID sentinel value");
+    if (ID < 0)
+      return NewLoadedSlocEntryTable.getFile(static_cast<unsigned>(-ID - 2));
+      // return getLoadedSLocEntryByID(ID, Invalid);
+    return LocalSLocEntryTable.getFile(static_cast<unsigned>(ID));
+    // return getLocalSLocEntry(static_cast<unsigned>(ID));
+  }
+  const SrcMgr::FileInfo* getFileInfoByID(int ID) const {
+    // FIXME: handle loaded file entry.
+    return const_cast<SourceManager *>(this)->getFileInfoByID(ID);
+  }
   /// Set the number of FileIDs (files and macros) that were created
   /// during preprocessing of \p FID, including it.
   void setNumCreatedFIDsForFileID(FileID FID, unsigned NumFIDs,
                                   bool Force = false) {
-    auto *Entry = getSLocEntryForFile(FID);
+    auto *Entry = getFileInfoByID(FID.ID);
     if (!Entry)
       return;
     // auto *File = 
-    assert((Force || Entry->getFile().NumCreatedFIDs == 0) && "Already set!");
-    Entry->getFile().NumCreatedFIDs = NumFIDs;
+    assert((Force || Entry->NumCreatedFIDs == 0) && "Already set!");
+    Entry->NumCreatedFIDs = NumFIDs;
   }
 
   //===--------------------------------------------------------------------===//
@@ -1819,14 +1880,16 @@ public:
   }
 
   /// Get the number of loaded SLocEntries we have.
-  unsigned loaded_sloc_entry_size() const { return LoadedSLocEntryTable.size();}
+  unsigned loaded_sloc_entry_size() const { 
+    return LoadedSLocEntryTable.size();
+  }
 
   /// Get a loaded SLocEntry. This is exposed for indexing.
-  const SrcMgr::SLocEntry &getLoadedSLocEntry(unsigned Index,
-                                              bool *Invalid = nullptr) const {
-    return const_cast<SourceManager *>(this)->getLoadedSLocEntry(Index,
-                                                                 Invalid);
-  }
+  // const SrcMgr::SLocEntry &getLoadedSLocEntry(unsigned Index,
+  //                                             bool *Invalid = nullptr) const {
+  //   return const_cast<SourceManager *>(this)->getLoadedSLocEntry(Index,
+  //                                                                Invalid);
+  // }
 
   /// Get a loaded SLocEntry. This is exposed for indexing.
   SrcMgr::SLocEntry &getLoadedSLocEntry(unsigned Index,
@@ -1836,6 +1899,14 @@ public:
       return LoadedSLocEntryTable[Index];
     return loadSLocEntry(Index, Invalid);
   }
+
+  SrcMgr::FileInfo* getLoadedFileInfo(unsigned Index,
+    bool *Invalid = nullptr) {
+assert(Index < NewLoadedSlocEntryTable.size() && "Invalid index");
+if (SLocEntryLoaded[Index])
+return NewLoadedSlocEntryTable.getFile(Index);
+return loadSLocEntry(Index, Invalid);
+}
 
   const SrcMgr::SLocEntry &getSLocEntry(FileID FID,
                                         bool *Invalid = nullptr) const {
@@ -1915,8 +1986,8 @@ private:
   llvm::MemoryBufferRef getFakeBufferForRecovery() const;
   SrcMgr::ContentCache &getFakeContentCacheForRecovery() const;
 
-  const SrcMgr::SLocEntry &loadSLocEntry(unsigned Index, bool *Invalid) const;
-  SrcMgr::SLocEntry &loadSLocEntry(unsigned Index, bool *Invalid);
+  void loadSLocEntry(unsigned Index, bool *Invalid) const;
+  void loadSLocEntry(unsigned Index, bool *Invalid);
 
   const SrcMgr::SLocEntry *getSLocEntryOrNull(FileID FID) const {
     return const_cast<SourceManager *>(this)->getSLocEntryOrNull(FID);
@@ -1930,6 +2001,11 @@ private:
 
   const SrcMgr::SLocEntry *getSLocEntryForFile(FileID FID) const {
     return const_cast<SourceManager *>(this)->getSLocEntryForFile(FID);
+  }
+  // return file info if FID is a file. nullptr otherwise.
+  const SrcMgr::FileInfo* getFileInfoForFile(FileID FID) const {
+    // FIXME: handle loaded case.
+    return getFileInfoByID(FID.ID);
   }
 
   SrcMgr::SLocEntry *getSLocEntryForFile(FileID FID) {
