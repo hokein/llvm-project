@@ -991,13 +991,14 @@ SourceManager::getDecomposedSpellingLocSlowCase(const SrcMgr::ExpansionInfo* E,
 SourceLocation SourceManager::getImmediateSpellingLoc(SourceLocation Loc) const{
   if (Loc.isFileID()) return Loc;
   std::pair<FileID, unsigned> LocInfo = getDecomposedLoc(Loc);
-  Loc = getSLocEntry(LocInfo.first).getExpansion().getSpellingLoc();
+  Loc = getExpansionInfoByFID(LocInfo.first)->getSpellingLoc();
   return Loc.getLocWithOffset(LocInfo.second);
 }
 
 /// Return the filename of the file containing a SourceLocation.
 StringRef SourceManager::getFilename(SourceLocation SpellingLoc) const {
-  if (OptionalFileEntryRef F = getFileEntryRefForID(getFileID(SpellingLoc)))
+  if (OptionalFileEntryRef F = 
+    getFileEntryRefForID(getFileID(SpellingLoc)))
     return F->getName();
   return StringRef();
 }
@@ -1598,7 +1599,10 @@ bool SourceManager::isInMainFile(SourceLocation Loc) const {
 /// The size of the SLocEntry that \p FID represents.
 unsigned SourceManager::getFileIDSize(FileID FID) const {
   bool Invalid = false;
-  auto Entry = getSLocEntry(FID, &Invalid);
+  // auto Entry = getSLocEntry(FID, &Invalid);
+  // if (Invalid)
+  //   return 0;
+  auto Offset = getOffsetByFID(FID, &Invalid);
   if (Invalid)
     return 0;
 
@@ -1609,9 +1613,9 @@ unsigned SourceManager::getFileIDSize(FileID FID) const {
   else if (ID+1 == -1)
     NextOffset = MaxLoadedOffset;
   else
-    NextOffset = getSLocEntry(FileID::get(ID+1)).getOffset();
+    NextOffset = getOffsetByFID(FileID::get(ID+1));
 
-  return NextOffset - Entry.getOffset() - 1;
+  return NextOffset - Offset - 1;
 }
 
 //===----------------------------------------------------------------------===//

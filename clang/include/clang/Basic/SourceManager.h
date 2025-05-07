@@ -1164,8 +1164,8 @@ public:
 
   /// Returns the FileEntryRef for the provided FileID.
   OptionalFileEntryRef getFileEntryRefForID(FileID FID) const {
-    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-      return Entry.getFile().getContentCache().OrigEntry;
+    if (auto* File = getFileInfoByFID(FID))
+      return File->getContentCache().OrigEntry;
     return std::nullopt;
   }
 
@@ -1205,8 +1205,8 @@ public:
   /// Get the number of FileIDs (files and macros) that were created
   /// during preprocessing of \p FID, including it.
   unsigned getNumCreatedFIDsForFileID(FileID FID) const {
-    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-      return Entry.getFile().NumCreatedFIDs;
+    if (auto* File = getFileInfoByFID(FID))
+      return File->NumCreatedFIDs;
     return 0;
   }
 
