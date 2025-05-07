@@ -1703,20 +1703,22 @@ SourceLocation SourceManager::translateLineCol(FileID FID,
   if (FID.isInvalid())
     return SourceLocation();
 
-  bool Invalid = false;
-  auto Entry = getSLocEntry(FID, &Invalid);
-  if (Invalid)
+  // bool Invalid = false;
+  auto* Entry = getFileInfoByFID(FID);
+  if (!Entry)
     return SourceLocation();
+  // if (Invalid)
+    // return SourceLocation();
 
-  if (!Entry.isFile())
-    return SourceLocation();
+  // if (!Entry.isFile())
+  //   return SourceLocation();
 
-  SourceLocation FileLoc = SourceLocation::getFileLoc(Entry.getOffset());
+  SourceLocation FileLoc = SourceLocation::getFileLoc(getOffsetByFID(FID));
 
   if (Line == 1 && Col == 1)
     return FileLoc;
 
-  const ContentCache *Content = &Entry.getFile().getContentCache();
+  const ContentCache *Content = &Entry->getContentCache();
 
   // If this is the first use of line information for this buffer, compute the
   // SourceLineCache for it on demand.
@@ -1774,12 +1776,12 @@ void SourceManager::computeMacroArgsCache(MacroArgsMap &MacroArgsCache,
       return;
     }
 
-    bool Invalid = false;
-    auto Entry = getSLocEntryByID(ID, &Invalid);
-    if (Invalid)
-      return;
-    if (Entry.isFile()) {
-      auto& File = Entry.getFile();
+    // bool Invalid = false;
+    // auto Entry = getSLocEntryByID(ID, &Invalid);
+    // if (Invalid)
+    //   return;
+    if (auto* Entry = getFileInfoByFID(FileID::get(ID))) {
+      auto& File = *Entry;
       if (File.getFileCharacteristic() == C_User_ModuleMap ||
           File.getFileCharacteristic() == C_System_ModuleMap)
         continue;
@@ -1790,12 +1792,12 @@ void SourceManager::computeMacroArgsCache(MacroArgsMap &MacroArgsCache,
           // Predefined header doesn't have a valid include location in main
           // file, but any files created by it should still be skipped when
           // computing macro args expanded in the main file.
-          (FID == MainFileID && Entry.getFile().getName() == "<built-in>");
+          (FID == MainFileID && Entry->getName() == "<built-in>");
       if (IncludedInFID) {
         // Skip the files/macros of the #include'd file, we only care about
         // macros that lexed macro arguments from our file.
-        if (Entry.getFile().NumCreatedFIDs)
-          ID += Entry.getFile().NumCreatedFIDs - 1 /*because of next ++ID*/;
+        if (Entry->NumCreatedFIDs)
+          ID += Entry->NumCreatedFIDs - 1 /*because of next ++ID*/;
         continue;
       }
       // If file was included but not from FID, there is no more files/macros
@@ -1805,20 +1807,22 @@ void SourceManager::computeMacroArgsCache(MacroArgsMap &MacroArgsCache,
       continue;
     }
 
-    const ExpansionInfo &ExpInfo = Entry.getExpansion();
+    if (auto *Entry = getExpansionInfoByFID(FileID::get(ID))) {
+      const ExpansionInfo &ExpInfo = *Entry;
 
-    if (ExpInfo.getExpansionLocStart().isFileID()) {
-      if (!isInFileID(ExpInfo.getExpansionLocStart(), FID))
-        return; // No more files/macros that may be "contained" in this file.
+      if (ExpInfo.getExpansionLocStart().isFileID()) {
+        if (!isInFileID(ExpInfo.getExpansionLocStart(), FID))
+          return; // No more files/macros that may be "contained" in this file.
+      }
+
+      if (!ExpInfo.isMacroArgExpansion())
+        continue;
+
+      associateFileChunkWithMacroArgExp(
+          MacroArgsCache, FID, ExpInfo.getSpellingLoc(),
+          SourceLocation::getMacroLoc(getOffsetByFID(FileID::get(ID))),
+          getFileIDSize(FileID::get(ID)));
     }
-
-    if (!ExpInfo.isMacroArgExpansion())
-      continue;
-
-    associateFileChunkWithMacroArgExp(MacroArgsCache, FID,
-                                 ExpInfo.getSpellingLoc(),
-                                 SourceLocation::getMacroLoc(Entry.getOffset()),
-                                 getFileIDSize(FileID::get(ID)));
   }
 }
 
