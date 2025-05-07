@@ -1345,13 +1345,13 @@ public:
 
   /// Form a SourceLocation from a FileID and Offset pair.
   SourceLocation getComposedLoc(FileID FID, unsigned Offset) const {
-    auto Entry = getSLocEntryOrNull(FID);
-    if (!Entry.Payload)
+    bool Invalid = false;
+    auto Result = getOffsetByFID(FID, &Invalid);
+    if (Invalid)
       return SourceLocation();
-
-    SourceLocation::UIntTy GlobalOffset = Entry.getOffset() + Offset;
-    return Entry.isFile() ? SourceLocation::getFileLoc(GlobalOffset)
-                           : SourceLocation::getMacroLoc(GlobalOffset);
+    SourceLocation::UIntTy GlobalOffset = Result + Offset;
+    return getFileInfoByFID(FID) ? SourceLocation::getFileLoc(GlobalOffset)
+                                 : SourceLocation::getMacroLoc(GlobalOffset);
   }
 
   /// Decompose the specified location into a raw FileID + Offset pair.
@@ -1364,7 +1364,7 @@ public:
     // if (!Entry.Payload)
     //   return std::make_pair(FileID(), 0);
       // getOffsetForFile(FID);
-    return std::make_pair(FID, Loc.getOffset() - getOffsetForFile(FID));
+    return std::make_pair(FID, Loc.getOffset() - getOffsetByFID(FID));
   }
 
   /// Decompose the specified location into a raw FileID + Offset pair.
@@ -1374,14 +1374,12 @@ public:
   std::pair<FileID, unsigned>
   getDecomposedExpansionLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
-    auto E = getSLocEntryOrNull(FID);
-    if (!E.Payload)
-      return std::make_pair(FileID(), 0);
-
-    unsigned Offset = Loc.getOffset()-E.getOffset();
+    unsigned Offset = Loc.getOffset()-getOffsetByFID(FID);
     if (Loc.isFileID())
       return std::make_pair(FID, Offset);
-
+    auto* E = getExpansionInfoByFID(FID);
+    if (!E)
+      return std::make_pair(FileID(), 0);
     return getDecomposedExpansionLocSlowCase(E);
   }
 
@@ -1855,17 +1853,58 @@ public:
     return LocalSLocEntryTable.Indexes[Index].Offset;
   }
 
-  SourceLocation::UIntTy getLoadOffset(unsigned Index) {
+  SourceLocation::UIntTy getLoadOffset(unsigned Index, bool *Invalid = nullptr) {
     assert(Index < LoadedSLocEntryTable.size() && "Invalid index");
     if (SLocEntryLoaded[Index])
       return LoadedSLocEntryTable.Indexes[Index].Offset;
-    return loadSLocEntry(Index, nullptr).Offset;
+    return loadSLocEntry(Index, Invalid).Offset;
   }
 
-  SourceLocation::UIntTy getOffsetForFile(FileID FID) const {
+  SrcMgr::FileInfo* getFileInfoByFID(FileID FID) const {
+    if (FID.ID == 0 || FID.ID == -1) {
+      return nullptr;
+    }
     if (FID.ID < 0) {
-      return const_cast<SourceManager *>(this)->getLoadOffset(
-          static_cast<unsigned>(-FID.ID - 2));
+      unsigned Index = static_cast<unsigned>(-FID.ID - 2);
+      bool Invalid = false;
+      if (!SLocEntryLoaded[Index]) {
+        loadSLocEntry(Index, &Invalid);
+        if (Invalid) return nullptr;
+      }
+      if (LoadedSLocEntryTable.Indexes[Index].IsExpansion)
+        return nullptr;
+      return &LoadedSLocEntryTable.Payload[Index].File;
+    }
+    return const_cast<SourceManager *>(this)->getLocalFileInfoOrNull(FID.ID);
+  }
+  SrcMgr::ExpansionInfo* getExpansionInfoByFID(FileID FID) const {
+    if (FID.ID == 0 || FID.ID == -1) {
+      return nullptr;
+    }
+    if (FID.ID < 0) {
+      unsigned Index = static_cast<unsigned>(-FID.ID - 2);
+      bool Invalid = false;
+      if (!SLocEntryLoaded[Index]) {
+        loadSLocEntry(Index, &Invalid);
+        if (Invalid) return nullptr;
+      }
+      if (!LoadedSLocEntryTable.Indexes[Index].IsExpansion)
+        return nullptr;
+      return &LoadedSLocEntryTable.Payload[Index].Expansion;
+    }
+    return const_cast<SourceManager *>(this)->getLocalExpansionInfoOrNull(FID.ID);
+  }
+  SourceLocation::UIntTy getOffsetByFID(FileID FID, bool *Invalid = nullptr) const {
+    if (FID.ID == 0 || FID.ID == -1) {
+      if (Invalid) *Invalid = true;
+      return 0;
+    }
+    if (FID.ID < 0) {
+      auto Offset = const_cast<SourceManager *>(this)->getLoadOffset(
+          static_cast<unsigned>(-FID.ID - 2), Invalid);
+      if (Invalid && *Invalid)
+        return 0;
+      return Offset;
     }
     return getLocalOffset(FID.ID);
   }
@@ -2107,7 +2146,7 @@ private:
   SourceLocation getFileLocSlowCase(SourceLocation Loc) const;
 
   std::pair<FileID, unsigned>
-  getDecomposedExpansionLocSlowCase(SrcMgr::SLocEntryProxy E) const;
+  getDecomposedExpansionLocSlowCase(const SrcMgr::ExpansionInfo* E) const;
   std::pair<FileID, unsigned>
   getDecomposedSpellingLocSlowCase(SrcMgr::SLocEntryProxy E,
                                    unsigned Offset) const;
