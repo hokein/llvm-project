@@ -997,8 +997,7 @@ SourceLocation SourceManager::getImmediateSpellingLoc(SourceLocation Loc) const{
 
 /// Return the filename of the file containing a SourceLocation.
 StringRef SourceManager::getFilename(SourceLocation SpellingLoc) const {
-  if (OptionalFileEntryRef F = 
-    getFileEntryRefForID(getFileID(SpellingLoc)))
+  if (OptionalFileEntryRef F = getFileEntryRefForID(getFileID(SpellingLoc)))
     return F->getName();
   return StringRef();
 }
@@ -1008,7 +1007,7 @@ StringRef SourceManager::getFilename(SourceLocation SpellingLoc) const {
 CharSourceRange
 SourceManager::getImmediateExpansionRange(SourceLocation Loc) const {
   assert(Loc.isMacroID() && "Not a macro expansion loc!");
-  const ExpansionInfo &Expansion = getSLocEntry(getFileID(Loc)).getExpansion();
+  const ExpansionInfo &Expansion = *getExpansionInfoByFID(getFileID(Loc));
   return Expansion.getExpansionLocRange();
 }
 
@@ -1043,7 +1042,7 @@ bool SourceManager::isMacroArgExpansion(SourceLocation Loc,
   if (!Loc.isMacroID()) return false;
 
   FileID FID = getFileID(Loc);
-  const SrcMgr::ExpansionInfo &Expansion = getSLocEntry(FID).getExpansion();
+  const SrcMgr::ExpansionInfo &Expansion = *getExpansionInfoByFID(FID);
   if (!Expansion.isMacroArgExpansion()) return false;
 
   if (StartLoc)
@@ -1055,7 +1054,7 @@ bool SourceManager::isMacroBodyExpansion(SourceLocation Loc) const {
   if (!Loc.isMacroID()) return false;
 
   FileID FID = getFileID(Loc);
-  const SrcMgr::ExpansionInfo &Expansion = getSLocEntry(FID).getExpansion();
+  const SrcMgr::ExpansionInfo &Expansion = *getExpansionInfoByFID(FID);
   return Expansion.isMacroBodyExpansion();
 }
 
@@ -1067,24 +1066,24 @@ bool SourceManager::isAtStartOfImmediateMacroExpansion(SourceLocation Loc,
   if (DecompLoc.second > 0)
     return false; // Does not point at the start of expansion range.
 
-  bool Invalid = false;
-  const SrcMgr::ExpansionInfo &ExpInfo =
-      getSLocEntry(DecompLoc.first, &Invalid).getExpansion();
-  if (Invalid)
+  // bool Invalid = false;
+  const SrcMgr::ExpansionInfo* ExpInfo =
+      getExpansionInfoByFID(DecompLoc.first);
+  if (!ExpInfo)
     return false;
-  SourceLocation ExpLoc = ExpInfo.getExpansionLocStart();
+  SourceLocation ExpLoc = ExpInfo->getExpansionLocStart();
 
-  if (ExpInfo.isMacroArgExpansion()) {
+  if (ExpInfo->isMacroArgExpansion()) {
     // For macro argument expansions, check if the previous FileID is part of
     // the same argument expansion, in which case this Loc is not at the
     // beginning of the expansion.
     FileID PrevFID = getPreviousFileID(DecompLoc.first);
     if (!PrevFID.isInvalid()) {
-      auto PrevEntry = getSLocEntry(PrevFID, &Invalid);
-      if (Invalid)
+      // auto PrevEntry = getSLocEntry(PrevFID, &Invalid);
+      auto* PrevEntry = getExpansionInfoByFID(PrevFID);
+      if (!PrevEntry)
         return false;
-      if (PrevEntry.isExpansion() &&
-          PrevEntry.getExpansion().getExpansionLocStart() == ExpLoc)
+      if (PrevEntry->getExpansionLocStart() == ExpLoc)
         return false;
     }
   }
