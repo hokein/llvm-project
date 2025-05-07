@@ -1332,7 +1332,7 @@ struct CounterCoverageMappingBuilder
     // location.
     if (AfterLoc.isMacroID()) {
       FileID FID = SM.getFileID(AfterLoc);
-      const SrcMgr::ExpansionInfo *EI = &SM.getSLocEntry(FID).getExpansion();
+      const SrcMgr::ExpansionInfo *EI = SM.getExpansionInfoByFID(FID);
       if (EI->isFunctionMacroExpansion())
         AfterLoc = EI->getExpansionLocEnd();
     }
@@ -1392,7 +1392,7 @@ struct CounterCoverageMappingBuilder
     // If StartingLoc is in function-like macro, use its start location.
     if (StartingLoc.isMacroID()) {
       FileID FID = SM.getFileID(StartingLoc);
-      const SrcMgr::ExpansionInfo *EI = &SM.getSLocEntry(FID).getExpansion();
+      const SrcMgr::ExpansionInfo *EI = SM.getExpansionInfoByFID(FID);
       if (EI->isFunctionMacroExpansion())
         StartingLoc = EI->getExpansionLocStart();
     }

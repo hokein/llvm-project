@@ -6929,7 +6929,7 @@ void ASTWriter::associateDeclWithFile(const Decl *D, LocalDeclID ID) {
   std::tie(FID, Offset) = SM.getDecomposedLoc(FileLoc);
   if (FID.isInvalid())
     return;
-  assert(SM.getSLocEntry(FID).isFile());
+  assert(SM.getFileInfoByFID(FID));
   assert(IsSLocAffecting[FID.ID]);
 
   std::unique_ptr<DeclIDInFileInfo> &Info = FileDeclIDs[FID];

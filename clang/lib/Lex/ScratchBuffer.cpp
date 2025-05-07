@@ -37,9 +37,8 @@ SourceLocation ScratchBuffer::getToken(const char *Buf, unsigned Len,
   else {
     // Clear out the source line cache if it's already been computed.
     // FIXME: Allow this to be incrementally extended.
-    SourceMgr.getSLocEntry(SourceMgr.getFileID(BufferStartLoc))
-        .getFile()
-        .getContentCache()
+    SourceMgr.getFileInfoByFID(SourceMgr.getFileID(BufferStartLoc))
+        ->getContentCache()
         .SourceLineCache = SrcMgr::LineOffsetMapping();
   }
 

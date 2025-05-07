@@ -707,8 +707,8 @@ static std::optional<SourceLocation> getExpansionLocOfMacroRecursive(
     if (CheckedLocations.count(Loc))
       return std::nullopt;
     CheckedLocations.insert(Loc);
-    SrcMgr::ExpansionInfo Expansion =
-        SM.getSLocEntry(SM.getFileID(Loc)).getExpansion();
+    const SrcMgr::ExpansionInfo& Expansion =
+        *SM.getExpansionInfoByFID(SM.getFileID(Loc));
     if (Expansion.isMacroArgExpansion()) {
       // Check macro argument for an expansion of the given macro. For example,
       // `F(G(3))`, where `MacroName` is `G`.

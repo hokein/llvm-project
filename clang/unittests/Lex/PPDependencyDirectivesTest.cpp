@@ -64,7 +64,7 @@ public:
     if (FID == PP.getPredefinesFileID())
       return;
     StringRef Filename =
-        PP.getSourceManager().getSLocEntry(FID).getFile().getName();
+        PP.getSourceManager().getFileInfoByFID(FID)->getName();
     IncludedFiles.push_back(Filename);
   }
 };

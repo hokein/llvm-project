@@ -89,7 +89,7 @@ llvm::Error clang::tooling::validateEditRange(const CharSourceRange &Range,
 static bool spelledInMacroDefinition(SourceLocation Loc,
                                      const SourceManager &SM) {
   while (Loc.isMacroID()) {
-    const auto &Expansion = SM.getSLocEntry(SM.getFileID(Loc)).getExpansion();
+    const auto &Expansion = *SM.getExpansionInfoByFID(SM.getFileID(Loc));
     if (Expansion.isMacroArgExpansion()) {
       // Check the spelling location of the macro arg, in case the arg itself is
       // in a macro expansion.
@@ -108,16 +108,12 @@ static std::optional<CharSourceRange>
 getExpansionForSplitToken(SourceLocation Loc, const SourceManager &SM,
                           const LangOptions &LangOpts) {
   if (Loc.isMacroID()) {
-    bool Invalid = false;
-    auto SLoc = SM.getSLocEntry(SM.getFileID(Loc), &Invalid);
-    if (Invalid)
-      return std::nullopt;
-    if (auto &Expansion = SLoc.getExpansion();
-        !Expansion.isExpansionTokenRange()) {
+    if (auto *Expansion = SM.getExpansionInfoByFID(SM.getFileID(Loc));
+        Expansion && !Expansion->isExpansionTokenRange()) {
       // A char-range expansion is only used where a token-range would be
       // incorrect, and so identifies this as a split token (and importantly,
       // not as a macro).
-      return Expansion.getExpansionLocRange();
+      return Expansion->getExpansionLocRange();
     }
   }
   return std::nullopt;

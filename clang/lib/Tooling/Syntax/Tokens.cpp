@@ -74,7 +74,7 @@ SourceRange spelledForExpandedSlow(SourceLocation First, SourceLocation Last,
   // We do these in order. However as we transform the expanded range into the
   // spelled one, we adjust First/Last so the validation remains simple.
 
-  assert(SM.getSLocEntry(TargetFile).isFile());
+  assert(SM.getFileInfoByFID(TargetFile));
   // In most cases, to select First and Last we must return their expansion
   // range, i.e. the whole of any macros they are included in.
   //
@@ -88,8 +88,8 @@ SourceRange spelledForExpandedSlow(SourceLocation First, SourceLocation Last,
   while (First.isMacroID() && Last.isMacroID()) {
     auto DecFirst = SM.getDecomposedLoc(First);
     auto DecLast = SM.getDecomposedLoc(Last);
-    auto &ExpFirst = SM.getSLocEntry(DecFirst.first).getExpansion();
-    auto &ExpLast = SM.getSLocEntry(DecLast.first).getExpansion();
+    auto &ExpFirst = *SM.getExpansionInfoByFID(DecFirst.first);
+    auto &ExpLast = *SM.getExpansionInfoByFID(DecLast.first);
 
     if (!ExpFirst.isMacroArgExpansion() || !ExpLast.isMacroArgExpansion())
       break;

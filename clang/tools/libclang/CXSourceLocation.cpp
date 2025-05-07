@@ -256,11 +256,16 @@ void clang_getExpansionLocation(CXSourceLocation location,
   // Check that the FileID is invalid on the expansion location.
   // This can manifest in invalid code.
   FileID fileID = SM.getFileID(ExpansionLoc);
-  bool Invalid = false;
-  auto sloc = SM.getSLocEntry(fileID, &Invalid);
-  if (Invalid || !sloc.isFile()) {
+  // bool Invalid = false;
+  auto sloc = SM.getFileInfoByFID(fileID);
+  // if (Invalid || !sloc.isFile()) {
+  //   createNullLocation(file, line, column, offset);
+  //   return;
+  // }
+  if (!sloc) {
     createNullLocation(file, line, column, offset);
     return;
+
   }
   
   if (file)

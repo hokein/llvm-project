@@ -1942,18 +1942,18 @@ public:
     return loadSLocEntry(Index, Invalid);
   }
 
-  SrcMgr::SLocEntryProxy getSLocEntry(FileID FID,
-                                        bool *Invalid = nullptr) const {
-    return const_cast<SourceManager *>(this)->getSLocEntry(FID, Invalid);
-  }
+  // SrcMgr::SLocEntryProxy getSLocEntry(FileID FID,
+  //                                       bool *Invalid = nullptr) const {
+  //   return const_cast<SourceManager *>(this)->getSLocEntry(FID, Invalid);
+  // }
 
-  SrcMgr::SLocEntryProxy getSLocEntry(FileID FID, bool *Invalid = nullptr) {
-    if (FID.ID == 0 || FID.ID == -1) {
-      if (Invalid) *Invalid = true;
-      return LocalSLocEntryTable.get(0);
-    }
-    return getSLocEntryByID(FID.ID, Invalid);
-  }
+  // SrcMgr::SLocEntryProxy getSLocEntry(FileID FID, bool *Invalid = nullptr) {
+  //   if (FID.ID == 0 || FID.ID == -1) {
+  //     if (Invalid) *Invalid = true;
+  //     return LocalSLocEntryTable.get(0);
+  //   }
+  //   return getSLocEntryByID(FID.ID, Invalid);
+  // }
 
   SourceLocation::UIntTy getNextLocalOffset() const { return NextLocalOffset; }
 
@@ -2023,32 +2023,32 @@ private:
   void loadSLocEntry(unsigned Index, bool *Invalid) const;
   SrcMgr::SLocEntryProxy loadSLocEntry(unsigned Index, bool *Invalid);
 
-  SrcMgr::SLocEntryProxy getSLocEntryOrNull(FileID FID) const {
-    return const_cast<SourceManager *>(this)->getSLocEntryOrNull(FID);
-  }
+  // SrcMgr::SLocEntryProxy getSLocEntryOrNull(FileID FID) const {
+  //   return const_cast<SourceManager *>(this)->getSLocEntryOrNull(FID);
+  // }
 
-  SrcMgr::SLocEntryProxy getSLocEntryOrNull(FileID FID) {
-    bool Invalid = false;
-    auto Entry = getSLocEntry(FID, &Invalid);
-    return Invalid ?  SrcMgr::SLocEntryProxy() : Entry;
-  }
+  // SrcMgr::SLocEntryProxy getSLocEntryOrNull(FileID FID) {
+  //   bool Invalid = false;
+  //   auto Entry = getSLocEntry(FID, &Invalid);
+  //   return Invalid ?  SrcMgr::SLocEntryProxy() : Entry;
+  // }
 
-  SrcMgr::SLocEntryProxy getSLocEntryForFile(FileID FID) const {
-    return const_cast<SourceManager *>(this)->getSLocEntryForFile(FID);
-  }
+  // SrcMgr::SLocEntryProxy getSLocEntryForFile(FileID FID) const {
+  //   return const_cast<SourceManager *>(this)->getSLocEntryForFile(FID);
+  // }
 
-  SrcMgr::SLocEntryProxy getSLocEntryForFile(FileID FID) {
+  // SrcMgr::SLocEntryProxy getSLocEntryForFile(FileID FID) {
     
-    auto Entry = getSLocEntryOrNull(FID);
-    if (Entry.Payload && Entry.isFile())
-      return Entry;
-    return {};
-    // if (!Entry.Payload)
+  //   auto Entry = getSLocEntryOrNull(FID);
+  //   if (Entry.Payload && Entry.isFile())
+  //     return Entry;
+  //   return {};
+  //   // if (!Entry.Payload)
       
-    //   if (Entry.isFile())
-    //     return Entry;
-    // return nullptr;
-  }
+  //   //   if (Entry.isFile())
+  //   //     return Entry;
+  //   // return nullptr;
+  // }
 
   /// Get the entry with the given unwrapped FileID.
   /// Invalid will not be modified for Local IDs.

@@ -166,7 +166,7 @@ bool Rewriter::InsertText(SourceLocation Loc, StringRef Str,
 
     unsigned lineNo = SourceMgr->getLineNumber(FID, StartOffs) - 1;
     const SrcMgr::ContentCache *Content =
-        &SourceMgr->getSLocEntry(FID).getFile().getContentCache();
+        &SourceMgr->getFileInfoByFID(FID)->getContentCache();
     unsigned lineOffs = Content->SourceLineCache[lineNo];
 
     // Find the whitespace at the start of the line.
@@ -270,7 +270,7 @@ bool Rewriter::IncreaseIndentation(CharSourceRange range,
   unsigned endLineNo = SourceMgr->getLineNumber(FID, EndOff) - 1;
 
   const SrcMgr::ContentCache *Content =
-      &SourceMgr->getSLocEntry(FID).getFile().getContentCache();
+      &SourceMgr->getFileInfoByFID(FID)->getContentCache();
 
   // Find where the lines start.
   unsigned parentLineOffs = Content->SourceLineCache[parentLineNo];

@@ -186,9 +186,8 @@ static bool EvaluateDefined(PPValue &Result, Token &PeekTok, DefinedTracker &DT,
   if (beginLoc.isMacroID()) {
     bool IsFunctionTypeMacro =
         PP.getSourceManager()
-            .getSLocEntry(PP.getSourceManager().getFileID(beginLoc))
-            .getExpansion()
-            .isFunctionMacroExpansion();
+            .getExpansionInfoByFID(PP.getSourceManager().getFileID(beginLoc))
+            ->isFunctionMacroExpansion();
     // For object-type macros, it's easy to replace
     //   #define FOO defined(BAR)
     // with

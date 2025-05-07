@@ -327,16 +327,11 @@ bool CursorVisitor::visitDeclsFromFileRegion(FileID File, unsigned Offset,
   // If we didn't find any file level decls for the file, try looking at the
   // file that it was included from.
   while (Decls.empty() || Decls.front()->isTopLevelDeclInObjCContainer()) {
-    bool Invalid = false;
-    auto SLEntry = SM.getSLocEntry(File, &Invalid);
-    if (Invalid)
-      return false;
-
     SourceLocation Outer;
-    if (SLEntry.isFile())
-      Outer = SLEntry.getFile().getIncludeLoc();
-    else
-      Outer = SLEntry.getExpansion().getExpansionLocStart();
+    if (const auto* F = SM.getFileInfoByFID(File))
+      Outer = F->getIncludeLoc();
+    else if (const auto* E = SM.getExpansionInfoByFID(File))
+      Outer = E->getExpansionLocStart();
     if (Outer.isInvalid())
       return false;
 

@@ -9977,12 +9977,12 @@ Expected<FileID> ASTImporter::Import(FileID FromID, bool IsBuiltin) {
 
   SourceManager &FromSM = FromContext.getSourceManager();
   SourceManager &ToSM = ToContext.getSourceManager();
-  auto FromSLoc = FromSM.getSLocEntry(FromID);
+  // auto FromSLoc = FromSM.getSLocEntry(FromID);
 
   // Map the FromID to the "to" source manager.
   FileID ToID;
-  if (FromSLoc.isExpansion()) {
-    const SrcMgr::ExpansionInfo &FromEx = FromSLoc.getExpansion();
+  if (const auto* FromSLoc = FromSM.getExpansionInfoByFID(FromID)) {
+    const SrcMgr::ExpansionInfo &FromEx = *FromSLoc;
     ExpectedSLoc ToSpLoc = Import(FromEx.getSpellingLoc());
     if (!ToSpLoc)
       return ToSpLoc.takeError();
@@ -10001,12 +10001,12 @@ Expected<FileID> ASTImporter::Import(FileID FromID, bool IsBuiltin) {
         return ToExLocE.takeError();
     }
     ToID = ToSM.getFileID(MLoc);
-  } else {
-    const SrcMgr::ContentCache *Cache = &FromSLoc.getFile().getContentCache();
+  } else if (const auto* FromSLoc = FromSM.getFileInfoByFID(FromID)){
+    const SrcMgr::ContentCache *Cache = &FromSLoc->getContentCache();
 
     if (!IsBuiltin && !Cache->BufferOverridden) {
       // Include location of this file.
-      ExpectedSLoc ToIncludeLoc = Import(FromSLoc.getFile().getIncludeLoc());
+      ExpectedSLoc ToIncludeLoc = Import(FromSLoc->getIncludeLoc());
       if (!ToIncludeLoc)
         return ToIncludeLoc.takeError();
 
@@ -10031,7 +10031,7 @@ Expected<FileID> ASTImporter::Import(FileID FromID, bool IsBuiltin) {
         // the memory buffer below.
         if (Entry)
           ToID = ToSM.createFileID(*Entry, ToIncludeLocOrFakeLoc,
-                                   FromSLoc.getFile().getFileCharacteristic());
+                                   FromSLoc->getFileCharacteristic());
       }
     }
 
@@ -10047,7 +10047,7 @@ Expected<FileID> ASTImporter::Import(FileID FromID, bool IsBuiltin) {
           llvm::MemoryBuffer::getMemBufferCopy(FromBuf->getBuffer(),
                                                FromBuf->getBufferIdentifier());
       ToID = ToSM.createFileID(std::move(ToBuf),
-                               FromSLoc.getFile().getFileCharacteristic());
+                               FromSLoc->getFileCharacteristic());
     }
   }
 

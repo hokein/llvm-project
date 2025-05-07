@@ -4017,14 +4017,16 @@ static FileID getNullabilityCompletenessCheckFileID(Sema &S,
     return FileID();
 
   // Retrieve file information.
-  bool invalid = false;
-  auto sloc = S.SourceMgr.getSLocEntry(file, &invalid);
-  if (invalid || !sloc.isFile())
+  // bool invalid = false;
+  auto* sloc = S.SourceMgr.getFileInfoByFID(file);
+  // if (invalid || !sloc.isFile())
+  //   return FileID();
+  if (!sloc)
     return FileID();
 
   // We don't want to perform completeness checks on the main file or in
   // system headers.
-  const SrcMgr::FileInfo &fileInfo = sloc.getFile();
+  const SrcMgr::FileInfo &fileInfo = *sloc;
   if (fileInfo.getIncludeLoc().isInvalid())
     return FileID();
   if (fileInfo.getFileCharacteristic() != SrcMgr::C_User &&

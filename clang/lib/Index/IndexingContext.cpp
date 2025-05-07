@@ -129,12 +129,14 @@ bool IndexingContext::importedModule(const ImportDecl *ImportD) {
   if (FID.isInvalid())
     return true;
 
-  bool Invalid = false;
-  auto SEntry = SM.getSLocEntry(FID, &Invalid);
-  if (Invalid || !SEntry.isFile())
+  // bool Invalid = false;
+  const auto* SEntry = SM.getFileInfoByFID(FID);
+  if (!SEntry)
     return true;
-
-  if (SEntry.getFile().getFileCharacteristic() != SrcMgr::C_User) {
+  // if (Invalid || !SEntry.isFile())
+  //   return true;
+  
+  if (SEntry->getFileCharacteristic() != SrcMgr::C_User) {
     switch (IndexOpts.SystemSymbolFilter) {
     case IndexingOptions::SystemSymbolFilterKind::None:
       return true;
@@ -381,12 +383,11 @@ bool IndexingContext::handleDeclOccurrence(const Decl *D, SourceLocation Loc,
   if (FID.isInvalid())
     return true;
 
-  bool Invalid = false;
-  auto SEntry = SM.getSLocEntry(FID, &Invalid);
-  if (Invalid || !SEntry.isFile())
+  auto* SEntry = SM.getFileInfoByFID(FID);
+  if (!SEntry)
     return true;
 
-  if (SEntry.getFile().getFileCharacteristic() != SrcMgr::C_User) {
+  if (SEntry->getFileCharacteristic() != SrcMgr::C_User) {
     switch (IndexOpts.SystemSymbolFilter) {
     case IndexingOptions::SystemSymbolFilterKind::None:
       return true;
@@ -509,10 +510,13 @@ bool IndexingContext::shouldIndexMacroOccurrence(bool IsRef,
   if (FID.isInvalid())
     return false;
 
-  bool Invalid = false;
-  auto SEntry = SM.getSLocEntry(FID, &Invalid);
-  if (Invalid || !SEntry.isFile())
-    return false;
+  // bool Invalid = false;
+  // auto SEntry = SM.getSLocEntry(FID, &Invalid);
+  // if (Invalid || !SEntry.isFile())
+  //   return false;
+  if (const auto* File = SM.getFileInfoByFID(FID))
+    return File->getFileCharacteristic() == SrcMgr::C_User;
+  return false;
 
-  return SEntry.getFile().getFileCharacteristic() == SrcMgr::C_User;
+  // return SEntry.getFile().getFileCharacteristic() == SrcMgr::C_User;
 }
