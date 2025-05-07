@@ -1138,9 +1138,9 @@ public:
   /// std::nullopt.
   std::optional<llvm::MemoryBufferRef>
   getBufferOrNone(FileID FID, SourceLocation Loc = SourceLocation()) const {
-    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-      return Entry.getFile().getContentCache().getBufferOrNone(
-          Diag, getFileManager(), Loc);
+    if (auto *File = getFileInfoByFID(FID))
+      return File->getContentCache().getBufferOrNone(Diag, getFileManager(),
+                                                     Loc);
     return std::nullopt;
   }
 
@@ -1214,11 +1214,11 @@ public:
   /// during preprocessing of \p FID, including it.
   void setNumCreatedFIDsForFileID(FileID FID, unsigned NumFIDs,
                                   bool Force = false) {
-    auto Entry = getSLocEntryForFile(FID);
-    if (!Entry.Payload)
+    auto Entry = getFileInfoByFID(FID);
+    if (!Entry)
       return;
-    assert((Force || Entry.getFile().NumCreatedFIDs == 0) && "Already set!");
-    Entry.getFile().NumCreatedFIDs = NumFIDs;
+    assert(Entry->NumCreatedFIDs == 0 && "Already set!");
+    Entry->NumCreatedFIDs = NumFIDs;
   }
 
   //===--------------------------------------------------------------------===//
@@ -1241,25 +1241,32 @@ public:
   /// Return the source location corresponding to the first byte of
   /// the specified file.
   SourceLocation getLocForStartOfFile(FileID FID) const {
-    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-      return SourceLocation::getFileLoc(Entry.getOffset());
-    return SourceLocation();
+    bool IsInvalid = false;
+    auto Offset = getOffsetByFID(FID, &IsInvalid);
+    if (IsInvalid)
+      return {};
+    return SourceLocation::getFileLoc(Offset);
+    // if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
+    //   return SourceLocation::getFileLoc(Entry.getOffset());
+    // return SourceLocation();
   }
 
   /// Return the source location corresponding to the last byte of the
   /// specified file.
   SourceLocation getLocForEndOfFile(FileID FID) const {
-    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-      return SourceLocation::getFileLoc(Entry.getOffset() +
-                                        getFileIDSize(FID));
-    return SourceLocation();
+    // if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
+    bool IsInvalid = false;
+    auto Offset = getOffsetByFID(FID, &IsInvalid);
+    if (IsInvalid)
+      return {};
+    return SourceLocation::getFileLoc(Offset + getFileIDSize(FID));
   }
 
   /// Returns the include location if \p FID is a \#include'd file
   /// otherwise it returns an invalid location.
   SourceLocation getIncludeLoc(FileID FID) const {
-    if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-      return Entry.getFile().getIncludeLoc();
+    if (auto* Entry = getFileInfoByFID(FID))
+      return Entry->getIncludeLoc();
     return SourceLocation();
   }
 
@@ -1657,7 +1664,7 @@ public:
     SourceLocation::UIntTy Offs = Loc.getOffset();
     if (isOffsetInFileID(FID, Offs)) {
       if (RelativeOffset)
-        *RelativeOffset = Offs - getSLocEntry(FID).getOffset();
+        *RelativeOffset = Offs - getOffsetByFID(FID);
       return true;
     }
 
@@ -2094,9 +2101,9 @@ private:
   /// specified SourceLocation offset.  This is a very hot method.
   inline bool isOffsetInFileID(FileID FID,
                                SourceLocation::UIntTy SLocOffset) const {
-    auto Entry = getSLocEntry(FID);
+    auto Offset = getOffsetByFID(FID);
     // If the entry is after the offset, it can't contain it.
-    if (SLocOffset < Entry.getOffset()) return false;
+    if (SLocOffset < Offset) return false;
 
     // If this is the very last entry then it does.
     if (FID.ID == -2)
@@ -2108,7 +2115,7 @@ private:
 
     // Otherwise, the entry after it has to not include it. This works for both
     // local and loaded entries.
-    return SLocOffset < getSLocEntryByID(FID.ID+1).getOffset();
+    return SLocOffset < getOffsetByFID(FileID::get(FID.ID+1));
   }
 
   /// Returns the previous in-order FileID or an invalid FileID if there
