@@ -1073,7 +1073,7 @@ ForStmt::ForStmt(const ASTContext &C, Stmt *Init, Expr *Cond, VarDecl *condVar,
   SubExprs[COND] = Cond;
   SubExprs[INC] = Inc;
   SubExprs[BODY] = Body;
-  ForStmtBits.ForLoc = FL;
+  ForLoc = FL;
 }
 
 VarDecl *ForStmt::getConditionVariable() const {
