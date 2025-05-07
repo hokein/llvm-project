@@ -690,6 +690,7 @@ SourceManager::createExpansionLocImpl(const ExpansionInfo &Info,
     SLocEntryLoaded[Index] = SLocEntryOffsetLoaded[Index] = true;
     return SourceLocation::getMacroLoc(LoadedOffset);
   }
+  assert(LocalSLocEntryTable.size() == LocalSLocEntryTable.size());
   LocalSLocEntryTable.push_back(SLocEntry::get(NextLocalOffset, Info));
   if (NextLocalOffset + Length + 1 <= NextLocalOffset ||
       NextLocalOffset + Length + 1 > CurrentLoadedOffset) {
@@ -829,6 +830,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   // SLocOffset.
   unsigned LessIndex = 0;
   // upper bound of the search range.
+  assert(LocalSLocEntryTable.size() == LocalSLocEntryTable.size());
   unsigned GreaterIndex = LocalSLocEntryTable.size();
   if (LastFileIDLookup.ID >= 0) {
     // Use the LastFileIDLookup to prune the search space.
@@ -854,35 +856,24 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
       break;
   }
 
-  NumProbes = 0;
-  while (true) {
-    unsigned MiddleIndex = (GreaterIndex-LessIndex)/2+LessIndex;
+  while (LessIndex < GreaterIndex) {
+    ++NumBinaryProbes;
+
+    unsigned MiddleIndex = LessIndex + (GreaterIndex - LessIndex) / 2;
+
     SourceLocation::UIntTy MidOffset =
-        getLocalSLocEntry(MiddleIndex).getOffset();
+        LocalSLocEntryTable[MiddleIndex].getOffset();
 
-    ++NumProbes;
-
-    // If the offset of the midpoint is too large, chop the high side of the
-    // range to the midpoint.
-    if (MidOffset > SLocOffset) {
+    if (MidOffset <= SLocOffset)
+      LessIndex = MiddleIndex + 1;
+    else
       GreaterIndex = MiddleIndex;
-      continue;
-    }
-
-    // If the middle index contains the value, succeed and return.
-    if (MiddleIndex + 1 == LocalSLocEntryTable.size() ||
-        SLocOffset < getLocalSLocEntry(MiddleIndex + 1).getOffset()) {
-      FileID Res = FileID::get(MiddleIndex);
-
-      // Remember it.  We have good locality across FileID lookups.
-      LastFileIDLookup = Res;
-      NumBinaryProbes += NumProbes;
-      return Res;
-    }
-
-    // Otherwise, move the low-side up to the middle index.
-    LessIndex = MiddleIndex;
   }
+
+  // The loop terminates when LessIndex == GreaterIndex. At this point,
+  // `LessIndex` is the index of the *first element greater than* SLocOffset.
+  // The element we are actually looking for is the one immediately before it.
+  return LastFileIDLookup = FileID::get(LessIndex - 1);
 }
 
 /// Return the FileID for a SourceLocation with a high offset.
@@ -1886,9 +1877,7 @@ SourceManager::getMacroArgExpandedLocation(SourceLocation Loc) const {
   if (Loc.isInvalid() || !Loc.isFileID())
     return Loc;
 
-  FileID FID;
-  unsigned Offset;
-  std::tie(FID, Offset) = getDecomposedLoc(Loc);
+  auto [FID, Offset] = getDecomposedLoc(Loc);
   if (FID.isInvalid())
     return Loc;
 
