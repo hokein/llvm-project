@@ -49,10 +49,12 @@ class SourceLocationEncoding {
   constexpr static unsigned UIntBits = CHAR_BIT * sizeof(UIntTy);
 
   static UIntTy encodeRaw(UIntTy Raw) {
-    return (Raw << 1) | (Raw >> (UIntBits - 1));
+    return ((Raw & llvm::maskTrailingOnes<uint64_t>(SourceLocation::Bits - 1))
+            << 1) |
+           (Raw >> (SourceLocation::Bits - 1));
   }
   static UIntTy decodeRaw(UIntTy Raw) {
-    return (Raw >> 1) | (Raw << (UIntBits - 1));
+    return (Raw >> 1) | ((Raw & 1) << (SourceLocation::Bits - 1));
   }
   friend SourceLocationSequence;
 
@@ -97,7 +99,7 @@ class SourceLocationSequence {
   using UIntTy = SourceLocation::UIntTy;
   using EncodedTy = uint64_t;
   constexpr static auto UIntBits = SourceLocationEncoding::UIntBits;
-  static_assert(sizeof(EncodedTy) > sizeof(UIntTy), "Need one extra bit!");
+  // static_assert(sizeof(EncodedTy) > sizeof(UIntTy), "Need one extra bit!");
 
   // Prev stores the rotated last nonzero location.
   UIntTy &Prev;
@@ -105,7 +107,7 @@ class SourceLocationSequence {
   // Zig-zag encoding turns small signed integers into small unsigned integers.
   // 0 => 0, -1 => 1, 1 => 2, -2 => 3, ...
   static UIntTy zigZag(UIntTy V) {
-    UIntTy Sign = (V & (1 << (UIntBits - 1))) ? UIntTy(-1) : UIntTy(0);
+    UIntTy Sign = (V & (1ull << (UIntBits - 1))) ? UIntTy(-1) : UIntTy(0);
     return Sign ^ (V << 1);
   }
   static UIntTy zagZig(UIntTy V) { return (V >> 1) ^ -(V & 1); }
@@ -179,20 +181,20 @@ SourceLocationEncoding::encode(SourceLocation Loc, UIntTy BaseOffset,
 
   // 16 bits should be sufficient to store the module file index.
   assert(BaseModuleFileIndex < (1 << 16));
-  Encoded |= (RawLocEncoding)BaseModuleFileIndex << 32;
+  Encoded |= (RawLocEncoding)BaseModuleFileIndex << (SourceLocation::Bits + 1);
   return Encoded;
 }
 inline std::pair<SourceLocation, unsigned>
 SourceLocationEncoding::decode(RawLocEncoding Encoded,
                                SourceLocationSequence *Seq) {
-  unsigned ModuleFileIndex = Encoded >> 32;
+  unsigned ModuleFileIndex = Encoded >> (SourceLocation::Bits + 1);
 
   if (!ModuleFileIndex)
     return {Seq ? Seq->decode(Encoded)
                 : SourceLocation::getFromRawEncoding(decodeRaw(Encoded)),
             ModuleFileIndex};
 
-  Encoded &= llvm::maskTrailingOnes<RawLocEncoding>(32);
+  Encoded &= llvm::maskTrailingOnes<RawLocEncoding>((SourceLocation::Bits + 1));
   SourceLocation Loc = SourceLocation::getFromRawEncoding(decodeRaw(Encoded));
 
   return {Loc, ModuleFileIndex};

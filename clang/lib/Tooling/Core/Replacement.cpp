@@ -120,7 +120,7 @@ bool operator==(const Replacement &LHS, const Replacement &RHS) {
 void Replacement::setFromSourceLocation(const SourceManager &Sources,
                                         SourceLocation Start, unsigned Length,
                                         StringRef ReplacementText) {
-  const std::pair<FileID, unsigned> DecomposedLocation =
+  const auto DecomposedLocation =
       Sources.getDecomposedLoc(Start);
   OptionalFileEntryRef Entry =
       Sources.getFileEntryRefForID(DecomposedLocation.first);
@@ -137,8 +137,8 @@ static int getRangeSize(const SourceManager &Sources,
                         const LangOptions &LangOpts) {
   SourceLocation SpellingBegin = Sources.getSpellingLoc(Range.getBegin());
   SourceLocation SpellingEnd = Sources.getSpellingLoc(Range.getEnd());
-  std::pair<FileID, unsigned> Start = Sources.getDecomposedLoc(SpellingBegin);
-  std::pair<FileID, unsigned> End = Sources.getDecomposedLoc(SpellingEnd);
+  auto Start = Sources.getDecomposedLoc(SpellingBegin);
+  auto End = Sources.getDecomposedLoc(SpellingEnd);
   if (Start.first != End.first) return -1;
   if (Range.isTokenRange())
     End.second += Lexer::MeasureTokenLength(SpellingEnd, Sources, LangOpts);
