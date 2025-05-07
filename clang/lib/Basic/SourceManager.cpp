@@ -1673,10 +1673,13 @@ FileID SourceManager::translateFile(const FileEntry *SourceFile) const {
   // The location we're looking for isn't in the main file; look
   // through all of the local source locations.
   for (unsigned I = 0, N = local_sloc_entry_size(); I != N; ++I) {
-    auto SLoc = getLocalSLocEntry(I);
-    if (SLoc.isFile() &&
-        SLoc.getFile().getContentCache().OrigEntry == SourceFile)
-      return FileID::get(I);
+    auto FID = FileID::get(I);
+    if (const auto *File = getFileInfoByFID(FID);
+        File && File->getContentCache().OrigEntry == SourceFile)
+      return FID;
+    // if (SLoc.isFile() &&
+    //     SLoc.getFile().getContentCache().OrigEntry == SourceFile)
+    //   return FileID::get(I);
   }
 
   // If that still didn't help, try the modules.
@@ -2288,7 +2291,7 @@ LLVM_DUMP_METHOD void SourceManager::dump() const {
     int ID = -(int)Index - 2;
     if (SLocEntryLoaded[Index]) {
       // DumpSLocEntry(ID, LoadedSLocEntryTable[Index], NextStart);
-      NextStart = LoadedSLocEntryTable.get(Index).getOffset();
+      NextStart = getOffsetByFID(FileID::get(ID)); // LoadedSLocEntryTable.get(Index).getOffset();
     } else {
       NextStart = std::nullopt;
     }

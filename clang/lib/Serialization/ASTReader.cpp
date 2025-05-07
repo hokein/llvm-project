@@ -1745,7 +1745,8 @@ int ASTReader::getSLocEntryID(SourceLocation::UIntTy SLocOffset) {
               // SrcMgr::SLocEntry::getOffsetOnly(*MaybeEntryOffset);
           SourceMgr.SLocEntryOffsetLoaded[Index] = true;
         }
-        return Offset < SourceMgr.LoadedSLocEntryTable.get(Index).getOffset();
+        return Offset < SourceMgr.LoadedSLocEntryTable.Indexes[Index].Offset;
+        // return Offset < SourceMgr.LoadedSLocEntryTable.get(Index).getOffset();
       });
 
   if (Invalid)

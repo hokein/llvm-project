@@ -28,14 +28,16 @@ void getInclusions(bool IsLocal, unsigned n, CXTranslationUnit TU,
   SmallVector<CXSourceLocation, 10> InclusionStack;
   const bool HasPreamble = SM.getPreambleFileID().isValid();
 
-  for (unsigned i = 0 ; i < n ; ++i) {
-    bool Invalid = false;
-    auto SL =
-        IsLocal ? SM.getLocalSLocEntry(i) : SM.getLoadedSLocEntry(i, &Invalid);
-    if (!SL.isFile() || Invalid)
+  for (int i = 0 ; i < n ; ++i) {
+    // bool Invalid = false;
+    // auto SL =
+    //     IsLocal ? SM.getLocalSLocEntry(i) : SM.getLoadedSLocEntry(i, &Invalid);
+    // if (!SL.isFile() || Invalid)
+    //   continue;
+    auto* SL = SM.getFileInfoByFID(SourceManager::createFileID(IsLocal? i : -i-2));
+    if (!SL)
       continue;
-
-    const SrcMgr::FileInfo &FI = SL.getFile();
+    const SrcMgr::FileInfo &FI = *SL;
     if (!FI.getContentCache().OrigEntry)
       continue;
 

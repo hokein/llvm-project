@@ -487,43 +487,36 @@ union SLocEntryPayload {
   SLocEntryPayload() : File() {}
 };
 
-// a light-weight proxy of SLocEntry.
-struct SLocEntryProxy {
-  static constexpr int OffsetBits = 8 * sizeof(SourceLocation::UIntTy) - 1;
-  SourceLocation::UIntTy Offset : OffsetBits ;
-  LLVM_PREFERRED_TYPE(bool)
-  SourceLocation::UIntTy IsExpansion : 1;
-  SLocEntryPayload* Payload = nullptr;
+// // a light-weight proxy of SLocEntry.
+// struct SLocEntryProxy {
+//   static constexpr int OffsetBits = 8 * sizeof(SourceLocation::UIntTy) - 1;
+//   SourceLocation::UIntTy Offset : OffsetBits ;
+//   LLVM_PREFERRED_TYPE(bool)
+//   SourceLocation::UIntTy IsExpansion : 1;
+//   SLocEntryPayload* Payload = nullptr;
   
-  SLocEntryProxy() : Offset(0), IsExpansion(0), Payload(nullptr) {}
-  SourceLocation::UIntTy getOffset() const { return Offset; }
-  bool isExpansion() const { return IsExpansion; }
-  bool isFile() const { return !isExpansion(); }
+//   SLocEntryProxy() : Offset(0), IsExpansion(0), Payload(nullptr) {}
+//   SourceLocation::UIntTy getOffset() const { return Offset; }
+//   bool isExpansion() const { return IsExpansion; }
+//   bool isFile() const { return !isExpansion(); }
 
-  const FileInfo &getFile() const {
-    return const_cast<SLocEntryProxy *>(this)->getFile();
-  }
+//   const FileInfo &getFile() const {
+//     return const_cast<SLocEntryProxy *>(this)->getFile();
+//   }
 
-  FileInfo &getFile() {
-    assert(isFile() && "Not a file SLocEntry!");
-    return Payload->File;
-  }
+//   FileInfo &getFile() {
+//     assert(isFile() && "Not a file SLocEntry!");
+//     return Payload->File;
+//   }
 
-  const ExpansionInfo &getExpansion() const {
-    assert(isExpansion() && "Not a macro expansion SLocEntry!");
-    return Payload->Expansion;
-  }
-};
+//   const ExpansionInfo &getExpansion() const {
+//     assert(isExpansion() && "Not a macro expansion SLocEntry!");
+//     return Payload->Expansion;
+//   }
+// };
 
 struct LocalSLocEntryTable {
 
-  SLocEntryProxy get(int ID) {
-    SLocEntryProxy R;
-    R.Offset = Indexes[ID].Offset;
-    R.IsExpansion = Indexes[ID].IsExpansion;
-    R.Payload = &Payload[ID];
-    return R;
-  }
   void clear() {
     Indexes.clear();
     Payload.clear();
@@ -532,17 +525,10 @@ struct LocalSLocEntryTable {
     return Indexes.size();
   }
 
-  llvm::SmallVector<SLocEntryMetadata> Indexes;
-  llvm::SmallVector<SLocEntryPayload> Payload;
+  llvm::SmallVector<SLocEntryMetadata, 0> Indexes;
+  llvm::SmallVector<SLocEntryPayload, 0> Payload;
 };
 struct LoadSLocEntryTable {
-  SLocEntryProxy get(int ID) const {
-    SLocEntryProxy R;
-    R.Offset = Indexes[ID].Offset;
-    R.IsExpansion = Indexes[ID].IsExpansion;
-    R.Payload = &Payload[ID];
-    return R;
-  }
   bool empty() const {
     return size() == 0;
   }
@@ -1834,16 +1820,16 @@ public:
   /// Get the number of local SLocEntries we have.
   unsigned local_sloc_entry_size() const { return LocalSLocEntryTable.size(); }
 
-  /// Get a local SLocEntry. This is exposed for indexing.
-  SrcMgr::SLocEntryProxy getLocalSLocEntry(unsigned Index) const {
-    return const_cast<SourceManager *>(this)->getLocalSLocEntry(Index);
-  }
+  // /// Get a local SLocEntry. This is exposed for indexing.
+  // SrcMgr::SLocEntryProxy getLocalSLocEntry(unsigned Index) const {
+  //   return const_cast<SourceManager *>(this)->getLocalSLocEntry(Index);
+  // }
 
-  /// Get a local SLocEntry. This is exposed for indexing.
-  SrcMgr::SLocEntryProxy getLocalSLocEntry(unsigned Index) {
-    assert(Index < LocalSLocEntryTable.size() && "Invalid index");
-    return LocalSLocEntryTable.get(Index);
-  }
+  // /// Get a local SLocEntry. This is exposed for indexing.
+  // SrcMgr::SLocEntryProxy getLocalSLocEntry(unsigned Index) {
+  //   assert(Index < LocalSLocEntryTable.size() && "Invalid index");
+  //   return LocalSLocEntryTable.get(Index);
+  // }
 
   SrcMgr::FileInfo* getLocalFileInfoOrNull(unsigned Index) {
     assert(Index < LocalSLocEntryTable.size() && "Invalid index");

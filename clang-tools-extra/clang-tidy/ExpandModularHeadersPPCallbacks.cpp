@@ -130,8 +130,9 @@ void ExpandModularHeadersPPCallbacks::handleModuleFile(
 
 void ExpandModularHeadersPPCallbacks::parseToLocation(SourceLocation Loc) {
   // Load all source locations present in the external sources.
-  for (unsigned I = 0, N = Sources.loaded_sloc_entry_size(); I != N; ++I) {
-    Sources.getLoadedSLocEntry(I, nullptr);
+  for (int I = 0, N = Sources.loaded_sloc_entry_size(); I != N; ++I) {
+    Sources.getFileInfoByFID(SourceManager::createFileID(-I-2));
+    // Sources.getLoadedSLocEntry(I, nullptr);
   }
   // Record contents of files we are interested in and add to the FileSystem.
   for (auto It = Sources.fileinfo_begin(); It != Sources.fileinfo_end(); ++It) {

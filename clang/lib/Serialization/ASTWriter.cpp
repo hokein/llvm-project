@@ -2427,7 +2427,7 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
       // Compute the token length for this macro expansion.
       SourceLocation::UIntTy NextOffset = SourceMgr.getNextLocalOffset();
       if (I + 1 != N)
-        NextOffset = SourceMgr.getLocalSLocEntry(I + 1).getOffset();
+        NextOffset = SourceMgr.getOffsetByFID(FileID::get(I+1));
       Record.push_back(getAdjustedOffset(NextOffset - SourceMgr.getLocalOffset(I)) - 1);
       Stream.EmitRecordWithAbbrev(SLocExpansionAbbrv, Record);
     }
@@ -5447,13 +5447,13 @@ void ASTWriter::computeNonAffectingInputFiles() {
   NonAffectingOffsetAdjustments.push_back(OffsetAdjustment);
 
   for (unsigned I = 1; I != N; ++I) {
-    auto SLoc = SrcMgr.getLocalSLocEntry(I);
     FileID FID = FileID::get(I);
+    auto* SLoc = SrcMgr.getFileInfoByFID(FID);
     // assert(&SrcMgr.getSLocEntry(FID) == SLoc);
-
-    if (!SLoc.isFile())
+   
+    if (!SLoc)
       continue;
-    const SrcMgr::FileInfo &File = SLoc.getFile();
+    const SrcMgr::FileInfo &File = *SLoc;
     const SrcMgr::ContentCache *Cache = &File.getContentCache();
     if (!Cache->OrigEntry)
       continue;
@@ -5507,10 +5507,10 @@ void ASTWriter::computeNonAffectingInputFiles() {
     FileMgr.getVirtualFileSystem().exists(Path);
   for (unsigned I = 1; I != N; ++I) {
     if (IsSLocAffecting[I]) {
-      auto SLoc = SrcMgr.getLocalSLocEntry(I);
-      if (!SLoc.isFile())
+      auto* SLoc = SrcMgr.getFileInfoByFID(FileID::get(I));
+      if (!SLoc)
         continue;
-      const SrcMgr::FileInfo &File = SLoc.getFile();
+      const SrcMgr::FileInfo &File = *SLoc;
       const SrcMgr::ContentCache *Cache = &File.getContentCache();
       if (!Cache->OrigEntry)
         continue;
@@ -6557,9 +6557,8 @@ FileID ASTWriter::getAdjustedFileID(FileID FID) const {
 
 unsigned ASTWriter::getAdjustedNumCreatedFIDs(FileID FID) const {
   unsigned NumCreatedFIDs = PP->getSourceManager()
-                                .getLocalSLocEntry(FID.ID)
-                                .getFile()
-                                .NumCreatedFIDs;
+                                .getFileInfoByFID(FID)
+                                ->NumCreatedFIDs;
 
   unsigned AdjustedNumCreatedFIDs = 0;
   for (unsigned I = FID.ID, N = I + NumCreatedFIDs; I != N; ++I)
