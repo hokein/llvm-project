@@ -1102,30 +1102,34 @@ bool SourceManager::isAtEndOfImmediateMacroExpansion(SourceLocation Loc,
   if (isInFileID(NextLoc, FID))
     return false; // Does not point at the end of expansion range.
 
-  bool Invalid = false;
-  const SrcMgr::ExpansionInfo &ExpInfo =
-      getSLocEntry(FID, &Invalid).getExpansion();
-  if (Invalid)
+  // bool Invalid = false;
+  // // const SrcMgr::ExpansionInfo &ExpInfo =
+  // //     getSLocEntry(FID, &Invalid).getExpansion();
+  // if (Invalid)
+  //   return false;
+  const auto* ExpInfo = getExpansionInfoByFID(FID);
+  if (!ExpInfo)
     return false;
 
-  if (ExpInfo.isMacroArgExpansion()) {
+  if (ExpInfo->isMacroArgExpansion()) {
     // For macro argument expansions, check if the next FileID is part of the
     // same argument expansion, in which case this Loc is not at the end of the
     // expansion.
     FileID NextFID = getNextFileID(FID);
     if (!NextFID.isInvalid()) {
-      auto NextEntry = getSLocEntry(NextFID, &Invalid);
-      if (Invalid)
+      auto* NextEntry = getExpansionInfoByFID(NextFID);
+      if (!NextEntry)
         return false;
-      if (NextEntry.isExpansion() &&
-          NextEntry.getExpansion().getExpansionLocStart() ==
-              ExpInfo.getExpansionLocStart())
+      // auto NextEntry = getSLocEntry(NextFID, &Invalid);
+      if (NextEntry &&
+          NextEntry->getExpansionLocStart() ==
+              ExpInfo->getExpansionLocStart())
         return false;
     }
   }
 
   if (MacroEnd)
-    *MacroEnd = ExpInfo.getExpansionLocEnd();
+    *MacroEnd = ExpInfo->getExpansionLocEnd();
   return true;
 }
 
@@ -1142,16 +1146,17 @@ const char *SourceManager::getCharacterData(SourceLocation SL,
   std::pair<FileID, unsigned> LocInfo = getDecomposedSpellingLoc(SL);
 
   // Note that calling 'getBuffer()' may lazily page in a source file.
-  bool CharDataInvalid = false;
-  auto Entry = getSLocEntry(LocInfo.first, &CharDataInvalid);
-  if (CharDataInvalid || !Entry.isFile()) {
+  // bool CharDataInvalid = false;
+  auto* Entry = getFileInfoByFID(LocInfo.first);
+  // getSLocEntry(LocInfo.first, &CharDataInvalid);
+  if (!Entry) {
     if (Invalid)
       *Invalid = true;
 
     return "<<<<INVALID BUFFER>>>>";
   }
   std::optional<llvm::MemoryBufferRef> Buffer =
-      Entry.getFile().getContentCache().getBufferOrNone(Diag, getFileManager(),
+      Entry->getContentCache().getBufferOrNone(Diag, getFileManager(),
                                                         SourceLocation());
   if (Invalid)
     *Invalid = !Buffer;
@@ -1338,15 +1343,20 @@ unsigned SourceManager::getLineNumber(FileID FID, unsigned FilePos,
   if (LastLineNoFileIDQuery == FID)
     Content = LastLineNoContentCache;
   else {
-    bool MyInvalid = false;
-    auto Entry = getSLocEntry(FID, &MyInvalid);
-    if (MyInvalid || !Entry.isFile()) {
+    // bool MyInvalid = false;
+    auto* Entry = getFileInfoByFID(FID);
+    // if (MyInvalid || !Entry.isFile()) {
+    //   if (Invalid)
+    //     *Invalid = true;
+    //   return 1;
+    // }
+    if (!Entry) {
       if (Invalid)
         *Invalid = true;
       return 1;
     }
 
-    Content = &Entry.getFile().getContentCache();
+    Content = &Entry->getContentCache();
   }
 
   // If this is the first use of line information for this buffer, compute the
@@ -1454,11 +1464,11 @@ SrcMgr::CharacteristicKind
 SourceManager::getFileCharacteristic(SourceLocation Loc) const {
   assert(Loc.isValid() && "Can't get file characteristic of invalid loc!");
   std::pair<FileID, unsigned> LocInfo = getDecomposedExpansionLoc(Loc);
-  auto SEntry = getSLocEntryForFile(LocInfo.first);
-  if (!SEntry.Payload)
+  auto* SEntry = getFileInfoByFID(LocInfo.first);
+  if (!SEntry)
     return C_User;
 
-  const SrcMgr::FileInfo &FI = SEntry.getFile();
+  const SrcMgr::FileInfo &FI = *SEntry;
 
   // If there are no #line directives in this file, just return the whole-file
   // state.
@@ -1505,11 +1515,12 @@ PresumedLoc SourceManager::getPresumedLoc(SourceLocation Loc,
   std::pair<FileID, unsigned> LocInfo = getDecomposedExpansionLoc(Loc);
 
   bool Invalid = false;
-  auto Entry = getSLocEntry(LocInfo.first, &Invalid);
-  if (Invalid || !Entry.isFile())
+  // auto Entry = getSLocEntry(LocInfo.first, &Invalid);
+  auto* Entry = getFileInfoByFID(LocInfo.first);
+  if (!Entry)
     return PresumedLoc();
 
-  const SrcMgr::FileInfo &FI = Entry.getFile();
+  const SrcMgr::FileInfo &FI = *Entry;
   const SrcMgr::ContentCache *C = &FI.getContentCache();
 
   // To get the source name, first consult the FileEntry (if one exists)
@@ -1579,11 +1590,13 @@ bool SourceManager::isInMainFile(SourceLocation Loc) const {
   // Presumed locations are always for expansion points.
   std::pair<FileID, unsigned> LocInfo = getDecomposedExpansionLoc(Loc);
 
-  auto Entry = getSLocEntryForFile(LocInfo.first);
-  if (!Entry.Payload)
+  // auto Entry = getSLocEntryForFile(LocInfo.first);
+  auto* Entry = getFileInfoByFID(LocInfo.first);
+
+  if (!Entry)
     return false;
 
-  const SrcMgr::FileInfo &FI = Entry.getFile();
+  const SrcMgr::FileInfo &FI = *Entry;
 
   // Check if there is a line directive for this location.
   if (FI.hasLineDirectives())
@@ -1645,15 +1658,17 @@ FileID SourceManager::translateFile(const FileEntry *SourceFile) const {
   // First, check the main file ID, since it is common to look for a
   // location in the main file.
   if (MainFileID.isValid()) {
-    bool Invalid = false;
-    auto MainSLoc = getSLocEntry(MainFileID, &Invalid);
-    if (Invalid)
+    // bool Invalid = false;
+    // auto MainSLoc = getSLocEntry(MainFileID, &Invalid);
+    auto* MainSLoc = getFileInfoByFID(MainFileID);
+  
+    if (!MainSLoc)
       return FileID();
 
-    if (MainSLoc.isFile()) {
-      if (MainSLoc.getFile().getContentCache().OrigEntry == SourceFile)
-        return MainFileID;
-    }
+    // if (MainSLoc.isFile()) {
+    if (MainSLoc->getContentCache().OrigEntry == SourceFile)
+      return MainFileID;
+    // }
   }
 
   // The location we're looking for isn't in the main file; look
