@@ -1390,13 +1390,12 @@ public:
   std::pair<FileID, unsigned>
   getDecomposedSpellingLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
-    auto E = getSLocEntryOrNull(FID);
-    if (!E.Payload)
-      return std::make_pair(FileID(), 0);
-
-    unsigned Offset = Loc.getOffset()-E.getOffset();
+    unsigned Offset = Loc.getOffset()-getOffsetByFID(FID);
     if (Loc.isFileID())
       return std::make_pair(FID, Offset);
+    auto* E = getExpansionInfoByFID(FID);
+      if (!E)
+        return std::make_pair(FileID(), 0);
     return getDecomposedSpellingLocSlowCase(E, Offset);
   }
 
@@ -2148,7 +2147,7 @@ private:
   std::pair<FileID, unsigned>
   getDecomposedExpansionLocSlowCase(const SrcMgr::ExpansionInfo* E) const;
   std::pair<FileID, unsigned>
-  getDecomposedSpellingLocSlowCase(SrcMgr::SLocEntryProxy E,
+  getDecomposedSpellingLocSlowCase(const SrcMgr::ExpansionInfo* E,
                                    unsigned Offset) const;
   void computeMacroArgsCache(MacroArgsMap &MacroArgsCache, FileID FID) const;
   void associateFileChunkWithMacroArgExp(MacroArgsMap &MacroArgsCache,

@@ -873,7 +873,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   while (true) {
     unsigned MiddleIndex = (GreaterIndex-LessIndex)/2+LessIndex;
     SourceLocation::UIntTy MidOffset =
-        getLocalSLocEntry(MiddleIndex).getOffset();
+    LocalSLocEntryTable.Indexes[MiddleIndex].Offset;
 
     ++NumProbes;
 
@@ -886,7 +886,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
 
     // If the middle index contains the value, succeed and return.
     if (MiddleIndex + 1 == LocalSLocEntryTable.size() ||
-        SLocOffset < getLocalSLocEntry(MiddleIndex + 1).getOffset()) {
+        SLocOffset < LocalSLocEntryTable.Indexes[MiddleIndex+1].Offset) {
       FileID Res = FileID::get(MiddleIndex);
 
       // Remember it.  We have good locality across FileID lookups.
@@ -922,7 +922,7 @@ getExpansionLocSlowCase(SourceLocation Loc) const {
     // location is the macro invocation, which the offset has nothing to do
     // with.  This is unlike when we get the spelling loc, because the offset
     // directly correspond to the token whose spelling we're inspecting.
-    Loc = getSLocEntry(getFileID(Loc)).getExpansion().getExpansionLocStart();
+    Loc = getExpansionInfoByFID(getFileID(Loc))->getExpansionLocStart();
   } while (!Loc.isFileID());
 
   return Loc;
@@ -931,7 +931,7 @@ getExpansionLocSlowCase(SourceLocation Loc) const {
 SourceLocation SourceManager::getSpellingLocSlowCase(SourceLocation Loc) const {
   do {
     std::pair<FileID, unsigned> LocInfo = getDecomposedLoc(Loc);
-    Loc = getSLocEntry(LocInfo.first).getExpansion().getSpellingLoc();
+    Loc = getExpansionInfoByFID(LocInfo.first)->getSpellingLoc();
     Loc = Loc.getLocWithOffset(LocInfo.second);
   } while (!Loc.isFileID());
   return Loc;
@@ -967,18 +967,18 @@ SourceManager::getDecomposedExpansionLocSlowCase(
 }
 
 std::pair<FileID, unsigned>
-SourceManager::getDecomposedSpellingLocSlowCase(SrcMgr::SLocEntryProxy E,
+SourceManager::getDecomposedSpellingLocSlowCase(const SrcMgr::ExpansionInfo* E,
                                                 unsigned Offset) const {
   // If this is an expansion record, walk through all the expansion points.
   FileID FID;
   SourceLocation Loc;
   do {
-    Loc = E.getExpansion().getSpellingLoc();
+    Loc = E->getSpellingLoc();
     Loc = Loc.getLocWithOffset(Offset);
 
     FID = getFileID(Loc);
-    E = getSLocEntry(FID);
-    Offset = Loc.getOffset()-E.getOffset();
+    E = getExpansionInfoByFID(FID);
+    Offset = Loc.getOffset() - getOffsetByFID(FID);
   } while (!Loc.isFileID());
 
   return std::make_pair(FID, Offset);
