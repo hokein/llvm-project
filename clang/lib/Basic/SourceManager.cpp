@@ -427,7 +427,7 @@ void SourceManager::loadSLocEntry(unsigned Index, bool *Invalid) const {
   const_cast<SourceManager *>(this)->loadSLocEntry(Index, Invalid);
 }
 
-SrcMgr::SLocEntryProxy SourceManager::loadSLocEntry(unsigned Index,
+void SourceManager::loadSLocEntry(unsigned Index,
                                                     bool *Invalid) {
   assert(!SLocEntryLoaded[Index]);
   if (ExternalSLocEntries->ReadSLocEntry(-(static_cast<int>(Index) + 2))) {
@@ -440,15 +440,15 @@ SrcMgr::SLocEntryProxy SourceManager::loadSLocEntry(unsigned Index,
         FakeSLocEntryForRecovery = std::make_unique<SLocEntry>(SLocEntry::get(
             0, FileInfo::get(SourceLocation(), getFakeContentCacheForRecovery(),
                              SrcMgr::C_User, "")));
-      SLocEntryProxy R;
-      R.Offset = FakeSLocEntryForRecovery->getOffset();
-      R.IsExpansion = FakeSLocEntryForRecovery->isExpansion();
+      // SLocEntryProxy R;
+      // R.Offset = FakeSLocEntryForRecovery->getOffset();
+      // R.IsExpansion = FakeSLocEntryForRecovery->isExpansion();
       // R.Payload = Fa FIXME:! 
-      return R; // *FakeSLocEntryForRecovery;
+      // return R; // *FakeSLocEntryForRecovery;
     }
   }
 
-  return LoadedSLocEntryTable.get(Index);
+  // return LoadedSLocEntryTable.get(Index);
 }
 
 std::pair<int, SourceLocation::UIntTy>
@@ -1681,10 +1681,16 @@ FileID SourceManager::translateFile(const FileEntry *SourceFile) const {
 
   // If that still didn't help, try the modules.
   for (unsigned I = 0, N = loaded_sloc_entry_size(); I != N; ++I) {
-    auto SLoc = getLoadedSLocEntry(I);
-    if (SLoc.isFile() &&
-        SLoc.getFile().getContentCache().OrigEntry == SourceFile)
-      return FileID::get(-int(I) - 2);
+    // auto SLoc = getLoadedSLocEntry(I);
+    // auto F = FileID::
+    auto FID = FileID::get(-int(I) - 2);
+    if (const auto* File = getFileInfoByFID(FID);
+        File && File->getContentCache().OrigEntry == SourceFile) {
+          return FID;
+        }
+    // if (SLoc.isFile() &&
+    //     SLoc.getFile().getContentCache().OrigEntry == SourceFile)
+    //   return FileID::get(-int(I) - 2);
   }
 
   return FileID();

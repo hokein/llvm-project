@@ -1234,7 +1234,10 @@ public:
   FileID getFileID(SourceLocation SpellingLoc) const {
     return getFileID(SpellingLoc.getOffset());
   }
-
+  
+  static FileID createFileID(int ID) {
+    return FileID::get(ID);
+  }
   /// Return the filename of the file containing a SourceLocation.
   StringRef getFilename(SourceLocation SpellingLoc) const;
 
@@ -1863,7 +1866,9 @@ public:
     assert(Index < LoadedSLocEntryTable.size() && "Invalid index");
     if (SLocEntryLoaded[Index])
       return LoadedSLocEntryTable.Indexes[Index].Offset;
-    return loadSLocEntry(Index, Invalid).Offset;
+    loadSLocEntry(Index, Invalid);
+    return LoadedSLocEntryTable.Indexes[Index].Offset;
+    // return loadSLocEntry(Index, Invalid).Offset;
   }
 
   SrcMgr::FileInfo* getFileInfoByFID(FileID FID) const {
@@ -1919,11 +1924,11 @@ public:
   unsigned loaded_sloc_entry_size() const { return LoadedSLocEntryTable.size();}
 
   /// Get a loaded SLocEntry. This is exposed for indexing.
-  SrcMgr::SLocEntryProxy getLoadedSLocEntry(unsigned Index,
-                                              bool *Invalid = nullptr) const {
-    return const_cast<SourceManager *>(this)->getLoadedSLocEntry(Index,
-                                                                 Invalid);
-  }
+  // SrcMgr::SLocEntryProxy getLoadedSLocEntry(unsigned Index,
+  //                                             bool *Invalid = nullptr) const {
+  //   return const_cast<SourceManager *>(this)->getLoadedSLocEntry(Index,
+  //                                                                Invalid);
+  // }
 
   /// Get a loaded SLocEntry. This is exposed for indexing.
   // SrcMgr::SLocEntry &getLoadedSLocEntry(unsigned Index,
@@ -1934,13 +1939,13 @@ public:
   //   return loadSLocEntry(Index, Invalid);
   // }
 
-  SrcMgr::SLocEntryProxy getLoadedSLocEntry(unsigned Index,
-                                        bool *Invalid = nullptr) {
-    assert(Index < LoadedSLocEntryTable.size() && "Invalid index");
-    if (SLocEntryLoaded[Index])
-      return LoadedSLocEntryTable.get(Index);
-    return loadSLocEntry(Index, Invalid);
-  }
+  // SrcMgr::SLocEntryProxy getLoadedSLocEntry(unsigned Index,
+  //                                       bool *Invalid = nullptr) {
+  //   assert(Index < LoadedSLocEntryTable.size() && "Invalid index");
+  //   if (SLocEntryLoaded[Index])
+  //     return LoadedSLocEntryTable.get(Index);
+  //   return loadSLocEntry(Index, Invalid);
+  // }
 
   // SrcMgr::SLocEntryProxy getSLocEntry(FileID FID,
   //                                       bool *Invalid = nullptr) const {
@@ -2021,7 +2026,7 @@ private:
   SrcMgr::ContentCache &getFakeContentCacheForRecovery() const;
 
   void loadSLocEntry(unsigned Index, bool *Invalid) const;
-  SrcMgr::SLocEntryProxy loadSLocEntry(unsigned Index, bool *Invalid);
+  void loadSLocEntry(unsigned Index, bool *Invalid);
 
   // SrcMgr::SLocEntryProxy getSLocEntryOrNull(FileID FID) const {
   //   return const_cast<SourceManager *>(this)->getSLocEntryOrNull(FID);
@@ -2052,17 +2057,17 @@ private:
 
   /// Get the entry with the given unwrapped FileID.
   /// Invalid will not be modified for Local IDs.
-  SrcMgr::SLocEntryProxy getSLocEntryByID(int ID,
-                                            bool *Invalid = nullptr) const {
-    return const_cast<SourceManager *>(this)->getSLocEntryByID(ID, Invalid);
-  }
+  // SrcMgr::SLocEntryProxy getSLocEntryByID(int ID,
+  //                                           bool *Invalid = nullptr) const {
+  //   return const_cast<SourceManager *>(this)->getSLocEntryByID(ID, Invalid);
+  // }
 
-  SrcMgr::SLocEntryProxy getSLocEntryByID(int ID, bool *Invalid = nullptr) {
-    assert(ID != -1 && "Using FileID sentinel value");
-    if (ID < 0)
-      return getLoadedSLocEntryByID(ID, Invalid); // FIXME
-    return getLocalSLocEntry(static_cast<unsigned>(ID));
-  }
+  // SrcMgr::SLocEntryProxy getSLocEntryByID(int ID, bool *Invalid = nullptr) {
+  //   assert(ID != -1 && "Using FileID sentinel value");
+  //   if (ID < 0)
+  //     return getLoadedSLocEntryByID(ID, Invalid); // FIXME
+  //   return getLocalSLocEntry(static_cast<unsigned>(ID));
+  // }
 
   // const SrcMgr::SLocEntry &
   // getLoadedSLocEntryByID(int ID, bool *Invalid = nullptr) const {
@@ -2070,9 +2075,9 @@ private:
   //                                                                    Invalid);
   // }
 
-  SrcMgr::SLocEntryProxy getLoadedSLocEntryByID(int ID, bool *Invalid = nullptr) {
-    return getLoadedSLocEntry(static_cast<unsigned>(-ID - 2), Invalid);
-  }
+  // SrcMgr::SLocEntryProxy getLoadedSLocEntryByID(int ID, bool *Invalid = nullptr) {
+  //   return getLoadedSLocEntry(static_cast<unsigned>(-ID - 2), Invalid);
+  // }
 
   FileID getFileID(SourceLocation::UIntTy SLocOffset) const {
     // If our one-entry cache covers this offset, just return it.
