@@ -1063,7 +1063,7 @@ CXXDefaultInitExpr::CXXDefaultInitExpr(const ASTContext &Ctx,
                                          : VK_PRValue,
            /*FIXME*/ OK_Ordinary),
       Field(Field), UsedContext(UsedContext) {
-  CXXDefaultInitExprBits.Loc = Loc;
+  CXXDefaultInitExprBits.Loc = Loc.getRawEncoding();
   CXXDefaultInitExprBits.HasRewrittenInit = RewrittenInitExpr != nullptr;
 
   if (CXXDefaultInitExprBits.HasRewrittenInit)
@@ -1207,7 +1207,7 @@ CXXConstructExpr::CXXConstructExpr(
   CXXConstructExprBits.ZeroInitialization = ZeroInitialization;
   CXXConstructExprBits.ConstructionKind = llvm::to_underlying(ConstructKind);
   CXXConstructExprBits.IsImmediateEscalating = false;
-  CXXConstructExprBits.Loc = Loc;
+  this->Loc = Loc;
 
   Stmt **TrailingArgs = getTrailingArgs();
   for (unsigned I = 0, N = Args.size(); I != N; ++I) {
@@ -1514,7 +1514,7 @@ CXXDependentScopeMemberExpr::CXXDependentScopeMemberExpr(
       (TemplateArgs != nullptr) || TemplateKWLoc.isValid();
   CXXDependentScopeMemberExprBits.HasFirstQualifierFoundInScope =
       FirstQualifierFoundInScope != nullptr;
-  CXXDependentScopeMemberExprBits.OperatorLoc = OperatorLoc;
+  CXXDependentScopeMemberExprBits.OperatorLoc = OperatorLoc.getRawEncoding();
 
   if (TemplateArgs) {
     auto Deps = TemplateArgumentDependence::None;

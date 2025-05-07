@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/Serialization/SourceLocationEncoding.h"
+#include "llvm/Support/MathExtras.h"
 
 #include "gtest/gtest.h"
 #include <climits>
@@ -47,6 +48,8 @@ TEST(SourceLocationEncoding, Individual) {
   roundTrip(Big + 1);
   roundTrip(MacroBit | Big);
   roundTrip(MacroBit | (Big + 1));
+  roundTrip(Biggest);
+  roundTrip(MacroBit | Biggest);
 }
 
 } // namespace
