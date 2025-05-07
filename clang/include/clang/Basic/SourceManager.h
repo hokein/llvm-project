@@ -486,6 +486,7 @@ union SLocEntryPayload {
 
   SLocEntryPayload() : File() {}
 };
+
 // a light-weight proxy of SLocEntry.
 struct SLocEntryProxy {
   static constexpr int OffsetBits = 8 * sizeof(SourceLocation::UIntTy) - 1;
@@ -1359,10 +1360,11 @@ public:
   /// start of the buffer of the location.
   std::pair<FileID, unsigned> getDecomposedLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
-    auto Entry = getSLocEntryOrNull(FID);
-    if (!Entry.Payload)
-      return std::make_pair(FileID(), 0);
-    return std::make_pair(FID, Loc.getOffset() - Entry.getOffset());
+    // auto Entry = getSLocEntryOrNull(FID);
+    // if (!Entry.Payload)
+    //   return std::make_pair(FileID(), 0);
+      // getOffsetForFile(FID);
+    return std::make_pair(FID, Loc.getOffset() - getOffsetForFile(FID));
   }
 
   /// Decompose the specified location into a raw FileID + Offset pair.
@@ -1834,6 +1836,38 @@ public:
   SrcMgr::SLocEntryProxy getLocalSLocEntry(unsigned Index) {
     assert(Index < LocalSLocEntryTable.size() && "Invalid index");
     return LocalSLocEntryTable.get(Index);
+  }
+
+  SrcMgr::FileInfo* getLocalFileInfoOrNull(unsigned Index) {
+    assert(Index < LocalSLocEntryTable.size() && "Invalid index");
+    if (LocalSLocEntryTable.Indexes[Index].IsExpansion)
+      return nullptr;
+    return &LocalSLocEntryTable.Payload[Index].File;
+  }
+  SrcMgr::ExpansionInfo* getLocalExpansionInfoOrNull(unsigned Index) {
+    assert(Index < LocalSLocEntryTable.size() && "Invalid index");
+    if (!LocalSLocEntryTable.Indexes[Index].IsExpansion)
+      return nullptr;
+    return &LocalSLocEntryTable.Payload[Index].Expansion;
+  }
+
+  SourceLocation::UIntTy getLocalOffset(unsigned Index) const {
+    return LocalSLocEntryTable.Indexes[Index].Offset;
+  }
+
+  SourceLocation::UIntTy getLoadOffset(unsigned Index) {
+    assert(Index < LoadedSLocEntryTable.size() && "Invalid index");
+    if (SLocEntryLoaded[Index])
+      return LoadedSLocEntryTable.Indexes[Index].Offset;
+    return loadSLocEntry(Index, nullptr).Offset;
+  }
+
+  SourceLocation::UIntTy getOffsetForFile(FileID FID) const {
+    if (FID.ID < 0) {
+      return const_cast<SourceManager *>(this)->getLoadOffset(
+          static_cast<unsigned>(-FID.ID - 2));
+    }
+    return getLocalOffset(FID.ID);
   }
 
   /// Get the number of loaded SLocEntries we have.
