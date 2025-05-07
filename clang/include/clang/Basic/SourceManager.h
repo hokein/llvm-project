@@ -516,7 +516,10 @@ union SLocEntryPayload {
 // };
 
 struct LocalSLocEntryTable {
-
+  LocalSLocEntryTable() {
+    Indexes.reserve(1024);
+    Payload.reserve(1024);
+  }
   void clear() {
     Indexes.clear();
     Payload.clear();
