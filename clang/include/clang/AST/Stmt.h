@@ -1390,7 +1390,7 @@ public:
   Stmt &operator=(Stmt &&) = delete;
 
   Stmt(StmtClass SC) {
-    static_assert(sizeof(*this) <= 8,
+    static_assert(sizeof(*this) <= 16,
                   "changing bitfields changed sizeof(Stmt)");
     static_assert(sizeof(*this) % alignof(void *) == 0,
                   "Insufficient alignment!");

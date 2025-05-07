@@ -2066,7 +2066,7 @@ protected:
                   "CXXConstructorDeclBitfields is larger than 8 bytes!");
     static_assert(sizeof(ObjCMethodDeclBitfields) <= 8,
                   "ObjCMethodDeclBitfields is larger than 8 bytes!");
-    static_assert(sizeof(ObjCContainerDeclBitfields) <= 8,
+    static_assert(sizeof(ObjCContainerDeclBitfields) <= 16,
                   "ObjCContainerDeclBitfields is larger than 8 bytes!");
     static_assert(sizeof(LinkageSpecDeclBitfields) <= 8,
                   "LinkageSpecDeclBitfields is larger than 8 bytes!");

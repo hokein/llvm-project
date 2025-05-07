@@ -97,7 +97,7 @@ public:
   using IntTy = int32_t;
 
 private:
-  UIntTy ID = 0;
+  uint64_t ID = 0;
 
   enum : UIntTy { MacroIDBit = 1ULL << (8 * sizeof(UIntTy) - 1) };
 
