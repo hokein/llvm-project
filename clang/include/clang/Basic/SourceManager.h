@@ -530,7 +530,7 @@ struct LocalSLocEntryTable {
 };
 struct LoadSLocEntryTable {
   bool empty() const {
-    return size() == 0;
+    return Indexes.empty();
   }
   unsigned size() const {
     return Indexes.size();
@@ -1858,9 +1858,9 @@ public:
   }
 
   SrcMgr::FileInfo* getFileInfoByFID(FileID FID) const {
-    if (FID.ID == 0 || FID.ID == -1) {
-      return nullptr;
-    }
+    // if (FID.ID == 0 || FID.ID == -1) {
+    //   return nullptr;
+    // }
     if (FID.ID < 0) {
       unsigned Index = static_cast<unsigned>(-FID.ID - 2);
       bool Invalid = false;
@@ -1875,9 +1875,9 @@ public:
     return const_cast<SourceManager *>(this)->getLocalFileInfoOrNull(FID.ID);
   }
   SrcMgr::ExpansionInfo* getExpansionInfoByFID(FileID FID) const {
-    if (FID.ID == 0 || FID.ID == -1) {
-      return nullptr;
-    }
+    // if (FID.ID == 0 || FID.ID == -1) {
+    //   return nullptr;
+    // }
     if (FID.ID < 0) {
       unsigned Index = static_cast<unsigned>(-FID.ID - 2);
       bool Invalid = false;
@@ -1892,10 +1892,10 @@ public:
     return const_cast<SourceManager *>(this)->getLocalExpansionInfoOrNull(FID.ID);
   }
   SourceLocation::UIntTy getOffsetByFID(FileID FID, bool *Invalid = nullptr) const {
-    if (FID.ID == 0 || FID.ID == -1) {
-      if (Invalid) *Invalid = true;
-      return 0;
-    }
+    // if (FID.ID == 0 || FID.ID == -1) {
+    //   if (Invalid) *Invalid = true;
+    //   return 0;
+    // }
     if (FID.ID < 0) {
       auto Offset = const_cast<SourceManager *>(this)->getLoadOffset(
           static_cast<unsigned>(-FID.ID - 2), Invalid);
