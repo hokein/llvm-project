@@ -269,12 +269,11 @@ void SourceManager::AddLineNote(SourceLocation Loc, unsigned LineNo,
                                 SrcMgr::CharacteristicKind FileKind) {
   std::pair<FileID, unsigned> LocInfo = getDecomposedExpansionLoc(Loc);
 
-  bool Invalid = false;
-  auto Entry = getSLocEntry(LocInfo.first, &Invalid);
-  if (!Entry.isFile() || Invalid)
+  auto* Entry = getFileInfoByFID(LocInfo.first);
+  if (!Entry)
     return;
 
-  SrcMgr::FileInfo &FileInfo = Entry.getFile();
+  SrcMgr::FileInfo &FileInfo = *Entry;
 
   // Remember that this file has #line directives now if it doesn't already.
   FileInfo.setHasLineDirectives();
@@ -770,9 +769,9 @@ void SourceManager::setFileIsTransient(FileEntryRef File) {
 
 std::optional<StringRef>
 SourceManager::getNonBuiltinFilenameForID(FileID FID) const {
-  if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-    if (Entry.getFile().getContentCache().OrigEntry)
-      return Entry.getFile().getName();
+  if (auto* Entry = getFileInfoByFID(FID))
+    if (Entry->getContentCache().OrigEntry)
+      return Entry->getName();
   return std::nullopt;
 }
 
@@ -786,15 +785,15 @@ StringRef SourceManager::getBufferData(FileID FID, bool *Invalid) const {
 std::optional<StringRef>
 SourceManager::getBufferDataIfLoaded(FileID FID) const {
   // if (const SrcMgr::SLocEntry *Entry = getSLocEntryForFile(FID))
-  if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-    return Entry.getFile().getContentCache().getBufferDataIfLoaded();
+  if (auto* Entry = getFileInfoByFID(FID))
+    return Entry->getContentCache().getBufferDataIfLoaded();
   return std::nullopt;
 }
 
 std::optional<StringRef> SourceManager::getBufferDataOrNone(FileID FID) const {
   // if (const SrcMgr::SLocEntry *Entry = getSLocEntryForFile(FID))
-  if (auto Entry = getSLocEntryForFile(FID); Entry.Payload)
-    if (auto B = Entry.getFile().getContentCache().getBufferOrNone(
+  if (auto* Entry = getFileInfoByFID(FID))
+    if (auto B = Entry->getContentCache().getBufferOrNone(
             Diag, getFileManager(), SourceLocation()))
       return B->getBuffer();
   return std::nullopt;
@@ -1845,11 +1844,11 @@ void SourceManager::associateFileChunkWithMacroArgExp(
     unsigned SpellRelativeOffs;
     std::tie(SpellFID, SpellRelativeOffs) = getDecomposedLoc(SpellLoc);
     while (true) {
-      auto Entry = getSLocEntry(SpellFID);
-      SourceLocation::UIntTy SpellFIDBeginOffs = Entry.getOffset();
+      // auto Entry = getSLocEntry(SpellFID);
+      SourceLocation::UIntTy SpellFIDBeginOffs = getOffsetByFID(SpellFID);
       unsigned SpellFIDSize = getFileIDSize(SpellFID);
       SourceLocation::UIntTy SpellFIDEndOffs = SpellFIDBeginOffs + SpellFIDSize;
-      const ExpansionInfo &Info = Entry.getExpansion();
+      const ExpansionInfo &Info = *getExpansionInfoByFID(SpellFID);
       if (Info.isMacroArgExpansion()) {
         unsigned CurrSpellLength;
         if (SpellFIDEndOffs < SpellEndOffs)
@@ -1968,14 +1967,12 @@ SourceManager::getDecomposedIncludedLoc(FileID FID) const {
     return DecompLoc; // already in map.
 
   SourceLocation UpperLoc;
-  bool Invalid = false;
-  auto Entry = getSLocEntry(FID, &Invalid);
-  if (!Invalid) {
-    if (Entry.isExpansion())
-      UpperLoc = Entry.getExpansion().getExpansionLocStart();
-    else
-      UpperLoc = Entry.getFile().getIncludeLoc();
+  if (const auto* File = getFileInfoByFID(FID)) {
+    UpperLoc = File->getIncludeLoc();
+  } else if (const auto* ExpansionInfo = getExpansionInfoByFID(FID)) {
+    UpperLoc = ExpansionInfo->getExpansionLocStart();
   }
+
 
   if (UpperLoc.isValid())
     DecompLoc = getDecomposedLoc(UpperLoc);

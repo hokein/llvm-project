@@ -946,9 +946,7 @@ static CharSourceRange makeRangeFromFileLocs(CharSourceRange Range,
 // Assumes that `Loc` is in an expansion.
 static bool isInExpansionTokenRange(const SourceLocation Loc,
                                     const SourceManager &SM) {
-  return SM.getSLocEntry(SM.getFileID(Loc))
-      .getExpansion()
-      .isExpansionTokenRange();
+  return SM.getExpansionInfoByFID(SM.getFileID(Loc))->isExpansionTokenRange();
 }
 
 CharSourceRange Lexer::makeFileCharRange(CharSourceRange Range,
@@ -996,25 +994,32 @@ CharSourceRange Lexer::makeFileCharRange(CharSourceRange Range,
     return makeRangeFromFileLocs(Range, SM, LangOpts);
   }
 
-  bool Invalid = false;
-  auto BeginEntry = SM.getSLocEntry(SM.getFileID(Begin),
-                                                        &Invalid);
-  if (Invalid)
-    return {};
-
-  if (BeginEntry.getExpansion().isMacroArgExpansion()) {
-    auto EndEntry = SM.getSLocEntry(SM.getFileID(End),
-                                                        &Invalid);
-    if (Invalid)
-      return {};
-
-    if (EndEntry.getExpansion().isMacroArgExpansion() &&
-        BeginEntry.getExpansion().getExpansionLocStart() ==
-            EndEntry.getExpansion().getExpansionLocStart()) {
-      Range.setBegin(SM.getImmediateSpellingLoc(Begin));
+  // bool Invalid = false;
+  // auto BeginEntry = SM.getSLocEntry(SM.getFileID(Begin),
+  //                                                       &Invalid);
+  // if (Invalid)
+  //   return {};
+  if (const auto* BeginEntry = SM.getExpansionInfoByFID(SM.getFileID(Begin));
+       BeginEntry && BeginEntry->isMacroArgExpansion()) {
+  // if (BeginEntry.getExpansion().isMacroArgExpansion()) {
+    // if (Invalid)
+    //   return {};
+    if (const auto *EndEntry = SM.getExpansionInfoByFID(SM.getFileID(End));
+        EndEntry && EndEntry->isMacroArgExpansion()) {
+      if (BeginEntry->getExpansionLocStart() ==
+          EndEntry->getExpansionLocStart())
+        Range.setBegin(SM.getImmediateSpellingLoc(Begin));
       Range.setEnd(SM.getImmediateSpellingLoc(End));
       return makeFileCharRange(Range, SM, LangOpts);
     }
+
+    // if (EndEntry.getExpansion().isMacroArgExpansion() &&
+    //     BeginEntry.getExpansion().getExpansionLocStart() ==
+    //         EndEntry.getExpansion().getExpansionLocStart()) {
+    //   Range.setBegin(SM.getImmediateSpellingLoc(Begin));
+    //   Range.setEnd(SM.getImmediateSpellingLoc(End));
+    //   return makeFileCharRange(Range, SM, LangOpts);
+    // }
   }
 
   return {};
@@ -1064,8 +1069,8 @@ StringRef Lexer::getImmediateMacroName(SourceLocation Loc,
   // Find the location of the immediate macro expansion.
   while (true) {
     FileID FID = SM.getFileID(Loc);
-    auto E = SM.getSLocEntry(FID);
-    const SrcMgr::ExpansionInfo &Expansion = E.getExpansion();
+    // auto E = SM.getSLocEntry(FID);
+    const SrcMgr::ExpansionInfo &Expansion = *SM.getExpansionInfoByFID(FID);
     Loc = Expansion.getExpansionLocStart();
     if (!Expansion.isMacroArgExpansion())
       break;
