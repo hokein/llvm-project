@@ -558,7 +558,7 @@ void ASTStmtReader::VisitConstantExpr(ConstantExpr *E) {
 
   E->ConstantExprBits.APValueKind = Record.readInt();
   E->ConstantExprBits.IsUnsigned = Record.readInt();
-  E->ConstantExprBits.BitWidth = Record.readInt();
+  E->BitWidth = Record.readInt();
   E->ConstantExprBits.HasCleanup = false; // Not serialized, see below.
   E->ConstantExprBits.IsImmediateInvocation = Record.readInt();
 
@@ -1356,7 +1356,7 @@ void ASTStmtReader::VisitStmtExpr(StmtExpr *E) {
   E->setLParenLoc(readSourceLocation());
   E->setRParenLoc(readSourceLocation());
   E->setSubStmt(cast_or_null<CompoundStmt>(Record.readSubStmt()));
-  E->StmtExprBits.TemplateDepth = Record.readInt();
+  E->TemplateDepth = Record.readInt();
 }
 
 void ASTStmtReader::VisitChooseExpr(ChooseExpr *E) {
@@ -1429,8 +1429,8 @@ void ASTStmtReader::VisitGenericSelectionExpr(GenericSelectionExpr *E) {
 void ASTStmtReader::VisitPseudoObjectExpr(PseudoObjectExpr *E) {
   VisitExpr(E);
   unsigned numSemanticExprs = Record.readInt();
-  assert(numSemanticExprs + 1 == E->PseudoObjectExprBits.NumSubExprs);
-  E->PseudoObjectExprBits.ResultIndex = Record.readInt();
+  assert(numSemanticExprs + 1 == E->NumSubExprs);
+  E->ResultIndex = Record.readInt();
 
   // Read the syntactic expression.
   E->getSubExprsBuffer()[0] = Record.readSubExpr();
@@ -1732,14 +1732,14 @@ void ASTStmtReader::VisitMSDependentExistsStmt(MSDependentExistsStmt *S) {
 
 void ASTStmtReader::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
   VisitCallExpr(E);
-  E->CXXOperatorCallExprBits.OperatorKind = Record.readInt();
+  E->OperatorKind = Record.readInt();
   E->Range = Record.readSourceRange();
 }
 
 void ASTStmtReader::VisitCXXRewrittenBinaryOperator(
     CXXRewrittenBinaryOperator *E) {
   VisitExpr(E);
-  E->CXXRewrittenBinaryOperatorBits.IsReversed = Record.readInt();
+  E->IsReversed = Record.readInt();
   E->SemanticForm = Record.readSubExpr();
 }
 
@@ -1781,7 +1781,7 @@ void ASTStmtReader::VisitLambdaExpr(LambdaExpr *E) {
   VisitExpr(E);
   unsigned NumCaptures = Record.readInt();
   (void)NumCaptures;
-  assert(NumCaptures == E->LambdaExprBits.NumCaptures);
+  assert(NumCaptures == E->NumCaptures);
   E->IntroducerRange = readSourceRange();
   E->LambdaExprBits.CaptureDefault = Record.readInt();
   E->CaptureDefaultLoc = readSourceLocation();
@@ -2137,7 +2137,7 @@ void ASTStmtReader::VisitUnresolvedLookupExpr(UnresolvedLookupExpr *E) {
 void ASTStmtReader::VisitTypeTraitExpr(TypeTraitExpr *E) {
   VisitExpr(E);
   E->TypeTraitExprBits.IsBooleanTypeTrait = Record.readInt();
-  E->TypeTraitExprBits.NumArgs = Record.readInt();
+  E->NumArgs = Record.readInt();
   E->TypeTraitExprBits.Kind = Record.readInt();
 
   if (E->TypeTraitExprBits.IsBooleanTypeTrait)

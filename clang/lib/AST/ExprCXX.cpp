@@ -255,7 +255,7 @@ CXXNewExpr::CXXNewExpr(bool IsGlobalNew, FunctionDecl *OperatorNew,
       llvm::to_underlying(InitializationStyle);
   bool IsParenTypeId = TypeIdParens.isValid();
   CXXNewExprBits.IsParenTypeId = IsParenTypeId;
-  CXXNewExprBits.NumPlacementArgs = PlacementArgs.size();
+  NumPlacementArgs = PlacementArgs.size();
 
   if (ArraySize)
     getTrailingObjects<Stmt *>()[arraySizeOffset()] = *ArraySize;
@@ -287,7 +287,7 @@ CXXNewExpr::CXXNewExpr(EmptyShell Empty, bool IsArray,
                        unsigned NumPlacementArgs, bool IsParenTypeId)
     : Expr(CXXNewExprClass, Empty) {
   CXXNewExprBits.IsArray = IsArray;
-  CXXNewExprBits.NumPlacementArgs = NumPlacementArgs;
+  this->NumPlacementArgs = NumPlacementArgs;
   CXXNewExprBits.IsParenTypeId = IsParenTypeId;
 }
 
@@ -477,7 +477,7 @@ OverloadExpr::OverloadExpr(StmtClass SC, const ASTContext &Context,
     : Expr(SC, Context.OverloadTy, VK_LValue, OK_Ordinary), NameInfo(NameInfo),
       QualifierLoc(QualifierLoc) {
   unsigned NumResults = End - Begin;
-  OverloadExprBits.NumResults = NumResults;
+  this->NumResults = NumResults;
   OverloadExprBits.HasTemplateKWAndArgsInfo =
       (TemplateArgs != nullptr ) || TemplateKWLoc.isValid();
 
@@ -506,7 +506,7 @@ OverloadExpr::OverloadExpr(StmtClass SC, const ASTContext &Context,
 OverloadExpr::OverloadExpr(StmtClass SC, EmptyShell Empty, unsigned NumResults,
                            bool HasTemplateKWAndArgsInfo)
     : Expr(SC, Empty) {
-  OverloadExprBits.NumResults = NumResults;
+  this->NumResults = NumResults;
   OverloadExprBits.HasTemplateKWAndArgsInfo = HasTemplateKWAndArgsInfo;
 }
 
@@ -597,9 +597,9 @@ CXXOperatorCallExpr::CXXOperatorCallExpr(OverloadedOperatorKind OpKind,
                                          ADLCallKind UsesADL)
     : CallExpr(CXXOperatorCallExprClass, Fn, /*PreArgs=*/{}, Args, Ty, VK,
                OperatorLoc, FPFeatures, /*MinNumArgs=*/0, UsesADL) {
-  CXXOperatorCallExprBits.OperatorKind = OpKind;
+  OperatorKind = OpKind;
   assert(
-      (CXXOperatorCallExprBits.OperatorKind == static_cast<unsigned>(OpKind)) &&
+      (OperatorKind == static_cast<unsigned>(OpKind)) &&
       "OperatorKind overflow!");
   Range = getSourceRangeImpl();
 }
@@ -1262,7 +1262,7 @@ LambdaExpr::LambdaExpr(QualType T, SourceRange IntroducerRange,
     : Expr(LambdaExprClass, T, VK_PRValue, OK_Ordinary),
       IntroducerRange(IntroducerRange), CaptureDefaultLoc(CaptureDefaultLoc),
       ClosingBrace(ClosingBrace) {
-  LambdaExprBits.NumCaptures = CaptureInits.size();
+  this->NumCaptures = CaptureInits.size();
   LambdaExprBits.CaptureDefault = CaptureDefault;
   LambdaExprBits.ExplicitParams = ExplicitParams;
   LambdaExprBits.ExplicitResultType = ExplicitResultType;
@@ -1285,7 +1285,7 @@ LambdaExpr::LambdaExpr(QualType T, SourceRange IntroducerRange,
 
 LambdaExpr::LambdaExpr(EmptyShell Empty, unsigned NumCaptures)
     : Expr(LambdaExprClass, Empty) {
-  LambdaExprBits.NumCaptures = NumCaptures;
+  this->NumCaptures = NumCaptures;
 
   // Initially don't initialize the body of the LambdaExpr. The body will
   // be lazily deserialized when needed.
@@ -1463,7 +1463,7 @@ CXXUnresolvedConstructExpr::CXXUnresolvedConstructExpr(
            OK_Ordinary),
       TypeAndInitForm(TSI, IsListInit), LParenLoc(LParenLoc),
       RParenLoc(RParenLoc) {
-  CXXUnresolvedConstructExprBits.NumArgs = Args.size();
+  this->NumArgs = Args.size();
   auto **StoredArgs = getTrailingObjects<Expr *>();
   for (unsigned I = 0; I != Args.size(); ++I)
     StoredArgs[I] = Args[I];
@@ -1875,8 +1875,8 @@ TypeTraitExpr::TypeTraitExpr(QualType T, SourceLocation Loc, TypeTrait Kind,
     ::new (getTrailingObjects<APValue>())
         APValue(std::get<APValue>(std::move(Value)));
 
-  TypeTraitExprBits.NumArgs = Args.size();
-  assert(Args.size() == TypeTraitExprBits.NumArgs &&
+  NumArgs = Args.size();
+  assert(Args.size() == NumArgs &&
          "TypeTraitExprBits.NumArgs overflow!");
   auto **ToArgs = getTrailingObjects<TypeSourceInfo *>();
   for (unsigned I = 0, N = Args.size(); I != N; ++I)

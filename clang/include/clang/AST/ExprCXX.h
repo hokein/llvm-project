@@ -84,7 +84,10 @@ class CXXOperatorCallExpr final : public CallExpr {
   friend class ASTStmtWriter;
 
   SourceRange Range;
-
+      /// The kind of this overloaded operator. One of the enumerator
+    /// value of OverloadedOperatorKind.
+    LLVM_PREFERRED_TYPE(OverloadedOperatorKind)
+    unsigned OperatorKind : 6;
   // CXXOperatorCallExpr has some trailing objects belonging
   // to CallExpr. See CallExpr for the details.
 
@@ -111,7 +114,7 @@ public:
   /// Returns the kind of overloaded operator that this expression refers to.
   OverloadedOperatorKind getOperator() const {
     return static_cast<OverloadedOperatorKind>(
-        CXXOperatorCallExprBits.OperatorKind);
+        OperatorKind);
   }
 
   static bool isAssignmentOp(OverloadedOperatorKind Opc) {
@@ -286,13 +289,14 @@ class CXXRewrittenBinaryOperator : public Expr {
 
   /// The rewritten semantic form.
   Stmt *SemanticForm;
-
+  LLVM_PREFERRED_TYPE(bool)
+  unsigned IsReversed : 1; // FIXME, use pointer-int pair
 public:
   CXXRewrittenBinaryOperator(Expr *SemanticForm, bool IsReversed)
       : Expr(CXXRewrittenBinaryOperatorClass, SemanticForm->getType(),
              SemanticForm->getValueKind(), SemanticForm->getObjectKind()),
         SemanticForm(SemanticForm) {
-    CXXRewrittenBinaryOperatorBits.IsReversed = IsReversed;
+    this->IsReversed = IsReversed;
     setDependence(computeDependence(this));
   }
   CXXRewrittenBinaryOperator(EmptyShell Empty)
@@ -317,7 +321,7 @@ public:
   DecomposedForm getDecomposedForm() const LLVM_READONLY;
 
   /// Determine whether this expression was rewritten in reverse form.
-  bool isReversed() const { return CXXRewrittenBinaryOperatorBits.IsReversed; }
+  bool isReversed() const { return this->IsReversed; }
 
   BinaryOperatorKind getOperator() const { return getDecomposedForm().Opcode; }
   BinaryOperatorKind getOpcode() const { return getOperator(); }
@@ -1981,7 +1985,9 @@ class LambdaExpr final : public Expr,
   /// to avoid having to deserialize the function call operator from a
   /// module file just to determine the source range.
   SourceLocation ClosingBrace;
-
+  
+    /// The number of captures.
+    unsigned NumCaptures : 16;
   /// Construct a lambda expression.
   LambdaExpr(QualType T, SourceRange IntroducerRange,
              LambdaCaptureDefault CaptureDefault,
@@ -2044,7 +2050,7 @@ public:
   capture_iterator capture_end() const;
 
   /// Determine the number of captures in this lambda.
-  unsigned capture_size() const { return LambdaExprBits.NumCaptures; }
+  unsigned capture_size() const { return NumCaptures; }
 
   /// Retrieve this lambda's explicit captures.
   capture_range explicit_captures() const;
@@ -2347,6 +2353,8 @@ class CXXNewExpr final
   friend class ASTStmtReader;
   friend class ASTStmtWriter;
   friend TrailingObjects;
+      /// The number of placement new arguments.
+      unsigned NumPlacementArgs;
 
   /// Points to the allocation function used.
   FunctionDecl *OperatorNew;
@@ -2483,7 +2491,7 @@ public:
   }
 
   unsigned getNumPlacementArgs() const {
-    return CXXNewExprBits.NumPlacementArgs;
+    return NumPlacementArgs;
   }
 
   Expr **getPlacementArgs() {
@@ -2891,6 +2899,10 @@ class TypeTraitExpr final
 
   ///  The location of the closing parenthesis.
   SourceLocation RParenLoc;
+     /// The number of arguments to this type trait. According to [implimits]
+    /// 8 bits would be enough, but we require (and test for) at least 16 bits
+    /// to mirror FunctionType.
+    unsigned NumArgs;
 
   TypeTraitExpr(QualType T, SourceLocation Loc, TypeTrait Kind,
                 ArrayRef<TypeSourceInfo *> Args, SourceLocation RParenLoc,
@@ -2947,7 +2959,7 @@ public:
   }
 
   /// Determine the number of arguments to this type trait.
-  unsigned getNumArgs() const { return TypeTraitExprBits.NumArgs; }
+  unsigned getNumArgs() const { return NumArgs; }
 
   /// Retrieve the Ith argument.
   TypeSourceInfo *getArg(unsigned I) const {
@@ -3124,7 +3136,8 @@ class OverloadExpr : public Expr {
 
   /// The nested-name-specifier that qualifies the name, if any.
   NestedNameSpecifierLoc QualifierLoc;
-
+      /// The number of results.
+      unsigned NumResults;
 protected:
   OverloadExpr(StmtClass SC, const ASTContext &Context,
                NestedNameSpecifierLoc QualifierLoc,
@@ -3219,7 +3232,7 @@ public:
   }
 
   /// Gets the number of declarations in the unresolved set.
-  unsigned getNumDecls() const { return OverloadExprBits.NumResults; }
+  unsigned getNumDecls() const { return NumResults; }
 
   /// Gets the full name info.
   const DeclarationNameInfo &getNameInfo() const { return NameInfo; }
@@ -3692,6 +3705,8 @@ class CXXUnresolvedConstructExpr final
       private llvm::TrailingObjects<CXXUnresolvedConstructExpr, Expr *> {
   friend class ASTStmtReader;
   friend TrailingObjects;
+  /// The number of arguments used to construct the type.
+  unsigned NumArgs;
 
   /// The type being constructed, and whether the construct expression models
   /// list initialization or not.
@@ -3709,7 +3724,7 @@ class CXXUnresolvedConstructExpr final
 
   CXXUnresolvedConstructExpr(EmptyShell Empty, unsigned NumArgs)
       : Expr(CXXUnresolvedConstructExprClass, Empty) {
-    CXXUnresolvedConstructExprBits.NumArgs = NumArgs;
+    this->NumArgs = NumArgs;
   }
 
 public:
@@ -3747,7 +3762,7 @@ public:
   bool isListInitialization() const { return TypeAndInitForm.getInt(); }
 
   /// Retrieve the number of arguments.
-  unsigned getNumArgs() const { return CXXUnresolvedConstructExprBits.NumArgs; }
+  unsigned getNumArgs() const { return NumArgs; }
 
   using arg_iterator = Expr **;
   using arg_range = llvm::iterator_range<arg_iterator>;

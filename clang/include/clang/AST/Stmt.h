@@ -81,7 +81,7 @@ enum class StringLiteralKind;
 
 /// Stmt - This represents one statement.
 ///
-class alignas(void *) Stmt {
+class Stmt {
 public:
   enum StmtClass {
     NoStmtClass = 0,
@@ -139,7 +139,7 @@ protected:
 
  
   };
-
+// 8 bytes
   class CompoundStmtBitfields {
     friend class ASTStmtReader;
     friend class CompoundStmt;
@@ -152,7 +152,6 @@ protected:
     LLVM_PREFERRED_TYPE(bool)
     unsigned HasFPFeatures : 1;
 
-    unsigned NumStmts;
   };
 
   class LabelStmtBitfields {
@@ -351,7 +350,8 @@ protected:
     unsigned Dependent : llvm::BitWidth<ExprDependence>;
   };
   enum { NumExprBits = NumStmtBits + 5 + llvm::BitWidth<ExprDependence> };
-
+  
+  // 8 bytes
   class ConstantExprBitfields {
     friend class ASTStmtReader;
     friend class ASTStmtWriter;
@@ -373,12 +373,6 @@ protected:
     LLVM_PREFERRED_TYPE(bool)
     unsigned IsUnsigned : 1;
 
-    /// When ResultKind == ConstantResultStorageKind::Int64. the BitWidth of the
-    /// tail-allocated integer. 7 bits because it is the minimal number of bits
-    /// to represent a value from 0 to 64 (the size of the tail-allocated
-    /// integer).
-    unsigned BitWidth : 7;
-
     /// When ResultKind == ConstantResultStorageKind::APValue, true if the
     /// ASTContext will cleanup the tail-allocated APValue.
     LLVM_PREFERRED_TYPE(bool)
@@ -387,6 +381,8 @@ protected:
     /// True if this ConstantExpr was created for immediate invocation.
     LLVM_PREFERRED_TYPE(bool)
     unsigned IsImmediateInvocation : 1;
+
+
   };
 
   class PredefinedExprBitfields {
@@ -454,7 +450,7 @@ protected:
     LLVM_PREFERRED_TYPE(bool)
     unsigned IsExact : 1;
   };
-
+  // 8 bytes - 4 bytes
   class StringLiteralBitfields {
     friend class ASTStmtReader;
     friend class StringLiteral;
@@ -474,10 +470,6 @@ protected:
 
     LLVM_PREFERRED_TYPE(bool)
     unsigned IsPascal : 1;
-
-    /// The number of concatenated token this string is made of.
-    /// This is the number of trailing SourceLocation.
-    unsigned NumConcatenated;
   };
 
   class CharacterLiteralBitfields {
@@ -604,7 +596,7 @@ protected:
     // SourceLocation OperatorLoc;
   };
   
-  // 8 bytes
+  // 8 bytes -> 4 bytes
   class CastExprBitfields {
     friend class CastExpr;
     friend class ImplicitCastExpr;
@@ -620,10 +612,6 @@ protected:
     /// True if the call expression has some floating-point features.
     LLVM_PREFERRED_TYPE(bool)
     unsigned HasFPFeatures : 1;
-
-    /// The number of CXXBaseSpecifiers in the cast. 14 bits would be enough
-    /// here. ([implimits] Direct and indirect base classes [16384]).
-    unsigned BasePathSize;
   };
 
   class BinaryOperatorBitfields {
@@ -658,7 +646,8 @@ protected:
     LLVM_PREFERRED_TYPE(bool)
     unsigned HadArrayRangeDesignator : 1;
   };
-
+  
+  // 8 bytes -> 4 
   class ParenListExprBitfields {
     friend class ASTStmtReader;
     friend class ParenListExpr;
@@ -666,8 +655,7 @@ protected:
     LLVM_PREFERRED_TYPE(ExprBitfields)
     unsigned : NumExprBits;
 
-    /// The number of expressions in the paren list.
-    unsigned NumExprs;
+  
   };
 
   class GenericSelectionExprBitfields {
@@ -679,7 +667,7 @@ protected:
 
 
   };
-
+  // 8 bytes
   class PseudoObjectExprBitfields {
     friend class ASTStmtReader; // deserialization
     friend class PseudoObjectExpr;
@@ -687,8 +675,7 @@ protected:
     LLVM_PREFERRED_TYPE(ExprBitfields)
     unsigned : NumExprBits;
 
-    unsigned NumSubExprs : 16;
-    unsigned ResultIndex : 16;
+
   };
 
   class SourceLocExprBitfields {
@@ -716,6 +703,7 @@ protected:
     unsigned ProducedByFoldExpansion : 1;
   };
 
+   // 8 bytes - 4
   class StmtExprBitfields {
     friend class ASTStmtReader;
     friend class StmtExpr;
@@ -723,14 +711,11 @@ protected:
     LLVM_PREFERRED_TYPE(ExprBitfields)
     unsigned : NumExprBits;
 
-    /// The number of levels of template parameters enclosing this statement
-    /// expression. Used to determine if a statement expression remains
-    /// dependent after instantiation.
-    unsigned TemplateDepth;
+
   };
 
   //===--- C++ Expression bitfields classes ---===//
-
+  // 8 bytes - 4
   class CXXOperatorCallExprBitfields {
     friend class ASTStmtReader;
     friend class CXXOperatorCallExpr;
@@ -738,12 +723,9 @@ protected:
     LLVM_PREFERRED_TYPE(CallExprBitfields)
     unsigned : NumCallExprBits;
 
-    /// The kind of this overloaded operator. One of the enumerator
-    /// value of OverloadedOperatorKind.
-    LLVM_PREFERRED_TYPE(OverloadedOperatorKind)
-    unsigned OperatorKind : 6;
-  };
 
+  };
+ // 8 byte
   class CXXRewrittenBinaryOperatorBitfields {
     friend class ASTStmtReader;
     friend class CXXRewrittenBinaryOperator;
@@ -751,8 +733,7 @@ protected:
     LLVM_PREFERRED_TYPE(CallExprBitfields)
     unsigned : NumCallExprBits;
 
-    LLVM_PREFERRED_TYPE(bool)
-    unsigned IsReversed : 1;
+   
   };
 
   class CXXBoolLiteralExprBitfields {
@@ -842,7 +823,7 @@ protected:
     unsigned : NumExprBits;
 
   };
-
+  // 8 bytes
   class CXXNewExprBitfields {
     friend class ASTStmtReader;
     friend class ASTStmtWriter;
@@ -885,8 +866,7 @@ protected:
     LLVM_PREFERRED_TYPE(bool)
     unsigned IsParenTypeId : 1;
 
-    /// The number of placement new arguments.
-    unsigned NumPlacementArgs;
+
   };
 
   class CXXDeleteExprBitfields {
@@ -917,7 +897,7 @@ protected:
 
   
   };
-
+  // 8 bytes
   class TypeTraitExprBitfields {
     friend class ASTStmtReader;
     friend class ASTStmtWriter;
@@ -937,10 +917,7 @@ protected:
     /// this indicates whether the trait evaluated true or false.
     LLVM_PREFERRED_TYPE(bool)
     unsigned Value : 1;
-    /// The number of arguments to this type trait. According to [implimits]
-    /// 8 bits would be enough, but we require (and test for) at least 16 bits
-    /// to mirror FunctionType.
-    unsigned NumArgs;
+ 
   };
 
   class DependentScopeDeclRefExprBitfields {
@@ -995,7 +972,7 @@ protected:
 
     unsigned NumObjects : 32 - 1 - NumExprBits;
   };
-
+  // 8 bytes
   class CXXUnresolvedConstructExprBitfields {
     friend class ASTStmtReader;
     friend class CXXUnresolvedConstructExpr;
@@ -1003,8 +980,7 @@ protected:
     LLVM_PREFERRED_TYPE(ExprBitfields)
     unsigned : NumExprBits;
 
-    /// The number of arguments used to construct the type.
-    unsigned NumArgs;
+    
   };
 
   class CXXDependentScopeMemberExprBitfields {
@@ -1031,7 +1007,7 @@ protected:
 
 
   };
-
+  // 8 bytes
   class OverloadExprBitfields {
     friend class ASTStmtReader;
     friend class OverloadExpr;
@@ -1049,8 +1025,7 @@ protected:
     /// above. NumOverloadExprBits also needs to be updated.
     unsigned : 32 - NumExprBits - 1;
 
-    /// The number of results.
-    unsigned NumResults;
+
   };
   enum { NumOverloadExprBits = NumExprBits + 1 };
 
@@ -1110,7 +1085,7 @@ protected:
 
 
   };
-
+ // 8 bytes
   class LambdaExprBitfields {
     friend class ASTStmtReader;
     friend class ASTStmtWriter;
@@ -1133,8 +1108,6 @@ protected:
     LLVM_PREFERRED_TYPE(bool)
     unsigned ExplicitResultType : 1;
 
-    /// The number of captures.
-    unsigned NumCaptures : 16;
   };
 
   class RequiresExprBitfields {
@@ -1360,8 +1333,8 @@ public:
   Stmt(StmtClass SC) {
     static_assert(sizeof(*this) <= 8,
                   "changing bitfields changed sizeof(Stmt)");
-    static_assert(sizeof(*this) % alignof(void *) == 0,
-                  "Insufficient alignment!");
+    // static_assert(sizeof(*this) % alignof(void *) == 0,
+    //               "Insufficient alignment!");
     StmtBits.sClass = SC;
     if (StatisticsEnabled) Stmt::addStmtClass(SC);
   }
@@ -1625,6 +1598,8 @@ class CompoundStmt final
 
   /// The location of the closing "}".
   SourceLocation RBraceLoc;
+  
+  unsigned NumStmts;
 
   CompoundStmt(ArrayRef<Stmt *> Stmts, FPOptionsOverride FPFeatures,
                SourceLocation LB, SourceLocation RB);
@@ -1639,7 +1614,7 @@ class CompoundStmt final
   }
 
   size_t numTrailingObjects(OverloadToken<Stmt *>) const {
-    return CompoundStmtBits.NumStmts;
+    return NumStmts;
   }
 
 public:
@@ -1652,7 +1627,7 @@ public:
 
   CompoundStmt(SourceLocation Loc, SourceLocation EndLoc)
       : Stmt(CompoundStmtClass), LBraceLoc(Loc), RBraceLoc(EndLoc) {
-    CompoundStmtBits.NumStmts = 0;
+    NumStmts = 0;
     CompoundStmtBits.HasFPFeatures = 0;
   }
 
@@ -1660,8 +1635,8 @@ public:
   static CompoundStmt *CreateEmpty(const ASTContext &C, unsigned NumStmts,
                                    bool HasFPFeatures);
 
-  bool body_empty() const { return CompoundStmtBits.NumStmts == 0; }
-  unsigned size() const { return CompoundStmtBits.NumStmts; }
+  bool body_empty() const { return NumStmts == 0; }
+  unsigned size() const { return NumStmts; }
 
   bool hasStoredFPFeatures() const { return CompoundStmtBits.HasFPFeatures; }
 

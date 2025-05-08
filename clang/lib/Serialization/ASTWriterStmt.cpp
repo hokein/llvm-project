@@ -634,7 +634,7 @@ void ASTStmtWriter::VisitConstantExpr(ConstantExpr *E) {
 
   Record.push_back(E->ConstantExprBits.APValueKind);
   Record.push_back(E->ConstantExprBits.IsUnsigned);
-  Record.push_back(E->ConstantExprBits.BitWidth);
+  Record.push_back(E->BitWidth);
   // HasCleanup not serialized since we can just query the APValue.
   Record.push_back(E->ConstantExprBits.IsImmediateInvocation);
 
@@ -1765,7 +1765,7 @@ void ASTStmtWriter::VisitCXXTemporaryObjectExpr(CXXTemporaryObjectExpr *E) {
 
 void ASTStmtWriter::VisitLambdaExpr(LambdaExpr *E) {
   VisitExpr(E);
-  Record.push_back(E->LambdaExprBits.NumCaptures);
+  Record.push_back(E->NumCaptures);
   Record.AddSourceRange(E->IntroducerRange);
   Record.push_back(E->LambdaExprBits.CaptureDefault); // FIXME: stable encoding
   Record.AddSourceLocation(E->CaptureDefaultLoc);
@@ -2143,7 +2143,7 @@ void ASTStmtWriter::VisitUnresolvedLookupExpr(UnresolvedLookupExpr *E) {
 void ASTStmtWriter::VisitTypeTraitExpr(TypeTraitExpr *E) {
   VisitExpr(E);
   Record.push_back(E->TypeTraitExprBits.IsBooleanTypeTrait);
-  Record.push_back(E->TypeTraitExprBits.NumArgs);
+  Record.push_back(E->NumArgs);
   Record.push_back(E->TypeTraitExprBits.Kind); // FIXME: Stable encoding
 
   if (E->TypeTraitExprBits.IsBooleanTypeTrait)

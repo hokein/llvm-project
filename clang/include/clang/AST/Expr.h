@@ -1085,6 +1085,11 @@ class ConstantExpr final
   friend TrailingObjects;
   friend class ASTStmtReader;
   friend class ASTStmtWriter;
+      /// When ResultKind == ConstantResultStorageKind::Int64. the BitWidth of the
+    /// tail-allocated integer. 7 bits because it is the minimal number of bits
+    /// to represent a value from 0 to 64 (the size of the tail-allocated
+    /// integer).
+    unsigned BitWidth : 7;
 
   size_t numTrailingObjects(OverloadToken<APValue>) const {
     return getResultStorageKind() == ConstantResultStorageKind::APValue;
@@ -1797,7 +1802,9 @@ class StringLiteral final
                                     char> {
   friend class ASTStmtReader;
   friend TrailingObjects;
-
+  /// The number of concatenated token this string is made of.
+  /// This is the number of trailing SourceLocation.
+  unsigned NumConcatenated;
   /// StringLiteral is followed by several trailing objects. They are in order:
   ///
   /// * A single unsigned storing the length in characters of this string. The
@@ -1945,7 +1952,7 @@ public:
   /// getNumConcatenated - Get the number of string literal tokens that were
   /// concatenated in translation phase #6 to form this string literal.
   unsigned getNumConcatenated() const {
-    return StringLiteralBits.NumConcatenated;
+    return NumConcatenated;
   }
 
   /// Get one of the string literal token.
@@ -3560,8 +3567,10 @@ public:
 /// representation in the source code (ExplicitCastExpr's derived
 /// classes).
 class CastExpr : public Expr {
+  /// The number of CXXBaseSpecifiers in the cast. 14 bits would be enough
+/// here. ([implimits] Direct and indirect base classes [16384]).
+unsigned BasePathSize;
   Stmt *Op;
-
   bool CastConsistency() const;
 
   const CXXBaseSpecifier * const *path_buffer() const {
@@ -3577,8 +3586,8 @@ protected:
       : Expr(SC, ty, VK, OK_Ordinary), Op(op) {
     CastExprBits.Kind = kind;
     CastExprBits.PartOfExplicitCast = false;
-    CastExprBits.BasePathSize = BasePathSize;
-    assert((CastExprBits.BasePathSize == BasePathSize) &&
+    this->BasePathSize = BasePathSize;
+    assert((this->BasePathSize == BasePathSize) &&
            "BasePathSize overflow!");
     assert(CastConsistency());
     CastExprBits.HasFPFeatures = HasFPFeatures;
@@ -3589,9 +3598,9 @@ protected:
            bool HasFPFeatures)
       : Expr(SC, Empty) {
     CastExprBits.PartOfExplicitCast = false;
-    CastExprBits.BasePathSize = BasePathSize;
+    this->BasePathSize = BasePathSize;
     CastExprBits.HasFPFeatures = HasFPFeatures;
-    assert((CastExprBits.BasePathSize == BasePathSize) &&
+    assert((this->BasePathSize == BasePathSize) &&
            "BasePathSize overflow!");
   }
 
@@ -3628,7 +3637,7 @@ public:
   typedef CXXBaseSpecifier **path_iterator;
   typedef const CXXBaseSpecifier *const *path_const_iterator;
   bool path_empty() const { return path_size() == 0; }
-  unsigned path_size() const { return CastExprBits.BasePathSize; }
+  unsigned path_size() const { return BasePathSize; }
   path_iterator path_begin() { return path_buffer(); }
   path_iterator path_end() { return path_buffer() + path_size(); }
   path_const_iterator path_begin() const { return path_buffer(); }
@@ -4480,6 +4489,11 @@ public:
 /// A StmtExpr is always an r-value; values "returned" out of a
 /// StmtExpr will be copied.
 class StmtExpr : public Expr {
+  friend class ASTStmtReader;
+  /// The number of levels of template parameters enclosing this statement
+/// expression. Used to determine if a statement expression remains
+/// dependent after instantiation.
+unsigned TemplateDepth;
   Stmt *SubStmt;
   SourceLocation LParenLoc, RParenLoc;
 public:
@@ -4490,7 +4504,7 @@ public:
     setDependence(computeDependence(this, TemplateDepth));
     // FIXME: A templated statement expression should have an associated
     // DeclContext so that nested declarations always have a dependent context.
-    StmtExprBits.TemplateDepth = TemplateDepth;
+    this->TemplateDepth = TemplateDepth;
   }
 
   /// Build an empty statement expression.
@@ -4508,7 +4522,7 @@ public:
   SourceLocation getRParenLoc() const { return RParenLoc; }
   void setRParenLoc(SourceLocation L) { RParenLoc = L; }
 
-  unsigned getTemplateDepth() const { return StmtExprBits.TemplateDepth; }
+  unsigned getTemplateDepth() const { return TemplateDepth; }
 
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == StmtExprClass;
@@ -5975,7 +5989,8 @@ class ParenListExpr final
 
   /// The location of the left and right parentheses.
   SourceLocation LParenLoc, RParenLoc;
-
+    /// The number of expressions in the paren list.
+    unsigned NumExprs;
   /// Build a paren list.
   ParenListExpr(SourceLocation LParenLoc, ArrayRef<Expr *> Exprs,
                 SourceLocation RParenLoc);
@@ -5993,7 +6008,7 @@ public:
   static ParenListExpr *CreateEmpty(const ASTContext &Ctx, unsigned NumExprs);
 
   /// Return the number of expressions in this paren list.
-  unsigned getNumExprs() const { return ParenListExprBits.NumExprs; }
+  unsigned getNumExprs() const { return NumExprs; }
 
   Expr *getExpr(unsigned Init) {
     assert(Init < getNumExprs() && "Initializer access out of range!");
@@ -6657,6 +6672,8 @@ class PseudoObjectExpr final
   // form.  Note that this is therefore 1 higher than the value passed
   // in to Create, which is an index within the semantic forms.
   // Note also that ASTStmtWriter assumes this encoding.
+  unsigned NumSubExprs : 16;
+  unsigned ResultIndex : 16;
 
   Expr **getSubExprsBuffer() { return getTrailingObjects<Expr *>(); }
   const Expr * const *getSubExprsBuffer() const {
@@ -6670,7 +6687,7 @@ class PseudoObjectExpr final
   PseudoObjectExpr(EmptyShell shell, unsigned numSemanticExprs);
 
   unsigned getNumSubExprs() const {
-    return PseudoObjectExprBits.NumSubExprs;
+    return NumSubExprs;
   }
 
 public:
@@ -6694,15 +6711,15 @@ public:
   /// Return the index of the result-bearing expression into the semantics
   /// expressions, or PseudoObjectExpr::NoResult if there is none.
   unsigned getResultExprIndex() const {
-    if (PseudoObjectExprBits.ResultIndex == 0) return NoResult;
-    return PseudoObjectExprBits.ResultIndex - 1;
+    if (ResultIndex == 0) return NoResult;
+    return ResultIndex - 1;
   }
 
   /// Return the result-bearing expression, or null if there is none.
   Expr *getResultExpr() {
-    if (PseudoObjectExprBits.ResultIndex == 0)
+    if (ResultIndex == 0)
       return nullptr;
-    return getSubExprsBuffer()[PseudoObjectExprBits.ResultIndex];
+    return getSubExprsBuffer()[ResultIndex];
   }
   const Expr *getResultExpr() const {
     return const_cast<PseudoObjectExpr*>(this)->getResultExpr();

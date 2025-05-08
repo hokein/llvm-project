@@ -374,7 +374,7 @@ int64_t Stmt::getID(const ASTContext &Context) const {
 CompoundStmt::CompoundStmt(ArrayRef<Stmt *> Stmts, FPOptionsOverride FPFeatures,
                            SourceLocation LB, SourceLocation RB)
     : Stmt(CompoundStmtClass), LBraceLoc(LB), RBraceLoc(RB) {
-  CompoundStmtBits.NumStmts = Stmts.size();
+  NumStmts = Stmts.size();
   CompoundStmtBits.HasFPFeatures = FPFeatures.requiresTrailingStorage();
   setStmts(Stmts);
   if (hasStoredFPFeatures())
@@ -382,7 +382,7 @@ CompoundStmt::CompoundStmt(ArrayRef<Stmt *> Stmts, FPOptionsOverride FPFeatures,
 }
 
 void CompoundStmt::setStmts(ArrayRef<Stmt *> Stmts) {
-  assert(CompoundStmtBits.NumStmts == Stmts.size() &&
+  assert(NumStmts == Stmts.size() &&
          "NumStmts doesn't fit in bits of CompoundStmtBits.NumStmts!");
 
   std::copy(Stmts.begin(), Stmts.end(), body_begin());
@@ -404,7 +404,7 @@ CompoundStmt *CompoundStmt::CreateEmpty(const ASTContext &C, unsigned NumStmts,
       totalSizeToAlloc<Stmt *, FPOptionsOverride>(NumStmts, HasFPFeatures),
       alignof(CompoundStmt));
   CompoundStmt *New = new (Mem) CompoundStmt(EmptyShell());
-  New->CompoundStmtBits.NumStmts = NumStmts;
+  New->NumStmts = NumStmts;
   New->CompoundStmtBits.HasFPFeatures = HasFPFeatures;
   return New;
 }

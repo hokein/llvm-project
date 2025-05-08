@@ -325,7 +325,7 @@ ConstantExpr::ConstantExpr(Expr *SubExpr, ConstantResultStorageKind StorageKind,
   ConstantExprBits.ResultKind = llvm::to_underlying(StorageKind);
   ConstantExprBits.APValueKind = APValue::None;
   ConstantExprBits.IsUnsigned = false;
-  ConstantExprBits.BitWidth = 0;
+  BitWidth = 0;
   ConstantExprBits.HasCleanup = false;
   ConstantExprBits.IsImmediateInvocation = IsImmediateInvocation;
 
@@ -383,7 +383,7 @@ void ConstantExpr::MoveIntoResult(APValue &Value, const ASTContext &Context) {
     return;
   case ConstantResultStorageKind::Int64:
     Int64Result() = *Value.getInt().getRawData();
-    ConstantExprBits.BitWidth = Value.getInt().getBitWidth();
+    BitWidth = Value.getInt().getBitWidth();
     ConstantExprBits.IsUnsigned = Value.getInt().isUnsigned();
     return;
   case ConstantResultStorageKind::APValue:
@@ -402,7 +402,7 @@ llvm::APSInt ConstantExpr::getResultAsAPSInt() const {
   case ConstantResultStorageKind::APValue:
     return APValueResult().getInt();
   case ConstantResultStorageKind::Int64:
-    return llvm::APSInt(llvm::APInt(ConstantExprBits.BitWidth, Int64Result()),
+    return llvm::APSInt(llvm::APInt(BitWidth, Int64Result()),
                         ConstantExprBits.IsUnsigned);
   default:
     llvm_unreachable("invalid Accessor");
@@ -416,7 +416,7 @@ APValue ConstantExpr::getAPValueResult() const {
     return APValueResult();
   case ConstantResultStorageKind::Int64:
     return APValue(
-        llvm::APSInt(llvm::APInt(ConstantExprBits.BitWidth, Int64Result()),
+        llvm::APSInt(llvm::APInt(BitWidth, Int64Result()),
                      ConstantExprBits.IsUnsigned));
   case ConstantResultStorageKind::None:
     if (ConstantExprBits.APValueKind == APValue::Indeterminate)
@@ -1135,7 +1135,7 @@ StringLiteral::StringLiteral(const ASTContext &Ctx, StringRef Str,
   unsigned Length = Str.size();
 
   StringLiteralBits.Kind = llvm::to_underlying(Kind);
-  StringLiteralBits.NumConcatenated = NumConcatenated;
+  this->NumConcatenated = NumConcatenated;
 
   if (Kind != StringLiteralKind::Unevaluated) {
     assert(Ctx.getAsConstantArrayType(Ty) &&
@@ -1187,7 +1187,7 @@ StringLiteral::StringLiteral(EmptyShell Empty, unsigned NumConcatenated,
                              unsigned Length, unsigned CharByteWidth)
     : Expr(StringLiteralClass, Empty) {
   StringLiteralBits.CharByteWidth = CharByteWidth;
-  StringLiteralBits.NumConcatenated = NumConcatenated;
+  this->NumConcatenated = NumConcatenated;
   *getTrailingObjects<unsigned>() = Length;
 }
 
@@ -4769,7 +4769,7 @@ ParenListExpr::ParenListExpr(SourceLocation LParenLoc, ArrayRef<Expr *> Exprs,
                              SourceLocation RParenLoc)
     : Expr(ParenListExprClass, QualType(), VK_PRValue, OK_Ordinary),
       LParenLoc(LParenLoc), RParenLoc(RParenLoc) {
-  ParenListExprBits.NumExprs = Exprs.size();
+  NumExprs = Exprs.size();
 
   for (unsigned I = 0, N = Exprs.size(); I != N; ++I)
     getTrailingObjects<Stmt *>()[I] = Exprs[I];
@@ -4778,7 +4778,7 @@ ParenListExpr::ParenListExpr(SourceLocation LParenLoc, ArrayRef<Expr *> Exprs,
 
 ParenListExpr::ParenListExpr(EmptyShell Empty, unsigned NumExprs)
     : Expr(ParenListExprClass, Empty) {
-  ParenListExprBits.NumExprs = NumExprs;
+  this->NumExprs = NumExprs;
 }
 
 ParenListExpr *ParenListExpr::Create(const ASTContext &Ctx,
@@ -5000,7 +5000,7 @@ PseudoObjectExpr *PseudoObjectExpr::Create(const ASTContext &Context,
 
 PseudoObjectExpr::PseudoObjectExpr(EmptyShell shell, unsigned numSemanticExprs)
   : Expr(PseudoObjectExprClass, shell) {
-  PseudoObjectExprBits.NumSubExprs = numSemanticExprs + 1;
+  this->NumSubExprs = numSemanticExprs + 1;
 }
 
 PseudoObjectExpr *PseudoObjectExpr::Create(const ASTContext &C, Expr *syntax,
@@ -5031,8 +5031,8 @@ PseudoObjectExpr::PseudoObjectExpr(QualType type, ExprValueKind VK,
                                    Expr *syntax, ArrayRef<Expr *> semantics,
                                    unsigned resultIndex)
     : Expr(PseudoObjectExprClass, type, VK, OK_Ordinary) {
-  PseudoObjectExprBits.NumSubExprs = semantics.size() + 1;
-  PseudoObjectExprBits.ResultIndex = resultIndex + 1;
+  NumSubExprs = semantics.size() + 1;
+  ResultIndex = resultIndex + 1;
 
   for (unsigned i = 0, e = semantics.size() + 1; i != e; ++i) {
     Expr *E = (i == 0 ? syntax : semantics[i-1]);
