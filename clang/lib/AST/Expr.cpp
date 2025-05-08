@@ -1460,7 +1460,7 @@ CallExpr::CallExpr(StmtClass SC, Expr *Fn, ArrayRef<Expr *> PreArgs,
                    SourceLocation RParenLoc, FPOptionsOverride FPFeatures,
                    unsigned MinNumArgs, ADLCallKind UsesADL)
     : Expr(SC, Ty, VK, OK_Ordinary), RParenLoc(RParenLoc) {
-  NumArgs = std::max<unsigned>(Args.size(), MinNumArgs);
+  CallExprBits.NumArgs = std::max<unsigned>(Args.size(), MinNumArgs);
   unsigned NumPreArgs = PreArgs.size();
   CallExprBits.NumPreArgs = NumPreArgs;
   assert((NumPreArgs == getNumPreArgs()) && "NumPreArgs overflow!");
@@ -1477,7 +1477,7 @@ CallExpr::CallExpr(StmtClass SC, Expr *Fn, ArrayRef<Expr *> PreArgs,
     setPreArg(I, PreArgs[I]);
   for (unsigned I = 0; I != Args.size(); ++I)
     setArg(I, Args[I]);
-  for (unsigned I = Args.size(); I != NumArgs; ++I)
+  for (unsigned I = Args.size(); I != CallExprBits.NumArgs; ++I)
     setArg(I, nullptr);
 
   this->computeDependence();
@@ -1490,7 +1490,8 @@ CallExpr::CallExpr(StmtClass SC, Expr *Fn, ArrayRef<Expr *> PreArgs,
 
 CallExpr::CallExpr(StmtClass SC, unsigned NumPreArgs, unsigned NumArgs,
                    bool HasFPFeatures, EmptyShell Empty)
-    : Expr(SC, Empty), NumArgs(NumArgs) {
+    : Expr(SC, Empty) {
+  CallExprBits.NumArgs = NumArgs;
   CallExprBits.NumPreArgs = NumPreArgs;
   assert((NumPreArgs == getNumPreArgs()) && "NumPreArgs overflow!");
 

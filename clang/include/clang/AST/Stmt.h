@@ -558,8 +558,10 @@ protected:
     /// trailing objects belonging to CallExpr. Intentionally byte sized
     /// for faster access.
     unsigned OffsetToTrailingObjects : 8;
+    
+    unsigned NumArgs:20;
   };
-  enum { NumCallExprBits = 32 };
+  enum { NumCallExprBits = 52 };
 
   class MemberExprBitfields {
     friend class ASTStmtReader;
@@ -2053,7 +2055,7 @@ class LabelStmt : public ValueStmt {
   SourceLocation IdentLoc;
   LabelDecl *TheDecl;
   Stmt *SubStmt;
-  bool SideEntry = false;
+  bool SideEntry = false; // FIXME: could improve
 
 public:
   /// Build a label statement.

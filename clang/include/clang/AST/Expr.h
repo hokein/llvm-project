@@ -2899,9 +2899,6 @@ public:
 class CallExpr : public Expr {
   enum { FN = 0, PREARGS_START = 1 };
 
-  /// The number of arguments in the call expression.
-  unsigned NumArgs;
-
   /// The location of the right parentheses. This has a different meaning for
   /// the derived classes of CallExpr.
   SourceLocation RParenLoc;
@@ -3065,7 +3062,7 @@ public:
   }
 
   /// getNumArgs - Return the number of actual arguments to this call.
-  unsigned getNumArgs() const { return NumArgs; }
+  unsigned getNumArgs() const { return CallExprBits.NumArgs; }
 
   /// Retrieve the call arguments.
   Expr **getArgs() {
@@ -3113,13 +3110,13 @@ public:
   void shrinkNumArgs(unsigned NewNumArgs) {
     assert((NewNumArgs <= getNumArgs()) &&
            "shrinkNumArgs cannot increase the number of arguments!");
-    NumArgs = NewNumArgs;
+    CallExprBits.NumArgs = NewNumArgs;
   }
 
   /// Bluntly set a new number of arguments without doing any checks whatsoever.
   /// Only used during construction of a CallExpr in a few places in Sema.
   /// FIXME: Find a way to remove it.
-  void setNumArgsUnsafe(unsigned NewNumArgs) { NumArgs = NewNumArgs; }
+  void setNumArgsUnsafe(unsigned NewNumArgs) { CallExprBits.NumArgs = NewNumArgs; }
 
   typedef ExprIterator arg_iterator;
   typedef ConstExprIterator const_arg_iterator;
