@@ -1949,18 +1949,12 @@ protected:
     /// For the bits in DeclContextBitfields
     LLVM_PREFERRED_TYPE(DeclContextBitfields)
     uint32_t : NumDeclContextBits;
-
-    // Not a bitfield but this saves space.
-    // Note that ObjCContainerDeclBitfields is full.
-    SourceLocation AtStart;
   };
 
   /// Number of inherited and non-inherited bits in ObjCContainerDeclBitfields.
-  /// Note that here we rely on the fact that SourceLocation is 32 bits
-  /// wide. We check this with the static_assert in the ctor of DeclContext.
-  enum { NumObjCContainerDeclBits = 64 };
+  enum { NumObjCContainerDeclBits = NumDeclContextBits };
 
-  /// Stores the bits used by LinkageSpecDecl.
+  /// Stores the bits used by LinkqageSpecDecl.
   /// If modified NumLinkageSpecDeclBits and the accessor
   /// methods in LinkageSpecDecl should be updated appropriately.
   class LinkageSpecDeclBitfields {
