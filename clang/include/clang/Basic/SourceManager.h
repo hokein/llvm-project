@@ -719,7 +719,9 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// Positive FileIDs are indexes into this table. Entry 0 indicates an invalid
   /// expansion.
   SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
-  SmallVector<SourceLocation::UIntTy, 0> LocalLocOffsetTable;
+  SmallVector<std::pair<SourceLocation::UIntTy, unsigned>, 0> LocalLocOffsetTable;
+  SmallVector<std::pair<SourceLocation::UIntTy, unsigned>, 0> LocalLocOffsetTableExpansion;
+
   /// The table of SLocEntries that are loaded from other modules.
   ///
   /// Negative FileIDs are indexes into this table. To get from ID to an index,
@@ -1143,7 +1145,12 @@ public:
   /// the entry in SLocEntryTable which contains the specified location.
   ///
   FileID getFileID(SourceLocation SpellingLoc) const {
-    return getFileID(SpellingLoc.getOffset());
+    // return getFileID(SpellingLoc.getOffset());
+      // If our one-entry cache covers this offset, just return it.
+    if (isOffsetInFileID(LastFileIDLookup, SpellingLoc.getOffset()))
+      return LastFileIDLookup;
+
+    return getFileIDSlow(SpellingLoc);
   }
 
   /// Return the filename of the file containing a SourceLocation.
@@ -1893,13 +1900,13 @@ private:
     return getLoadedSLocEntry(static_cast<unsigned>(-ID - 2), Invalid);
   }
 
-  FileID getFileID(SourceLocation::UIntTy SLocOffset) const {
-    // If our one-entry cache covers this offset, just return it.
-    if (isOffsetInFileID(LastFileIDLookup, SLocOffset))
-      return LastFileIDLookup;
+  // FileID getFileID(SourceLocation SLocOffset) const {
+  //   // If our one-entry cache covers this offset, just return it.
+  //   if (isOffsetInFileID(LastFileIDLookup, SLocOffset))
+  //     return LastFileIDLookup;
 
-    return getFileIDSlow(SLocOffset);
-  }
+  //   return getFileIDSlow(SLocOffset);
+  // }
 
   bool isLocalOffset(SourceLocation::UIntTy SLocOffset) const {
     return SLocOffset < CurrentLoadedOffset;
@@ -1962,8 +1969,8 @@ private:
   SrcMgr::ContentCache &
   createMemBufferContentCache(std::unique_ptr<llvm::MemoryBuffer> Buf);
 
-  FileID getFileIDSlow(SourceLocation::UIntTy SLocOffset) const;
-  FileID getFileIDLocal(SourceLocation::UIntTy SLocOffset) const;
+  FileID getFileIDSlow(SourceLocation SLocOffset) const;
+  FileID getFileIDLocal(SourceLocation SLocOffset) const;
   FileID getFileIDLoaded(SourceLocation::UIntTy SLocOffset) const;
 
   SourceLocation getExpansionLocSlowCase(SourceLocation Loc) const;

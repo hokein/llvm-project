@@ -330,6 +330,7 @@ void SourceManager::clearIDTables() {
   MainFileID = FileID();
   LocalSLocEntryTable.clear();
   LocalLocOffsetTable.clear();
+  LocalLocOffsetTableExpansion.clear();
   LoadedSLocEntryTable.clear();
   SLocEntryLoaded.clear();
   SLocEntryOffsetLoaded.clear();
@@ -635,11 +636,11 @@ FileID SourceManager::createFileIDImpl(ContentCache &File, StringRef Filename,
     noteSLocAddressSpaceUsage(Diag);
     return FileID();
   }
-  assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size());
+  // assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size());
   LocalSLocEntryTable.push_back(
       SLocEntry::get(NextLocalOffset,
                      FileInfo::get(IncludePos, File, FileCharacter, Filename)));
-  LocalLocOffsetTable.push_back(NextLocalOffset);
+  LocalLocOffsetTable.push_back({NextLocalOffset, LocalSLocEntryTable.size()-1});
   // We do a +1 here because we want a SourceLocation that means "the end of the
   // file", e.g. for the "no newline at the end of the file" diagnostic.
   NextLocalOffset += FileSize + 1;
@@ -691,9 +692,9 @@ SourceManager::createExpansionLocImpl(const ExpansionInfo &Info,
     SLocEntryLoaded[Index] = SLocEntryOffsetLoaded[Index] = true;
     return SourceLocation::getMacroLoc(LoadedOffset);
   }
-  assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size());
+  assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size() + LocalLocOffsetTableExpansion.size());
   LocalSLocEntryTable.push_back(SLocEntry::get(NextLocalOffset, Info));
-  LocalLocOffsetTable.push_back(NextLocalOffset);
+  LocalLocOffsetTableExpansion.push_back({ NextLocalOffset, LocalSLocEntryTable.size()-1});
   if (NextLocalOffset + Length + 1 <= NextLocalOffset ||
       NextLocalOffset + Length + 1 > CurrentLoadedOffset) {
     Diag.Report(diag::err_sloc_space_too_large);
@@ -797,22 +798,23 @@ std::optional<StringRef> SourceManager::getBufferDataOrNone(FileID FID) const {
 /// This is the cache-miss path of getFileID. Not as hot as that function, but
 /// still very important. It is responsible for finding the entry in the
 /// SLocEntry tables that contains the specified location.
-FileID SourceManager::getFileIDSlow(SourceLocation::UIntTy SLocOffset) const {
-  if (!SLocOffset)
+FileID SourceManager::getFileIDSlow(SourceLocation SLocOffset) const {
+  if (!SLocOffset.getOffset())
     return FileID::get(0);
 
   // Now it is time to search for the correct file. See where the SLocOffset
   // sits in the global view and consult local or loaded buffers for it.
-  if (SLocOffset < NextLocalOffset)
+  if (SLocOffset.getOffset() < NextLocalOffset)
     return getFileIDLocal(SLocOffset);
-  return getFileIDLoaded(SLocOffset);
+  return getFileIDLoaded(SLocOffset.getOffset());
 }
 
 /// Return the FileID for a SourceLocation with a low offset.
 ///
 /// This function knows that the SourceLocation is in a local buffer, not a
 /// loaded one.
-FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
+FileID SourceManager::getFileIDLocal(SourceLocation L) const {
+  auto SLocOffset = L.getOffset();
   assert(SLocOffset < NextLocalOffset && "Bad function choice");
 
   // After the first and second level caches, I see two common sorts of
@@ -832,24 +834,30 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   // SLocOffset.
   unsigned LessIndex = 0;
   // upper bound of the search range.
-  assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size());
-  unsigned GreaterIndex =  LocalLocOffsetTable.size();
-  if (LastFileIDLookup.ID >= 0) {
-    // Use the LastFileIDLookup to prune the search space.
-    if (LocalLocOffsetTable[LastFileIDLookup.ID] < SLocOffset)
-      LessIndex = LastFileIDLookup.ID;
-    else
-      GreaterIndex = LastFileIDLookup.ID;
-  }
+   const auto* Table = L.isFileID()? LocalLocOffsetTable.data() : LocalLocOffsetTableExpansion.data();
+  //  LocalLocOffsetTable = LocalLocOffsetTableExpansion.data();
+  //= L.isFileID()? LocalLocOffsetTable : &LocalLocOffsetTableExpansion;
+  assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size() + LocalLocOffsetTableExpansion.size());
+  auto Size = L.isFileID()? LocalLocOffsetTable.size() : LocalLocOffsetTableExpansion.size();
+  unsigned GreaterIndex =   L.isFileID()? LocalLocOffsetTable.size() : LocalLocOffsetTableExpansion.size();
+  // if (LastFileIDLookup.ID >= 0) {
+  //   // Use the LastFileIDLookup to prune the search space.
+  //   // if (LocalLocOffsetTable[LastFileIDLookup.ID] < SLocOffset)
+  //   if ((Table + LastFileIDLookup.ID)->first < SLocOffset)
+  //     LessIndex = LastFileIDLookup.ID;
+  //   else
+  //     GreaterIndex = LastFileIDLookup.ID;
+  // }
 
   // Find the FileID that contains this.
   unsigned NumProbes = 0;
   while (true) {
     --GreaterIndex;
     // assert(GreaterIndex < LocalLocOffsetTable.size());
-    assert(GreaterIndex < LocalLocOffsetTable.size());
-    if (LocalLocOffsetTable[GreaterIndex] <= SLocOffset) {
-      FileID Res = FileID::get(int(GreaterIndex));
+    // assert(GreaterIndex < LocalLocOffsetTable.size());
+    // if (LocalLocOffsetTable[GreaterIndex] <= SLocOffset) {
+    if ((Table + GreaterIndex)->first <= SLocOffset) {
+      FileID Res = FileID::get((Table + GreaterIndex)->second);
       // Remember it.  We have good locality across FileID lookups.
       LastFileIDLookup = Res;
       NumLinearScans += NumProbes+1;
@@ -862,8 +870,8 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   NumProbes = 0;
   while (true) {
     unsigned MiddleIndex = (GreaterIndex-LessIndex)/2+LessIndex;
-    SourceLocation::UIntTy MidOffset =
-    LocalLocOffsetTable[MiddleIndex]; //).getOffset();
+    SourceLocation::UIntTy MidOffset = (Table + MiddleIndex)->first;
+    // LocalLocOffsetTable[MiddleIndex]; //).getOffset();
 
     ++NumProbes;
 
@@ -875,9 +883,9 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
     }
 
     // If the middle index contains the value, succeed and return.
-    if (MiddleIndex + 1 == LocalSLocEntryTable.size() ||
-        SLocOffset < LocalLocOffsetTable[MiddleIndex + 1]) {
-      FileID Res = FileID::get(MiddleIndex);
+    if (MiddleIndex + 1 == Size ||
+        SLocOffset < (Table + MiddleIndex + 1)->first) {
+      FileID Res = FileID::get((Table+MiddleIndex)->second);
 
       // Remember it.  We have good locality across FileID lookups.
       LastFileIDLookup = Res;
