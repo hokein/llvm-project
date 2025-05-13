@@ -2203,7 +2203,7 @@ void ASTStmtReader::VisitSizeOfPackExpr(SizeOfPackExpr *E) {
          I != E; ++I)
       new (I) TemplateArgument(Record.readTemplateArgument());
   } else if (!E->isValueDependent()) {
-    E->Length = Record.readInt();
+    E->SizeOfPackExprBits.Length = Record.readInt();
   }
 }
 

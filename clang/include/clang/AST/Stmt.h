@@ -1151,6 +1151,27 @@ protected:
     unsigned IsSatisfied : 1;
   };
 
+  class SizeOfPackExprBitfields {
+    friend class SizeOfPackExpr;
+    friend class ASTStmtReader;
+    friend class ASTStmtWriter;
+    
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    /// The length of the parameter pack, if known.
+    ///
+    /// When this expression is not value-dependent, this is the length of
+    /// the pack. When the expression was parsed rather than instantiated
+    /// (and thus is value-dependent), this is zero.
+    ///
+    /// After partial substitution into a sizeof...(X) expression (for instance,
+    /// within an alias template or during function template argument deduction),
+    /// we store a trailing array of partially-substituted TemplateArguments,
+    /// and this is the length of that array.
+    unsigned Length;
+  };
+
   //===--- C++ Coroutines bitfields classes ---===//
 
   class CoawaitExprBitfields {
@@ -1274,6 +1295,7 @@ protected:
     SubstNonTypeTemplateParmExprBitfields SubstNonTypeTemplateParmExprBits;
     LambdaExprBitfields LambdaExprBits;
     RequiresExprBitfields RequiresExprBits;
+    SizeOfPackExprBitfields SizeOfPackExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;

@@ -4407,18 +4407,6 @@ class SizeOfPackExpr final
   /// The location of the closing parenthesis.
   SourceLocation RParenLoc;
 
-  /// The length of the parameter pack, if known.
-  ///
-  /// When this expression is not value-dependent, this is the length of
-  /// the pack. When the expression was parsed rather than instantiated
-  /// (and thus is value-dependent), this is zero.
-  ///
-  /// After partial substitution into a sizeof...(X) expression (for instance,
-  /// within an alias template or during function template argument deduction),
-  /// we store a trailing array of partially-substituted TemplateArguments,
-  /// and this is the length of that array.
-  unsigned Length;
-
   /// The parameter pack.
   NamedDecl *Pack = nullptr;
 
@@ -4428,19 +4416,22 @@ class SizeOfPackExpr final
                  SourceLocation PackLoc, SourceLocation RParenLoc,
                  UnsignedOrNone Length, ArrayRef<TemplateArgument> PartialArgs)
       : Expr(SizeOfPackExprClass, SizeType, VK_PRValue, OK_Ordinary),
-        OperatorLoc(OperatorLoc), PackLoc(PackLoc), RParenLoc(RParenLoc),
-        Length(Length ? *Length : PartialArgs.size()), Pack(Pack) {
+        OperatorLoc(OperatorLoc), PackLoc(PackLoc), RParenLoc(RParenLoc), Pack(Pack) {
     assert((!Length || PartialArgs.empty()) &&
            "have partial args for non-dependent sizeof... expression");
     auto *Args = getTrailingObjects<TemplateArgument>();
     std::uninitialized_copy(PartialArgs.begin(), PartialArgs.end(), Args);
+    // llvm::uninitialized_copy(PartialArgs, Args);
+    SizeOfPackExprBits.Length = Length ? *Length : PartialArgs.size();
     setDependence(Length ? ExprDependence::None
                          : ExprDependence::ValueInstantiation);
   }
 
   /// Create an empty expression.
   SizeOfPackExpr(EmptyShell Empty, unsigned NumPartialArgs)
-      : Expr(SizeOfPackExprClass, Empty), Length(NumPartialArgs) {}
+      : Expr(SizeOfPackExprClass, Empty) {
+    SizeOfPackExprBits.Length = NumPartialArgs;
+  }
 
 public:
   static SizeOfPackExpr *Create(ASTContext &Context, SourceLocation OperatorLoc,
@@ -4470,7 +4461,7 @@ public:
   unsigned getPackLength() const {
     assert(!isValueDependent() &&
            "Cannot get the length of a value-dependent pack size expression");
-    return Length;
+    return SizeOfPackExprBits.Length;
   }
 
   /// Determine whether this represents a partially-substituted sizeof...
@@ -4479,14 +4470,14 @@ public:
   ///   template<typename ...Ts> using X = int[sizeof...(Ts)];
   ///   template<typename ...Us> void f(X<Us..., 1, 2, 3, Us...>);
   bool isPartiallySubstituted() const {
-    return isValueDependent() && Length;
+    return isValueDependent() && SizeOfPackExprBits.Length;
   }
 
   /// Get
   ArrayRef<TemplateArgument> getPartialArguments() const {
     assert(isPartiallySubstituted());
     const auto *Args = getTrailingObjects<TemplateArgument>();
-    return llvm::ArrayRef(Args, Args + Length);
+    return llvm::ArrayRef(Args, Args + SizeOfPackExprBits.Length);
   }
 
   SourceLocation getBeginLoc() const LLVM_READONLY { return OperatorLoc; }
