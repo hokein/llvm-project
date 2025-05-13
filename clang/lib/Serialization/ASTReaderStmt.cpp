@@ -2275,7 +2275,7 @@ void ASTStmtReader::VisitCXXFoldExpr(CXXFoldExpr *E) {
   E->SubExprs[0] = Record.readSubExpr();
   E->SubExprs[1] = Record.readSubExpr();
   E->SubExprs[2] = Record.readSubExpr();
-  E->Opcode = (BinaryOperatorKind)Record.readInt();
+  E->CXXFoldExprBits.Opcode = (BinaryOperatorKind)Record.readInt();
 }
 
 void ASTStmtReader::VisitCXXParenListInitExpr(CXXParenListInitExpr *E) {

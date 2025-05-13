@@ -4996,7 +4996,6 @@ class CXXFoldExpr : public Expr {
   // than the number of expansions.
   UnsignedOrNone NumExpansions = std::nullopt;
   Stmt *SubExprs[SubExpr::Count];
-  BinaryOperatorKind Opcode;
 
 public:
   CXXFoldExpr(QualType T, UnresolvedLookupExpr *Callee,
@@ -5029,7 +5028,7 @@ public:
   SourceLocation getLParenLoc() const { return LParenLoc; }
   SourceLocation getRParenLoc() const { return RParenLoc; }
   SourceLocation getEllipsisLoc() const { return EllipsisLoc; }
-  BinaryOperatorKind getOperator() const { return Opcode; }
+  BinaryOperatorKind getOperator() const { return CXXFoldExprBits.Opcode; }
 
   UnsignedOrNone getNumExpansions() const { return NumExpansions; }
 

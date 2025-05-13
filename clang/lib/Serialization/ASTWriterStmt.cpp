@@ -2277,7 +2277,7 @@ void ASTStmtWriter::VisitCXXFoldExpr(CXXFoldExpr *E) {
   Record.AddStmt(E->SubExprs[0]);
   Record.AddStmt(E->SubExprs[1]);
   Record.AddStmt(E->SubExprs[2]);
-  Record.push_back(E->Opcode);
+  Record.push_back(E->CXXFoldExprBits.Opcode);
   Code = serialization::EXPR_CXX_FOLD;
 }
 

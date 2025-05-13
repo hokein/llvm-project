@@ -1172,6 +1172,17 @@ protected:
     unsigned Length;
   };
 
+  class CXXFoldExprBitfields {
+    friend class CXXFoldExpr;
+    friend class ASTStmtReader;
+    friend class ASTStmtWriter;
+    
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    BinaryOperatorKind Opcode;
+  };  
+
   //===--- C++ Coroutines bitfields classes ---===//
 
   class CoawaitExprBitfields {
@@ -1296,6 +1307,7 @@ protected:
     LambdaExprBitfields LambdaExprBits;
     RequiresExprBitfields RequiresExprBits;
     SizeOfPackExprBitfields SizeOfPackExprBits;
+    CXXFoldExprBitfields CXXFoldExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;
