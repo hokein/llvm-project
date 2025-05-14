@@ -4318,13 +4318,6 @@ class PackExpansionExpr : public Expr {
 
   SourceLocation EllipsisLoc;
 
-  /// The number of expansions that will be produced by this pack
-  /// expansion expression, if known.
-  ///
-  /// When zero, the number of expansions is not known. Otherwise, this value
-  /// is the number of expansions + 1.
-  unsigned NumExpansions;
-
   Stmt *Pattern;
 
 public:
@@ -4332,9 +4325,9 @@ public:
                     UnsignedOrNone NumExpansions)
       : Expr(PackExpansionExprClass, Pattern->getType(),
              Pattern->getValueKind(), Pattern->getObjectKind()),
-        EllipsisLoc(EllipsisLoc),
-        NumExpansions(NumExpansions ? *NumExpansions + 1 : 0),
-        Pattern(Pattern) {
+        EllipsisLoc(EllipsisLoc), Pattern(Pattern) {
+    PackExpansionExprBits.NumExpansions =
+        NumExpansions ? *NumExpansions + 1 : 0;
     setDependence(computeDependence(this));
   }
 
@@ -4353,8 +4346,8 @@ public:
   /// Determine the number of expansions that will be produced when
   /// this pack expansion is instantiated, if already known.
   UnsignedOrNone getNumExpansions() const {
-    if (NumExpansions)
-      return NumExpansions - 1;
+    if (PackExpansionExprBits.NumExpansions)
+      return PackExpansionExprBits.NumExpansions - 1;
 
     return std::nullopt;
   }

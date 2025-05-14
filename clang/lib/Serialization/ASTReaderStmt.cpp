@@ -2185,7 +2185,7 @@ void ASTStmtReader::VisitCXXNoexceptExpr(CXXNoexceptExpr *E) {
 void ASTStmtReader::VisitPackExpansionExpr(PackExpansionExpr *E) {
   VisitExpr(E);
   E->EllipsisLoc = readSourceLocation();
-  E->NumExpansions = Record.readInt();
+  E->PackExpansionExprBits.NumExpansions = Record.readInt();
   E->Pattern = Record.readSubExpr();
 }
 

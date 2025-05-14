@@ -861,7 +861,7 @@ protected:
     
     LLVM_PREFERRED_TYPE(ExprBitfields)
     unsigned : NumExprBits;
-
+    
     /// Whether this designated initializer used the GNU deprecated
     /// syntax rather than the C99 '=' syntax.
     LLVM_PREFERRED_TYPE(bool)
@@ -876,13 +876,28 @@ protected:
     unsigned NumSubExprs : 16;
   };
 
+  class PackExpansionExprBitfields {
+    friend class PackExpansionExpr;
+    friend class ASTStmtWriter;
+    friend class ASTStmtReader;
+
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    /// The number of expansions that will be produced by this pack
+    /// expansion expression, if known.
+    ///
+    /// When zero, the number of expansions is not known. Otherwise, this value
+    /// is the number of expansions + 1.
+    unsigned NumExpansions;
+  };
+
   class CXXScalarValueInitExprBitfields {
     friend class ASTStmtReader;
     friend class CXXScalarValueInitExpr;
 
     LLVM_PREFERRED_TYPE(ExprBitfields)
     unsigned : NumExprBits;
-
   };
 
   class CXXNewExprBitfields {
@@ -1366,6 +1381,7 @@ protected:
     CXXFoldExprBitfields CXXFoldExprBits;
     CXXPseudoDestructorExprBitfields CXXPseudoDestructorExprBits;
     DesignatedInitExprBitfields DesignatedInitExprBits;
+    PackExpansionExprBitfields PackExpansionExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;
