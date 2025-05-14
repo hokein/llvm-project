@@ -728,6 +728,15 @@ protected:
 
     unsigned Scale;
   };
+  
+  class ShuffleVectorExprBitfields {
+    friend class ShuffleVectorExpr;
+
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    unsigned NumExprs;
+  };
 
   class StmtExprBitfields {
     friend class ASTStmtReader;
@@ -845,6 +854,26 @@ protected:
     unsigned HasRewrittenInit : 1;
 
 
+  };
+
+  class DesignatedInitExprBitfields {
+    friend class DesignatedInitExpr;
+    
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    /// Whether this designated initializer used the GNU deprecated
+    /// syntax rather than the C99 '=' syntax.
+    LLVM_PREFERRED_TYPE(bool)
+    unsigned GNUSyntax : 1;
+
+    /// The number of designators in this initializer expression.
+    unsigned NumDesignators : 15;
+
+    /// The number of subexpressions of this initializer expression,
+    /// which contains both the initializer and any additional
+    /// expressions used by array and array-range designators.
+    unsigned NumSubExprs : 16;
   };
 
   class CXXScalarValueInitExprBitfields {
@@ -1303,6 +1332,7 @@ protected:
     SourceLocExprBitfields SourceLocExprBits;
     ParenExprBitfields ParenExprBits;
     FixedPointLiteralBitfields FixedPointLiteralBits;
+    ShuffleVectorExprBitfields ShuffleVectorExprBits;
 
     // GNU Extensions.
     StmtExprBitfields StmtExprBits;
@@ -1335,6 +1365,7 @@ protected:
     SizeOfPackExprBitfields SizeOfPackExprBits;
     CXXFoldExprBitfields CXXFoldExprBits;
     CXXPseudoDestructorExprBitfields CXXPseudoDestructorExprBits;
+    DesignatedInitExprBitfields DesignatedInitExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;

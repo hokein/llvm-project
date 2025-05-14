@@ -4531,7 +4531,6 @@ class ShuffleVectorExpr : public Expr {
   // indices.  The number of values in this list is always
   // 2+the number of indices in the vector type.
   Stmt **SubExprs;
-  unsigned NumExprs;
 
 public:
   ShuffleVectorExpr(const ASTContext &C, ArrayRef<Expr*> args, QualType Type,
@@ -4557,34 +4556,34 @@ public:
   /// getNumSubExprs - Return the size of the SubExprs array.  This includes the
   /// constant expression, the actual arguments passed in, and the function
   /// pointers.
-  unsigned getNumSubExprs() const { return NumExprs; }
+  unsigned getNumSubExprs() const { return ShuffleVectorExprBits.NumExprs; }
 
   /// Retrieve the array of expressions.
   Expr **getSubExprs() { return reinterpret_cast<Expr **>(SubExprs); }
 
   /// getExpr - Return the Expr at the specified index.
   Expr *getExpr(unsigned Index) {
-    assert((Index < NumExprs) && "Arg access out of range!");
+    assert((Index < ShuffleVectorExprBits.NumExprs) && "Arg access out of range!");
     return cast<Expr>(SubExprs[Index]);
   }
   const Expr *getExpr(unsigned Index) const {
-    assert((Index < NumExprs) && "Arg access out of range!");
+    assert((Index < ShuffleVectorExprBits.NumExprs) && "Arg access out of range!");
     return cast<Expr>(SubExprs[Index]);
   }
 
   void setExprs(const ASTContext &C, ArrayRef<Expr *> Exprs);
 
   llvm::APSInt getShuffleMaskIdx(const ASTContext &Ctx, unsigned N) const {
-    assert((N < NumExprs - 2) && "Shuffle idx out of range!");
+    assert((N < ShuffleVectorExprBits.NumExprs - 2) && "Shuffle idx out of range!");
     return getExpr(N+2)->EvaluateKnownConstInt(Ctx);
   }
 
   // Iterators
   child_range children() {
-    return child_range(&SubExprs[0], &SubExprs[0]+NumExprs);
+    return child_range(&SubExprs[0], &SubExprs[0]+ShuffleVectorExprBits.NumExprs);
   }
   const_child_range children() const {
-    return const_child_range(&SubExprs[0], &SubExprs[0] + NumExprs);
+    return const_child_range(&SubExprs[0], &SubExprs[0] + ShuffleVectorExprBits.NumExprs);
   }
 };
 
@@ -5438,19 +5437,6 @@ private:
   /// expression.
   SourceLocation EqualOrColonLoc;
 
-  /// Whether this designated initializer used the GNU deprecated
-  /// syntax rather than the C99 '=' syntax.
-  LLVM_PREFERRED_TYPE(bool)
-  unsigned GNUSyntax : 1;
-
-  /// The number of designators in this initializer expression.
-  unsigned NumDesignators : 15;
-
-  /// The number of subexpressions of this initializer expression,
-  /// which contains both the initializer and any additional
-  /// expressions used by array and array-range designators.
-  unsigned NumSubExprs : 16;
-
   /// The designators in this designated initialization
   /// expression.
   Designator *Designators;
@@ -5461,8 +5447,10 @@ private:
                      ArrayRef<Expr *> IndexExprs, Expr *Init);
 
   explicit DesignatedInitExpr(unsigned NumSubExprs)
-    : Expr(DesignatedInitExprClass, EmptyShell()),
-      NumDesignators(0), NumSubExprs(NumSubExprs), Designators(nullptr) { }
+    : Expr(DesignatedInitExprClass, EmptyShell()), Designators(nullptr) {
+    DesignatedInitExprBits.NumDesignators = 0;
+    DesignatedInitExprBits.NumSubExprs = NumSubExprs;
+  }
 
 public:
   /// Represents a single C99 designator.
@@ -5658,15 +5646,15 @@ public:
                                          unsigned NumIndexExprs);
 
   /// Returns the number of designators in this initializer.
-  unsigned size() const { return NumDesignators; }
+  unsigned size() const { return DesignatedInitExprBits.NumDesignators; }
 
   // Iterator access to the designators.
   llvm::MutableArrayRef<Designator> designators() {
-    return {Designators, NumDesignators};
+    return {Designators, DesignatedInitExprBits.NumDesignators};
   }
 
   llvm::ArrayRef<Designator> designators() const {
-    return {Designators, NumDesignators};
+    return {Designators, DesignatedInitExprBits.NumDesignators};
   }
 
   Designator *getDesignator(unsigned Idx) { return &designators()[Idx]; }
@@ -5692,8 +5680,8 @@ public:
 
   /// Determines whether this designated initializer used the
   /// deprecated GNU syntax for designated initializers.
-  bool usesGNUSyntax() const { return GNUSyntax; }
-  void setGNUSyntax(bool GNU) { GNUSyntax = GNU; }
+  bool usesGNUSyntax() const { return DesignatedInitExprBits.GNUSyntax; }
+  void setGNUSyntax(bool GNU) { DesignatedInitExprBits.GNUSyntax = GNU; }
 
   /// Retrieve the initializer value.
   Expr *getInit() const {
@@ -5708,15 +5696,15 @@ public:
   /// designated initializer expression, including the actual
   /// initialized value and any expressions that occur within array
   /// and array-range designators.
-  unsigned getNumSubExprs() const { return NumSubExprs; }
+  unsigned getNumSubExprs() const { return DesignatedInitExprBits.NumSubExprs; }
 
   Expr *getSubExpr(unsigned Idx) const {
-    assert(Idx < NumSubExprs && "Subscript out of range");
+    assert(Idx < DesignatedInitExprBits.NumSubExprs && "Subscript out of range");
     return cast<Expr>(getTrailingObjects<Stmt *>()[Idx]);
   }
 
   void setSubExpr(unsigned Idx, Expr *E) {
-    assert(Idx < NumSubExprs && "Subscript out of range");
+    assert(Idx < DesignatedInitExprBits.NumSubExprs && "Subscript out of range");
     getTrailingObjects<Stmt *>()[Idx] = E;
   }
 
@@ -5737,11 +5725,11 @@ public:
   // Iterators
   child_range children() {
     Stmt **begin = getTrailingObjects<Stmt *>();
-    return child_range(begin, begin + NumSubExprs);
+    return child_range(begin, begin + DesignatedInitExprBits.NumSubExprs);
   }
   const_child_range children() const {
     Stmt * const *begin = getTrailingObjects<Stmt *>();
-    return const_child_range(begin, begin + NumSubExprs);
+    return const_child_range(begin, begin + DesignatedInitExprBits.NumSubExprs);
   }
 
   friend TrailingObjects;

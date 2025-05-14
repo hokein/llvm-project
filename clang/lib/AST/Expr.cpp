@@ -4406,19 +4406,19 @@ ShuffleVectorExpr::ShuffleVectorExpr(const ASTContext &C, ArrayRef<Expr *> args,
                                      QualType Type, SourceLocation BLoc,
                                      SourceLocation RP)
     : Expr(ShuffleVectorExprClass, Type, VK_PRValue, OK_Ordinary),
-      BuiltinLoc(BLoc), RParenLoc(RP), NumExprs(args.size()) {
-  SubExprs = new (C) Stmt*[args.size()];
+      BuiltinLoc(BLoc), RParenLoc(RP) {
+  ShuffleVectorExprBits.NumExprs = args.size();
+  SubExprs = new (C) Stmt *[args.size()];
   for (unsigned i = 0; i != args.size(); i++)
     SubExprs[i] = args[i];
-
   setDependence(computeDependence(this));
 }
 
 void ShuffleVectorExpr::setExprs(const ASTContext &C, ArrayRef<Expr *> Exprs) {
   if (SubExprs) C.Deallocate(SubExprs);
 
-  this->NumExprs = Exprs.size();
-  SubExprs = new (C) Stmt*[NumExprs];
+  this->ShuffleVectorExprBits.NumExprs = Exprs.size();
+  SubExprs = new (C) Stmt*[ShuffleVectorExprBits.NumExprs];
   memcpy(SubExprs, Exprs.data(), sizeof(Expr *) * Exprs.size());
 }
 
@@ -4614,9 +4614,11 @@ DesignatedInitExpr::DesignatedInitExpr(const ASTContext &C, QualType Ty,
                                        ArrayRef<Expr *> IndexExprs, Expr *Init)
     : Expr(DesignatedInitExprClass, Ty, Init->getValueKind(),
            Init->getObjectKind()),
-      EqualOrColonLoc(EqualOrColonLoc), GNUSyntax(GNUSyntax),
-      NumDesignators(Designators.size()), NumSubExprs(IndexExprs.size() + 1) {
-  this->Designators = new (C) Designator[NumDesignators];
+      EqualOrColonLoc(EqualOrColonLoc) {
+  DesignatedInitExprBits.NumDesignators = Designators.size();
+  DesignatedInitExprBits.NumSubExprs = IndexExprs.size() + 1;
+  DesignatedInitExprBits.GNUSyntax = GNUSyntax;
+  this->Designators = new (C) Designator[DesignatedInitExprBits.NumDesignators];
 
   // Record the initializer itself.
   child_iterator Child = child_begin();
@@ -4625,7 +4627,7 @@ DesignatedInitExpr::DesignatedInitExpr(const ASTContext &C, QualType Ty,
   // Copy the designators and their subexpressions, computing
   // value-dependence along the way.
   unsigned IndexIdx = 0;
-  for (unsigned I = 0; I != NumDesignators; ++I) {
+  for (unsigned I = 0; I != DesignatedInitExprBits.NumDesignators; ++I) {
     this->Designators[I] = Designators[I];
     if (this->Designators[I].isArrayDesignator()) {
       // Copy the index expressions into permanent storage.
@@ -4665,7 +4667,7 @@ void DesignatedInitExpr::setDesignators(const ASTContext &C,
                                         const Designator *Desigs,
                                         unsigned NumDesigs) {
   Designators = new (C) Designator[NumDesigs];
-  NumDesignators = NumDesigs;
+  DesignatedInitExprBits.NumDesignators = NumDesigs;
   for (unsigned I = 0; I != NumDesigs; ++I)
     Designators[I] = Desigs[I];
 }
@@ -4686,7 +4688,7 @@ SourceLocation DesignatedInitExpr::getBeginLoc() const {
     // these do not have valid source locations.
     for (unsigned int i = 0; i < DIE->size(); i++) {
       Designator &Des = *DIE->getDesignator(i);
-      SourceLocation retval = GNUSyntax ? Des.getFieldLoc() : Des.getDotLoc();
+      SourceLocation retval = DesignatedInitExprBits.GNUSyntax ? Des.getFieldLoc() : Des.getDotLoc();
       if (!retval.isValid())
         continue;
       return retval;
@@ -4722,7 +4724,7 @@ void DesignatedInitExpr::ExpandDesignator(const ASTContext &C, unsigned Idx,
   unsigned NumNewDesignators = Last - First;
   if (NumNewDesignators == 0) {
     std::copy_backward(Designators + Idx + 1,
-                       Designators + NumDesignators,
+                       Designators + DesignatedInitExprBits.NumDesignators,
                        Designators + Idx);
     --NumNewDesignators;
     return;
@@ -4733,13 +4735,13 @@ void DesignatedInitExpr::ExpandDesignator(const ASTContext &C, unsigned Idx,
   }
 
   Designator *NewDesignators
-    = new (C) Designator[NumDesignators - 1 + NumNewDesignators];
+    = new (C) Designator[DesignatedInitExprBits.NumDesignators - 1 + NumNewDesignators];
   std::copy(Designators, Designators + Idx, NewDesignators);
   std::copy(First, Last, NewDesignators + Idx);
-  std::copy(Designators + Idx + 1, Designators + NumDesignators,
+  std::copy(Designators + Idx + 1, Designators + DesignatedInitExprBits.NumDesignators,
             NewDesignators + Idx + NumNewDesignators);
   Designators = NewDesignators;
-  NumDesignators = NumDesignators - 1 + NumNewDesignators;
+  DesignatedInitExprBits.NumDesignators = DesignatedInitExprBits.NumDesignators - 1 + NumNewDesignators;
 }
 
 DesignatedInitUpdateExpr::DesignatedInitUpdateExpr(const ASTContext &C,
