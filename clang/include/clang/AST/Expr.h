@@ -1550,7 +1550,6 @@ public:
 
 class FixedPointLiteral : public Expr, public APIntStorage {
   SourceLocation Loc;
-  unsigned Scale;
 
   /// \brief Construct an empty fixed-point literal.
   explicit FixedPointLiteral(EmptyShell Empty)
@@ -1580,8 +1579,8 @@ class FixedPointLiteral : public Expr, public APIntStorage {
 
   void setLocation(SourceLocation Location) { Loc = Location; }
 
-  unsigned getScale() const { return Scale; }
-  void setScale(unsigned S) { Scale = S; }
+  unsigned getScale() const { return FixedPointLiteralBits.Scale; }
+  void setScale(unsigned S) { FixedPointLiteralBits.Scale = S; }
 
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == FixedPointLiteralClass;
@@ -1601,15 +1600,15 @@ class FixedPointLiteral : public Expr, public APIntStorage {
 enum class CharacterLiteralKind { Ascii, Wide, UTF8, UTF16, UTF32 };
 
 class CharacterLiteral : public Expr {
-  unsigned Value;
   SourceLocation Loc;
 public:
   // type should be IntTy
   CharacterLiteral(unsigned value, CharacterLiteralKind kind, QualType type,
                    SourceLocation l)
       : Expr(CharacterLiteralClass, type, VK_PRValue, OK_Ordinary),
-        Value(value), Loc(l) {
+       Loc(l) {
     CharacterLiteralBits.Kind = llvm::to_underlying(kind);
+    CharacterLiteralBits.Value = value;
     setDependence(ExprDependence::None);
   }
 
@@ -1624,13 +1623,13 @@ public:
   SourceLocation getBeginLoc() const LLVM_READONLY { return Loc; }
   SourceLocation getEndLoc() const LLVM_READONLY { return Loc; }
 
-  unsigned getValue() const { return Value; }
+  unsigned getValue() const { return CharacterLiteralBits.Value; }
 
   void setLocation(SourceLocation Location) { Loc = Location; }
   void setKind(CharacterLiteralKind kind) {
     CharacterLiteralBits.Kind = llvm::to_underlying(kind);
   }
-  void setValue(unsigned Val) { Value = Val; }
+  void setValue(unsigned Val) { CharacterLiteralBits.Value = Val; }
 
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == CharacterLiteralClass;

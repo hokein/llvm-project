@@ -488,6 +488,8 @@ protected:
 
     LLVM_PREFERRED_TYPE(CharacterLiteralKind)
     unsigned Kind : 3;
+
+    unsigned Value;
   };
 
   class UnaryOperatorBitfields {
@@ -716,6 +718,15 @@ protected:
 
     LLVM_PREFERRED_TYPE(bool)
     unsigned ProducedByFoldExpansion : 1;
+  };
+
+  class FixedPointLiteralBitfields {
+    friend class FixedPointLiteral;
+
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    unsigned Scale;
   };
 
   class StmtExprBitfields {
@@ -1291,6 +1302,7 @@ protected:
     PseudoObjectExprBitfields PseudoObjectExprBits;
     SourceLocExprBitfields SourceLocExprBits;
     ParenExprBitfields ParenExprBits;
+    FixedPointLiteralBitfields FixedPointLiteralBits;
 
     // GNU Extensions.
     StmtExprBitfields StmtExprBits;

@@ -989,13 +989,13 @@ IntegerLiteral::Create(const ASTContext &C, EmptyShell Empty) {
 FixedPointLiteral::FixedPointLiteral(const ASTContext &C, const llvm::APInt &V,
                                      QualType type, SourceLocation l,
                                      unsigned Scale)
-    : Expr(FixedPointLiteralClass, type, VK_PRValue, OK_Ordinary), Loc(l),
-      Scale(Scale) {
+    : Expr(FixedPointLiteralClass, type, VK_PRValue, OK_Ordinary), Loc(l) {
   assert(type->isFixedPointType() && "Illegal type in FixedPointLiteral");
   assert(V.getBitWidth() == C.getTypeInfo(type).Width &&
          "Fixed point type is not the correct size for constant.");
   setValue(C, V);
   setDependence(ExprDependence::None);
+  FixedPointLiteralBits.Scale = Scale;
 }
 
 FixedPointLiteral *FixedPointLiteral::CreateFromRawInt(const ASTContext &C,
@@ -1017,7 +1017,7 @@ std::string FixedPointLiteral::getValueAsString(unsigned Radix) const {
   // which is 43 characters.
   SmallString<64> S;
   FixedPointValueToString(
-      S, llvm::APSInt::getUnsigned(getValue().getZExtValue()), Scale);
+      S, llvm::APSInt::getUnsigned(getValue().getZExtValue()), FixedPointLiteralBits.Scale);
   return std::string(S);
 }
 
