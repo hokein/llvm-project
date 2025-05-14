@@ -27,6 +27,7 @@
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/Specifiers.h"
 #include "clang/Basic/TypeTraits.h"
+#include "clang/Basic/UnsignedOrNone.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitmaskEnum.h"
@@ -892,6 +893,20 @@ protected:
     unsigned NumExpansions;
   };
 
+  class PackIndexingExprBitfields {
+    friend class PackIndexingExpr;
+    friend class ASTStmtWriter;
+    friend class ASTStmtReader;
+
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+    // The size of the trailing expressions.
+    unsigned TransformedExpressions : 31;
+
+    LLVM_PREFERRED_TYPE(bool)
+    unsigned FullySubstituted : 1;
+  };
+
   class CXXScalarValueInitExprBitfields {
     friend class ASTStmtReader;
     friend class CXXScalarValueInitExpr;
@@ -1235,7 +1250,11 @@ protected:
     LLVM_PREFERRED_TYPE(ExprBitfields)
     unsigned : NumExprBits;
 
-    BinaryOperatorKind Opcode;
+    // static_assert( <= (1 << 8) && "not enough bits to hold BinaryOperatorKind");
+    BinaryOperatorKind Opcode : 8;
+    // When 0, the number of expansions is not known. Otherwise, this is one more
+    // than the number of expansions.
+    UnsignedOrNone NumExpansions = std::nullopt;
   };
 
   class CXXPseudoDestructorExprBitfields {
@@ -1382,6 +1401,7 @@ protected:
     CXXPseudoDestructorExprBitfields CXXPseudoDestructorExprBits;
     DesignatedInitExprBitfields DesignatedInitExprBits;
     PackExpansionExprBitfields PackExpansionExprBits;
+    PackIndexingExprBitfields PackIndexingExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;

@@ -2209,14 +2209,14 @@ void ASTStmtReader::VisitSizeOfPackExpr(SizeOfPackExpr *E) {
 
 void ASTStmtReader::VisitPackIndexingExpr(PackIndexingExpr *E) {
   VisitExpr(E);
-  E->TransformedExpressions = Record.readInt();
-  E->FullySubstituted = Record.readInt();
+  E->PackIndexingExprBits.TransformedExpressions = Record.readInt();
+  E->PackIndexingExprBits.FullySubstituted = Record.readInt();
   E->EllipsisLoc = readSourceLocation();
   E->RSquareLoc = readSourceLocation();
   E->SubExprs[0] = Record.readStmt();
   E->SubExprs[1] = Record.readStmt();
   auto **Exprs = E->getTrailingObjects<Expr *>();
-  for (unsigned I = 0; I < E->TransformedExpressions; ++I)
+  for (unsigned I = 0; I < E->PackIndexingExprBits.TransformedExpressions; ++I)
     Exprs[I] = Record.readExpr();
 }
 
@@ -2271,7 +2271,7 @@ void ASTStmtReader::VisitCXXFoldExpr(CXXFoldExpr *E) {
   E->LParenLoc = readSourceLocation();
   E->EllipsisLoc = readSourceLocation();
   E->RParenLoc = readSourceLocation();
-  E->NumExpansions = Record.readUnsignedOrNone();
+  E->CXXFoldExprBits.NumExpansions = Record.readUnsignedOrNone();
   E->SubExprs[0] = Record.readSubExpr();
   E->SubExprs[1] = Record.readSubExpr();
   E->SubExprs[2] = Record.readSubExpr();

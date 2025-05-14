@@ -1989,12 +1989,12 @@ CXXFoldExpr::CXXFoldExpr(QualType T, UnresolvedLookupExpr *Callee,
                          Expr *RHS, SourceLocation RParenLoc,
                          UnsignedOrNone NumExpansions)
     : Expr(CXXFoldExprClass, T, VK_PRValue, OK_Ordinary), LParenLoc(LParenLoc),
-      EllipsisLoc(EllipsisLoc), RParenLoc(RParenLoc),
-      NumExpansions(NumExpansions) {
+      EllipsisLoc(EllipsisLoc), RParenLoc(RParenLoc) {
   // We rely on asserted invariant to distinguish left and right folds.
   assert(((LHS && LHS->containsUnexpandedParameterPack()) !=
           (RHS && RHS->containsUnexpandedParameterPack())) &&
          "Exactly one of LHS or RHS should contain an unexpanded pack");
+  CXXFoldExprBits.NumExpansions = NumExpansions;
   CXXFoldExprBits.Opcode = Opcode;
   SubExprs[SubExpr::Callee] = Callee;
   SubExprs[SubExpr::LHS] = LHS;

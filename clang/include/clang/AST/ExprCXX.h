@@ -4502,22 +4502,15 @@ class PackIndexingExpr final
   // The pack being indexed, followed by the index
   Stmt *SubExprs[2];
 
-  // The size of the trailing expressions.
-  unsigned TransformedExpressions : 31;
-
-  LLVM_PREFERRED_TYPE(bool)
-  unsigned FullySubstituted : 1;
-
   PackIndexingExpr(QualType Type, SourceLocation EllipsisLoc,
                    SourceLocation RSquareLoc, Expr *PackIdExpr, Expr *IndexExpr,
                    ArrayRef<Expr *> SubstitutedExprs = {},
                    bool FullySubstituted = false)
       : Expr(PackIndexingExprClass, Type, VK_LValue, OK_Ordinary),
         EllipsisLoc(EllipsisLoc), RSquareLoc(RSquareLoc),
-        SubExprs{PackIdExpr, IndexExpr},
-        TransformedExpressions(SubstitutedExprs.size()),
-        FullySubstituted(FullySubstituted) {
-
+        SubExprs{PackIdExpr, IndexExpr} {
+    PackIndexingExprBits.TransformedExpressions = SubstitutedExprs.size();
+    PackIndexingExprBits.FullySubstituted = FullySubstituted;
     auto *Exprs = getTrailingObjects<Expr *>();
     std::uninitialized_copy(SubstitutedExprs.begin(), SubstitutedExprs.end(),
                             Exprs);
@@ -4531,7 +4524,7 @@ class PackIndexingExpr final
   PackIndexingExpr(EmptyShell Empty) : Expr(PackIndexingExprClass, Empty) {}
 
   unsigned numTrailingObjects(OverloadToken<Expr *>) const {
-    return TransformedExpressions;
+    return PackIndexingExprBits.TransformedExpressions;
   }
 
 public:
@@ -4544,11 +4537,11 @@ public:
   static PackIndexingExpr *CreateDeserialized(ASTContext &Context,
                                               unsigned NumTransformedExprs);
 
-  bool isFullySubstituted() const { return FullySubstituted; }
+  bool isFullySubstituted() const { return PackIndexingExprBits.FullySubstituted; }
 
   /// Determine if the expression was expanded to empty.
   bool expandsToEmptyPack() const {
-    return isFullySubstituted() && TransformedExpressions == 0;
+    return isFullySubstituted() && PackIndexingExprBits.TransformedExpressions == 0;
   }
 
   /// Determine the location of the 'sizeof' keyword.
@@ -4586,7 +4579,7 @@ public:
 
   /// Return the trailing expressions, regardless of the expansion.
   ArrayRef<Expr *> getExpressions() const {
-    return {getTrailingObjects<Expr *>(), TransformedExpressions};
+    return {getTrailingObjects<Expr *>(), PackIndexingExprBits.TransformedExpressions};
   }
 
   static bool classof(const Stmt *T) {
@@ -4982,9 +4975,7 @@ class CXXFoldExpr : public Expr {
   SourceLocation LParenLoc;
   SourceLocation EllipsisLoc;
   SourceLocation RParenLoc;
-  // When 0, the number of expansions is not known. Otherwise, this is one more
-  // than the number of expansions.
-  UnsignedOrNone NumExpansions = std::nullopt;
+  
   Stmt *SubExprs[SubExpr::Count];
 
 public:
@@ -5020,7 +5011,7 @@ public:
   SourceLocation getEllipsisLoc() const { return EllipsisLoc; }
   BinaryOperatorKind getOperator() const { return CXXFoldExprBits.Opcode; }
 
-  UnsignedOrNone getNumExpansions() const { return NumExpansions; }
+  UnsignedOrNone getNumExpansions() const { return CXXFoldExprBits.NumExpansions; }
 
   SourceLocation getBeginLoc() const LLVM_READONLY {
     if (LParenLoc.isValid())
