@@ -1971,7 +1971,7 @@ void ASTStmtReader::VisitCXXPseudoDestructorExpr(CXXPseudoDestructorExpr *E) {
   VisitExpr(E);
 
   E->Base = Record.readSubExpr();
-  E->IsArrow = Record.readInt();
+  E->CXXPseudoDestructorExprBits.IsArrow = Record.readInt();
   E->OperatorLoc = readSourceLocation();
   E->QualifierLoc = Record.readNestedNameSpecifierLoc();
   E->ScopeType = readTypeSourceInfo();

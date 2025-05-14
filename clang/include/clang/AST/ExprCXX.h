@@ -2740,11 +2740,6 @@ class CXXPseudoDestructorExpr : public Expr {
   /// The base expression (that is being destroyed).
   Stmt *Base = nullptr;
 
-  /// Whether the operator was an arrow ('->'); otherwise, it was a
-  /// period ('.').
-  LLVM_PREFERRED_TYPE(bool)
-  bool IsArrow : 1;
-
   /// The location of the '.' or '->' operator.
   SourceLocation OperatorLoc;
 
@@ -2776,7 +2771,9 @@ public:
                           PseudoDestructorTypeStorage DestroyedType);
 
   explicit CXXPseudoDestructorExpr(EmptyShell Shell)
-      : Expr(CXXPseudoDestructorExprClass, Shell), IsArrow(false) {}
+      : Expr(CXXPseudoDestructorExprClass, Shell) {
+    CXXPseudoDestructorExprBits.IsArrow = false;
+  }
 
   Expr *getBase() const { return cast<Expr>(Base); }
 
@@ -2798,7 +2795,7 @@ public:
 
   /// Determine whether this pseudo-destructor expression was written
   /// using an '->' (otherwise, it used a '.').
-  bool isArrow() const { return IsArrow; }
+  bool isArrow() const { return CXXPseudoDestructorExprBits.IsArrow; }
 
   /// Retrieve the location of the '.' or '->' operator.
   SourceLocation getOperatorLoc() const { return OperatorLoc; }

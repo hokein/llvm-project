@@ -1181,7 +1181,21 @@ protected:
     unsigned : NumExprBits;
 
     BinaryOperatorKind Opcode;
-  };  
+  };
+
+  class CXXPseudoDestructorExprBitfields {
+    friend class CXXPseudoDestructorExpr;
+    friend class ASTStmtReader;
+    friend class ASTStmtWriter;
+
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    /// Whether the operator was an arrow ('->'); otherwise, it was a
+    /// period ('.').
+    LLVM_PREFERRED_TYPE(bool)
+    bool IsArrow : 1;
+  };
 
   //===--- C++ Coroutines bitfields classes ---===//
 
@@ -1308,6 +1322,7 @@ protected:
     RequiresExprBitfields RequiresExprBits;
     SizeOfPackExprBitfields SizeOfPackExprBits;
     CXXFoldExprBitfields CXXFoldExprBits;
+    CXXPseudoDestructorExprBitfields CXXPseudoDestructorExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;

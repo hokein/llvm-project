@@ -376,11 +376,12 @@ CXXPseudoDestructorExpr::CXXPseudoDestructorExpr(
     SourceLocation TildeLoc, PseudoDestructorTypeStorage DestroyedType)
     : Expr(CXXPseudoDestructorExprClass, Context.BoundMemberTy, VK_PRValue,
            OK_Ordinary),
-      Base(static_cast<Stmt *>(Base)), IsArrow(isArrow),
+      Base(static_cast<Stmt *>(Base)),
       OperatorLoc(OperatorLoc), QualifierLoc(QualifierLoc),
       ScopeType(ScopeType), ColonColonLoc(ColonColonLoc), TildeLoc(TildeLoc),
       DestroyedType(DestroyedType) {
   setDependence(computeDependence(this));
+  CXXPseudoDestructorExprBits.IsArrow = isArrow;
 }
 
 QualType CXXPseudoDestructorExpr::getDestroyedType() const {
