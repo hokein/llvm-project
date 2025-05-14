@@ -907,6 +907,17 @@ protected:
     unsigned FullySubstituted : 1;
   };
 
+  class FunctionParmPackExprBitfields {
+    friend class FunctionParmPackExpr;
+    friend class ASTStmtReader;
+
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    /// The number of expansions of this pack.
+    unsigned NumParameters;
+  };
+
   class CXXScalarValueInitExprBitfields {
     friend class ASTStmtReader;
     friend class CXXScalarValueInitExpr;
@@ -1402,6 +1413,7 @@ protected:
     DesignatedInitExprBitfields DesignatedInitExprBits;
     PackExpansionExprBitfields PackExpansionExprBits;
     PackIndexingExprBitfields PackIndexingExprBits;
+    FunctionParmPackExprBitfields FunctionParmPackExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;

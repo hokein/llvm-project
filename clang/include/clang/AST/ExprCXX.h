@@ -4786,9 +4786,6 @@ class FunctionParmPackExpr final
   /// The location of the function parameter pack reference.
   SourceLocation NameLoc;
 
-  /// The number of expansions of this pack.
-  unsigned NumParameters;
-
   FunctionParmPackExpr(QualType T, ValueDecl *ParamPack, SourceLocation NameLoc,
                        unsigned NumParams, ValueDecl *const *Params);
 
@@ -4810,10 +4807,10 @@ public:
   /// into.
   using iterator = ValueDecl *const *;
   iterator begin() const { return getTrailingObjects<ValueDecl *>(); }
-  iterator end() const { return begin() + NumParameters; }
+  iterator end() const { return begin() + FunctionParmPackExprBits.NumParameters; }
 
   /// Get the number of parameters in this parameter pack.
-  unsigned getNumExpansions() const { return NumParameters; }
+  unsigned getNumExpansions() const { return FunctionParmPackExprBits.NumParameters; }
 
   /// Get an expansion of the parameter pack by index.
   ValueDecl *getExpansion(unsigned I) const { return begin()[I]; }

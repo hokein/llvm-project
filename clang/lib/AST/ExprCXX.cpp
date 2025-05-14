@@ -1789,7 +1789,8 @@ FunctionParmPackExpr::FunctionParmPackExpr(QualType T, ValueDecl *ParamPack,
                                            unsigned NumParams,
                                            ValueDecl *const *Params)
     : Expr(FunctionParmPackExprClass, T, VK_LValue, OK_Ordinary),
-      ParamPack(ParamPack), NameLoc(NameLoc), NumParameters(NumParams) {
+      ParamPack(ParamPack), NameLoc(NameLoc) {
+  FunctionParmPackExprBits.NumParameters = NumParams;
   if (Params)
     std::uninitialized_copy(Params, Params + NumParams,
                             getTrailingObjects<ValueDecl *>());

@@ -2249,11 +2249,11 @@ void ASTStmtReader::VisitSubstNonTypeTemplateParmPackExpr(
 
 void ASTStmtReader::VisitFunctionParmPackExpr(FunctionParmPackExpr *E) {
   VisitExpr(E);
-  E->NumParameters = Record.readInt();
+  E->FunctionParmPackExprBits.NumParameters = Record.readInt();
   E->ParamPack = readDeclAs<ValueDecl>();
   E->NameLoc = readSourceLocation();
   auto **Parms = E->getTrailingObjects<ValueDecl *>();
-  for (unsigned i = 0, n = E->NumParameters; i != n; ++i)
+  for (unsigned i = 0, n = E->FunctionParmPackExprBits.NumParameters; i != n; ++i)
     Parms[i] = readDeclAs<ValueDecl>();
 }
 
