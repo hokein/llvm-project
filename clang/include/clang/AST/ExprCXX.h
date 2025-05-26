@@ -2983,10 +2983,6 @@ public:
 ///   __array_extent(int[10][20], 1) == 20
 /// \endcode
 class ArrayTypeTraitExpr : public Expr {
-  /// The trait. An ArrayTypeTrait enum in MSVC compat unsigned.
-  LLVM_PREFERRED_TYPE(ArrayTypeTrait)
-  unsigned ATT : 2;
-
   /// The value of the type trait. Unspecified if dependent.
   uint64_t Value = 0;
 
@@ -3008,21 +3004,25 @@ public:
   ArrayTypeTraitExpr(SourceLocation loc, ArrayTypeTrait att,
                      TypeSourceInfo *queried, uint64_t value, Expr *dimension,
                      SourceLocation rparen, QualType ty)
-      : Expr(ArrayTypeTraitExprClass, ty, VK_PRValue, OK_Ordinary), ATT(att),
+      : Expr(ArrayTypeTraitExprClass, ty, VK_PRValue, OK_Ordinary),
         Value(value), Dimension(dimension), Loc(loc), RParen(rparen),
         QueriedType(queried) {
     assert(att <= ATT_Last && "invalid enum value!");
-    assert(static_cast<unsigned>(att) == ATT && "ATT overflow!");
+    ArrayTypeTraitExprBits.ATT = att;
+    assert(static_cast<unsigned>(att) == ArrayTypeTraitExprBits.ATT &&
+           "ATT overflow!");
     setDependence(computeDependence(this));
   }
 
   explicit ArrayTypeTraitExpr(EmptyShell Empty)
-      : Expr(ArrayTypeTraitExprClass, Empty), ATT(0) {}
+      : Expr(ArrayTypeTraitExprClass, Empty) { ArrayTypeTraitExprBits.ATT = 0; }
 
   SourceLocation getBeginLoc() const LLVM_READONLY { return Loc; }
   SourceLocation getEndLoc() const LLVM_READONLY { return RParen; }
 
-  ArrayTypeTrait getTrait() const { return static_cast<ArrayTypeTrait>(ATT); }
+  ArrayTypeTrait getTrait() const {
+    return static_cast<ArrayTypeTrait>(ArrayTypeTraitExprBits.ATT);
+  }
 
   QualType getQueriedType() const { return QueriedType->getType(); }
 
@@ -4599,8 +4599,8 @@ public:
 class SubstNonTypeTemplateParmExpr : public Expr {
   friend class ASTReader;
   friend class ASTStmtReader;
-      /// The location of the non-type template parameter reference.
-      SourceLocation NameLoc;
+  /// The location of the non-type template parameter reference.
+  SourceLocation NameLoc;
 
   /// The replacement expression.
   Stmt *Replacement;
@@ -4609,11 +4609,6 @@ class SubstNonTypeTemplateParmExpr : public Expr {
   /// parameter. For class NTTPs, we can't determine that based on the value
   /// category alone.
   llvm::PointerIntPair<Decl *, 1, bool> AssociatedDeclAndRef;
-
-  unsigned Index : 15;
-  unsigned PackIndex : 15;
-  LLVM_PREFERRED_TYPE(bool)
-  unsigned Final : 1;
 
   explicit SubstNonTypeTemplateParmExpr(EmptyShell Empty)
       : Expr(SubstNonTypeTemplateParmExprClass, Empty) {}
@@ -4626,8 +4621,10 @@ public:
                                bool Final)
       : Expr(SubstNonTypeTemplateParmExprClass, Ty, ValueKind, OK_Ordinary),
         Replacement(Replacement),
-        AssociatedDeclAndRef(AssociatedDecl, RefParam), Index(Index),
-        PackIndex(PackIndex.toInternalRepresentation()), Final(Final) {
+        AssociatedDeclAndRef(AssociatedDecl, RefParam) {
+    SubstNonTypeTemplateParmExprBits.Index = Index;
+    SubstNonTypeTemplateParmExprBits.PackIndex = PackIndex.toInternalRepresentation();
+    SubstNonTypeTemplateParmExprBits.Final = Final;
     assert(AssociatedDecl != nullptr);
     NameLoc = Loc;
     setDependence(computeDependence(this));
@@ -4647,15 +4644,15 @@ public:
 
   /// Returns the index of the replaced parameter in the associated declaration.
   /// This should match the result of `getParameter()->getIndex()`.
-  unsigned getIndex() const { return Index; }
+  unsigned getIndex() const { return SubstNonTypeTemplateParmExprBits.Index; }
 
   UnsignedOrNone getPackIndex() const {
-    return UnsignedOrNone::fromInternalRepresentation(PackIndex);
+    return UnsignedOrNone::fromInternalRepresentation(SubstNonTypeTemplateParmExprBits.PackIndex);
   }
 
   // This substitution is Final, which means the substitution is fully
   // sugared: it doesn't need to be resugared later.
-  bool getFinal() const { return Final; }
+  bool getFinal() const { return SubstNonTypeTemplateParmExprBits.Final; }
 
   NonTypeTemplateParmDecl *getParameter() const;
 

@@ -1714,7 +1714,7 @@ SizeOfPackExpr *SizeOfPackExpr::CreateDeserialized(ASTContext &Context,
 
 NonTypeTemplateParmDecl *SubstNonTypeTemplateParmExpr::getParameter() const {
   return cast<NonTypeTemplateParmDecl>(
-      getReplacedTemplateParameterList(getAssociatedDecl())->asArray()[Index]);
+      getReplacedTemplateParameterList(getAssociatedDecl())->asArray()[SubstNonTypeTemplateParmExprBits.Index]);
 }
 
 PackIndexingExpr *PackIndexingExpr::Create(

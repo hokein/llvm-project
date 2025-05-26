@@ -918,6 +918,29 @@ protected:
     unsigned NumParameters;
   };
 
+  class ArrayTypeTraitExprBitfields {
+    friend class ArrayTypeTraitExpr;
+    friend class ASTStmtReader;
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    /// The trait. An ArrayTypeTrait enum in MSVC compat unsigned.
+    LLVM_PREFERRED_TYPE(ArrayTypeTrait)
+    unsigned ATT : 2;
+  };
+
+  class SubstNonTypeTemplateParmExprBitfields {
+    friend class SubstNonTypeTemplateParmExpr;
+    friend class ASTStmtReader;
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    unsigned Index : 15;
+    unsigned PackIndex : 15;
+    LLVM_PREFERRED_TYPE(bool)
+    unsigned Final : 1;
+  };
+
   class CXXScalarValueInitExprBitfields {
     friend class ASTStmtReader;
     friend class CXXScalarValueInitExpr;
@@ -1184,16 +1207,6 @@ protected:
     unsigned Value : 1;
   };
 
-  class SubstNonTypeTemplateParmExprBitfields {
-    friend class ASTStmtReader;
-    friend class SubstNonTypeTemplateParmExpr;
-
-    LLVM_PREFERRED_TYPE(ExprBitfields)
-    unsigned : NumExprBits;
-
-
-  };
-
   class LambdaExprBitfields {
     friend class ASTStmtReader;
     friend class ASTStmtWriter;
@@ -1414,6 +1427,7 @@ protected:
     PackExpansionExprBitfields PackExpansionExprBits;
     PackIndexingExprBitfields PackIndexingExprBits;
     FunctionParmPackExprBitfields FunctionParmPackExprBits;
+    ArrayTypeTraitExprBitfields ArrayTypeTraitExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;

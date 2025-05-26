@@ -2156,7 +2156,7 @@ void ASTStmtReader::VisitTypeTraitExpr(TypeTraitExpr *E) {
 
 void ASTStmtReader::VisitArrayTypeTraitExpr(ArrayTypeTraitExpr *E) {
   VisitExpr(E);
-  E->ATT = (ArrayTypeTrait)Record.readInt();
+  E->ArrayTypeTraitExprBits.ATT = (ArrayTypeTrait)Record.readInt();
   E->Value = (unsigned int)Record.readInt();
   SourceRange Range = readSourceRange();
   E->Loc = Range.getBegin();
@@ -2225,9 +2225,9 @@ void ASTStmtReader::VisitSubstNonTypeTemplateParmExpr(
   VisitExpr(E);
   E->AssociatedDeclAndRef.setPointer(readDeclAs<Decl>());
   E->AssociatedDeclAndRef.setInt(CurrentUnpackingBits->getNextBit());
-  E->Index = CurrentUnpackingBits->getNextBits(/*Width=*/12);
-  E->PackIndex = Record.readUnsignedOrNone().toInternalRepresentation();
-  E->Final = CurrentUnpackingBits->getNextBit();
+  E->SubstNonTypeTemplateParmExprBits.Index = CurrentUnpackingBits->getNextBits(/*Width=*/12);
+  E->SubstNonTypeTemplateParmExprBits.PackIndex = Record.readUnsignedOrNone().toInternalRepresentation();
+  E->SubstNonTypeTemplateParmExprBits.Final = CurrentUnpackingBits->getNextBit();
   E->NameLoc = readSourceLocation();
   E->Replacement = Record.readSubExpr();
 }
