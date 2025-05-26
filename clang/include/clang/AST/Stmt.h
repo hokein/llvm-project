@@ -740,6 +740,17 @@ protected:
     unsigned NumExprs;
   };
 
+  class AtomicExprBitfields {
+    friend class ASTStmtReader;
+    friend class AtomicExpr;
+
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    unsigned Op : 10;
+    unsigned NumSubExprs;
+  };
+
   class StmtExprBitfields {
     friend class ASTStmtReader;
     friend class StmtExpr;
@@ -1423,6 +1434,7 @@ protected:
     ParenExprBitfields ParenExprBits;
     FixedPointLiteralBitfields FixedPointLiteralBits;
     ShuffleVectorExprBitfields ShuffleVectorExprBits;
+    AtomicExprBitfields AtomicExprBits;
 
     // GNU Extensions.
     StmtExprBitfields StmtExprBits;

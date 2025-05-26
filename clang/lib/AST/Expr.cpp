@@ -5076,8 +5076,10 @@ Stmt::const_child_range UnaryExprOrTypeTraitExpr::children() const {
 
 AtomicExpr::AtomicExpr(SourceLocation BLoc, ArrayRef<Expr *> args, QualType t,
                        AtomicOp op, SourceLocation RP)
-    : Expr(AtomicExprClass, t, VK_PRValue, OK_Ordinary),
-      NumSubExprs(args.size()), BuiltinLoc(BLoc), RParenLoc(RP), Op(op) {
+    : Expr(AtomicExprClass, t, VK_PRValue, OK_Ordinary), BuiltinLoc(BLoc),
+      RParenLoc(RP) {
+  AtomicExprBits.NumSubExprs = args.size();
+  AtomicExprBits.Op = op;
   assert(args.size() == getNumSubExprs(op) && "wrong number of subexpressions");
   for (unsigned i = 0; i != args.size(); i++)
     SubExprs[i] = args[i];

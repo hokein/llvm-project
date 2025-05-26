@@ -1444,9 +1444,9 @@ void ASTStmtReader::VisitPseudoObjectExpr(PseudoObjectExpr *E) {
 
 void ASTStmtReader::VisitAtomicExpr(AtomicExpr *E) {
   VisitExpr(E);
-  E->Op = AtomicExpr::AtomicOp(Record.readInt());
-  E->NumSubExprs = AtomicExpr::getNumSubExprs(E->Op);
-  for (unsigned I = 0; I != E->NumSubExprs; ++I)
+  E->AtomicExprBits.Op = AtomicExpr::AtomicOp(Record.readInt());
+  E->AtomicExprBits.NumSubExprs = AtomicExpr::getNumSubExprs(E->getOp());
+  for (unsigned I = 0; I != E->AtomicExprBits.NumSubExprs; ++I)
     E->SubExprs[I] = Record.readSubExpr();
   E->BuiltinLoc = readSourceLocation();
   E->RParenLoc = readSourceLocation();

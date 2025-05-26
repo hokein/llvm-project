@@ -6777,9 +6777,7 @@ private:
   /// not fixed, therefore is not defined in enum.
   enum { PTR, ORDER, VAL1, ORDER_FAIL, VAL2, WEAK, END_EXPR };
   Stmt *SubExprs[END_EXPR + 1];
-  unsigned NumSubExprs;
   SourceLocation BuiltinLoc, RParenLoc;
-  AtomicOp Op;
 
   friend class ASTStmtReader;
 public:
@@ -6801,33 +6799,33 @@ public:
   }
   Expr *getScope() const {
     assert(getScopeModel() && "No scope");
-    return cast<Expr>(SubExprs[NumSubExprs - 1]);
+    return cast<Expr>(SubExprs[AtomicExprBits.NumSubExprs - 1]);
   }
   Expr *getVal1() const {
-    if (Op == AO__c11_atomic_init || Op == AO__opencl_atomic_init)
+    if (AtomicExprBits.Op == AO__c11_atomic_init || AtomicExprBits.Op == AO__opencl_atomic_init)
       return cast<Expr>(SubExprs[ORDER]);
-    assert(NumSubExprs > VAL1);
+    assert(AtomicExprBits.NumSubExprs > VAL1);
     return cast<Expr>(SubExprs[VAL1]);
   }
   Expr *getOrderFail() const {
-    assert(NumSubExprs > ORDER_FAIL);
+    assert(AtomicExprBits.NumSubExprs > ORDER_FAIL);
     return cast<Expr>(SubExprs[ORDER_FAIL]);
   }
   Expr *getVal2() const {
-    if (Op == AO__atomic_exchange || Op == AO__scoped_atomic_exchange)
+    if (AtomicExprBits.Op == AO__atomic_exchange || AtomicExprBits.Op == AO__scoped_atomic_exchange)
       return cast<Expr>(SubExprs[ORDER_FAIL]);
-    assert(NumSubExprs > VAL2);
+    assert(AtomicExprBits.NumSubExprs > VAL2);
     return cast<Expr>(SubExprs[VAL2]);
   }
   Expr *getWeak() const {
-    assert(NumSubExprs > WEAK);
+    assert(AtomicExprBits.NumSubExprs > WEAK);
     return cast<Expr>(SubExprs[WEAK]);
   }
   QualType getValueType() const;
 
-  AtomicOp getOp() const { return Op; }
+  AtomicOp getOp() const { return static_cast<AtomicOp>(AtomicExprBits.Op); }
   StringRef getOpAsString() const {
-    switch (Op) {
+    switch (static_cast<AtomicOp>(AtomicExprBits.Op)) {
 #define ATOMIC_BUILTIN(ID, TYPE, ATTRS)                                        \
   case AO##ID:                                                                 \
     return #ID;
@@ -6835,7 +6833,7 @@ public:
     }
     llvm_unreachable("not an atomic operator?");
   }
-  unsigned getNumSubExprs() const { return NumSubExprs; }
+  unsigned getNumSubExprs() const { return AtomicExprBits.NumSubExprs; }
 
   Expr **getSubExprs() { return reinterpret_cast<Expr **>(SubExprs); }
   const Expr * const *getSubExprs() const {
@@ -6865,8 +6863,8 @@ public:
   }
 
   bool isHIP() const {
-    return Op >= AO__hip_atomic_compare_exchange_strong &&
-           Op <= AO__hip_atomic_store;
+    return AtomicExprBits.Op >= AO__hip_atomic_compare_exchange_strong &&
+           AtomicExprBits.Op <= AO__hip_atomic_store;
   }
 
   /// Return true if atomics operations targeting allocations in private memory
@@ -6887,10 +6885,10 @@ public:
 
   // Iterators
   child_range children() {
-    return child_range(SubExprs, SubExprs+NumSubExprs);
+    return child_range(SubExprs, SubExprs + AtomicExprBits.NumSubExprs);
   }
   const_child_range children() const {
-    return const_child_range(SubExprs, SubExprs + NumSubExprs);
+    return const_child_range(SubExprs, SubExprs + AtomicExprBits.NumSubExprs);
   }
 
   /// Get atomic scope model for the atomic op code.
