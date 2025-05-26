@@ -19,6 +19,7 @@
 #include "clang/AST/OperationKinds.h"
 #include "clang/AST/StmtIterator.h"
 #include "clang/Basic/CapturedStmt.h"
+#include "clang/Basic/ExpressionTraits.h"
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/LLVM.h"
 #include "clang/Basic/Lambda.h"
@@ -929,6 +930,21 @@ protected:
     unsigned ATT : 2;
   };
 
+  class ExpressionTraitExprBitfields {
+    friend class ExpressionTraitExpr;
+    friend class ASTStmtReader;
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    /// The trait. A ExpressionTrait enum in MSVC compatible unsigned.
+    LLVM_PREFERRED_TYPE(ExpressionTrait)
+    unsigned ET : 31;
+
+    /// The value of the type trait. Unspecified if dependent.
+    LLVM_PREFERRED_TYPE(bool)
+    unsigned Value : 1;
+  };
+
   class SubstNonTypeTemplateParmExprBitfields {
     friend class SubstNonTypeTemplateParmExpr;
     friend class ASTStmtReader;
@@ -1428,6 +1444,7 @@ protected:
     PackIndexingExprBitfields PackIndexingExprBits;
     FunctionParmPackExprBitfields FunctionParmPackExprBits;
     ArrayTypeTraitExprBitfields ArrayTypeTraitExprBits;
+    ExpressionTraitExprBitfields ExpressionTraitExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;

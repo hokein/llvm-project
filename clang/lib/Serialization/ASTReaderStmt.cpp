@@ -2167,8 +2167,8 @@ void ASTStmtReader::VisitArrayTypeTraitExpr(ArrayTypeTraitExpr *E) {
 
 void ASTStmtReader::VisitExpressionTraitExpr(ExpressionTraitExpr *E) {
   VisitExpr(E);
-  E->ET = (ExpressionTrait)Record.readInt();
-  E->Value = (bool)Record.readInt();
+  E->ExpressionTraitExprBits.ET = (ExpressionTrait)Record.readInt();
+  E->ExpressionTraitExprBits.Value = (bool)Record.readInt();
   SourceRange Range = readSourceRange();
   E->QueriedExpression = Record.readSubExpr();
   E->Loc = Range.getBegin();

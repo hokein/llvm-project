@@ -3054,14 +3054,6 @@ public:
 ///   __is_lvalue_expr(1) == false
 /// \endcode
 class ExpressionTraitExpr : public Expr {
-  /// The trait. A ExpressionTrait enum in MSVC compatible unsigned.
-  LLVM_PREFERRED_TYPE(ExpressionTrait)
-  unsigned ET : 31;
-
-  /// The value of the type trait. Unspecified if dependent.
-  LLVM_PREFERRED_TYPE(bool)
-  unsigned Value : 1;
-
   /// The location of the type trait keyword.
   SourceLocation Loc;
 
@@ -3077,24 +3069,29 @@ public:
   ExpressionTraitExpr(SourceLocation loc, ExpressionTrait et, Expr *queried,
                       bool value, SourceLocation rparen, QualType resultType)
       : Expr(ExpressionTraitExprClass, resultType, VK_PRValue, OK_Ordinary),
-        ET(et), Value(value), Loc(loc), RParen(rparen),
-        QueriedExpression(queried) {
+        Loc(loc), RParen(rparen), QueriedExpression(queried) {
+    ExpressionTraitExprBits.ET = et;
+    ExpressionTraitExprBits.Value = value;
     assert(et <= ET_Last && "invalid enum value!");
-    assert(static_cast<unsigned>(et) == ET && "ET overflow!");
+    assert(static_cast<unsigned>(et) == ExpressionTraitExprBits.ET &&
+           "ET overflow!");
     setDependence(computeDependence(this));
   }
 
   explicit ExpressionTraitExpr(EmptyShell Empty)
-      : Expr(ExpressionTraitExprClass, Empty), ET(0), Value(false) {}
+      : Expr(ExpressionTraitExprClass, Empty) {
+    ExpressionTraitExprBits.ET = 0;
+    ExpressionTraitExprBits.Value = false;
+  }
 
   SourceLocation getBeginLoc() const LLVM_READONLY { return Loc; }
   SourceLocation getEndLoc() const LLVM_READONLY { return RParen; }
 
-  ExpressionTrait getTrait() const { return static_cast<ExpressionTrait>(ET); }
+  ExpressionTrait getTrait() const { return static_cast<ExpressionTrait>(ExpressionTraitExprBits.ET); }
 
   Expr *getQueriedExpression() const { return QueriedExpression; }
 
-  bool getValue() const { return Value; }
+  bool getValue() const { return ExpressionTraitExprBits.Value; }
 
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == ExpressionTraitExprClass;
