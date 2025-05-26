@@ -1768,8 +1768,8 @@ void ASTStmtReader::VisitCXXInheritedCtorInitExpr(CXXInheritedCtorInitExpr *E) {
   VisitExpr(E);
   E->Constructor = readDeclAs<CXXConstructorDecl>();
   E->Loc = readSourceLocation();
-  E->ConstructsVirtualBase = Record.readInt();
-  E->InheritedFromVirtualBase = Record.readInt();
+  E->CXXInheritedCtorInitExprBits.ConstructsVirtualBase = Record.readInt();
+  E->CXXInheritedCtorInitExprBits.InheritedFromVirtualBase = Record.readInt();
 }
 
 void ASTStmtReader::VisitCXXTemporaryObjectExpr(CXXTemporaryObjectExpr *E) {

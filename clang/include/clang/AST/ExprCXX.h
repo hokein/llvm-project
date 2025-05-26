@@ -1753,15 +1753,6 @@ private:
   /// The location of the using declaration.
   SourceLocation Loc;
 
-  /// Whether this is the construction of a virtual base.
-  LLVM_PREFERRED_TYPE(bool)
-  unsigned ConstructsVirtualBase : 1;
-
-  /// Whether the constructor is inherited from a virtual base class of the
-  /// class that we construct.
-  LLVM_PREFERRED_TYPE(bool)
-  unsigned InheritedFromVirtualBase : 1;
-
 public:
   friend class ASTStmtReader;
 
@@ -1770,26 +1761,28 @@ public:
                            CXXConstructorDecl *Ctor, bool ConstructsVirtualBase,
                            bool InheritedFromVirtualBase)
       : Expr(CXXInheritedCtorInitExprClass, T, VK_PRValue, OK_Ordinary),
-        Constructor(Ctor), Loc(Loc),
-        ConstructsVirtualBase(ConstructsVirtualBase),
-        InheritedFromVirtualBase(InheritedFromVirtualBase) {
+        Constructor(Ctor), Loc(Loc) {
+    CXXInheritedCtorInitExprBits.ConstructsVirtualBase = ConstructsVirtualBase;
+    CXXInheritedCtorInitExprBits.InheritedFromVirtualBase = InheritedFromVirtualBase;
     assert(!T->isDependentType());
     setDependence(ExprDependence::None);
   }
 
   /// Construct an empty C++ inheriting construction expression.
   explicit CXXInheritedCtorInitExpr(EmptyShell Empty)
-      : Expr(CXXInheritedCtorInitExprClass, Empty),
-        ConstructsVirtualBase(false), InheritedFromVirtualBase(false) {}
+      : Expr(CXXInheritedCtorInitExprClass, Empty) {
+                  CXXInheritedCtorInitExprBits.ConstructsVirtualBase = false;
+          CXXInheritedCtorInitExprBits.InheritedFromVirtualBase = false;
+        }
 
   /// Get the constructor that this expression will call.
   CXXConstructorDecl *getConstructor() const { return Constructor; }
 
   /// Determine whether this constructor is actually constructing
   /// a base class (rather than a complete object).
-  bool constructsVBase() const { return ConstructsVirtualBase; }
+  bool constructsVBase() const { return CXXInheritedCtorInitExprBits.ConstructsVirtualBase; }
   CXXConstructionKind getConstructionKind() const {
-    return ConstructsVirtualBase ? CXXConstructionKind::VirtualBase
+    return CXXInheritedCtorInitExprBits.ConstructsVirtualBase ? CXXConstructionKind::VirtualBase
                                  : CXXConstructionKind::NonVirtualBase;
   }
 
@@ -1797,7 +1790,7 @@ public:
   /// virtual base of the object we construct. If so, we are not responsible
   /// for calling the inherited constructor (the complete object constructor
   /// does that), and so we don't need to pass any arguments.
-  bool inheritedFromVBase() const { return InheritedFromVirtualBase; }
+  bool inheritedFromVBase() const { return CXXInheritedCtorInitExprBits.InheritedFromVirtualBase; }
 
   SourceLocation getLocation() const LLVM_READONLY { return Loc; }
   SourceLocation getBeginLoc() const LLVM_READONLY { return Loc; }

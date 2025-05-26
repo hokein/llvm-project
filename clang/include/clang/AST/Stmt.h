@@ -945,6 +945,22 @@ protected:
     unsigned Value : 1;
   };
 
+  class CXXInheritedCtorInitExprBitfields {
+    friend class CXXInheritedCtorInitExpr;
+    friend class ASTStmtReader;
+    LLVM_PREFERRED_TYPE(ExprBitfields)
+    unsigned : NumExprBits;
+
+    /// Whether this is the construction of a virtual base.
+    LLVM_PREFERRED_TYPE(bool)
+    unsigned ConstructsVirtualBase : 1;
+
+    /// Whether the constructor is inherited from a virtual base class of the
+    /// class that we construct.
+    LLVM_PREFERRED_TYPE(bool)
+    unsigned InheritedFromVirtualBase : 1;
+  };
+
   class SubstNonTypeTemplateParmExprBitfields {
     friend class SubstNonTypeTemplateParmExpr;
     friend class ASTStmtReader;
@@ -1445,6 +1461,7 @@ protected:
     FunctionParmPackExprBitfields FunctionParmPackExprBits;
     ArrayTypeTraitExprBitfields ArrayTypeTraitExprBits;
     ExpressionTraitExprBitfields ExpressionTraitExprBits;
+    CXXInheritedCtorInitExprBitfields CXXInheritedCtorInitExprBits;
 
     // C++ Coroutines expressions
     CoawaitExprBitfields CoawaitBits;
