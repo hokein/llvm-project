@@ -4725,13 +4725,13 @@ class ChooseExpr : public Expr {
   enum { COND, LHS, RHS, END_EXPR };
   Stmt* SubExprs[END_EXPR]; // Left/Middle/Right hand sides.
   SourceLocation BuiltinLoc, RParenLoc;
-  bool CondIsTrue;
+  // bool CondIsTrue;
 public:
   ChooseExpr(SourceLocation BLoc, Expr *cond, Expr *lhs, Expr *rhs, QualType t,
              ExprValueKind VK, ExprObjectKind OK, SourceLocation RP,
              bool condIsTrue)
-      : Expr(ChooseExprClass, t, VK, OK), BuiltinLoc(BLoc), RParenLoc(RP),
-        CondIsTrue(condIsTrue) {
+      : Expr(ChooseExprClass, t, VK, OK), BuiltinLoc(BLoc), RParenLoc(RP) {
+    ChooseExprBits.CondIsTrue = condIsTrue;
     SubExprs[COND] = cond;
     SubExprs[LHS] = lhs;
     SubExprs[RHS] = rhs;
@@ -4747,9 +4747,9 @@ public:
   bool isConditionTrue() const {
     assert(!isConditionDependent() &&
            "Dependent condition isn't true or false");
-    return CondIsTrue;
+    return ChooseExprBits.CondIsTrue;
   }
-  void setIsConditionTrue(bool isTrue) { CondIsTrue = isTrue; }
+  void setIsConditionTrue(bool isTrue) { ChooseExprBits.CondIsTrue = isTrue; }
 
   bool isConditionDependent() const {
     return getCond()->isTypeDependent() || getCond()->isValueDependent();
