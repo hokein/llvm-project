@@ -1177,15 +1177,22 @@ public:
 class OpaqueValueExpr : public Expr {
   friend class ASTStmtReader;
 
-  SourceLocation Loc;
-  Expr *SourceExpr;
+  union {
+    SourceLocation Loc;
+    Expr *SourceExpr;
+  };
 
 public:
   OpaqueValueExpr(SourceLocation Loc, QualType T, ExprValueKind VK,
                   ExprObjectKind OK = OK_Ordinary, Expr *SourceExpr = nullptr)
-      : Expr(OpaqueValueExprClass, T, VK, OK), SourceExpr(SourceExpr) {
+      : Expr(OpaqueValueExprClass, T, VK, OK) {
     setIsUnique(false);
     this->Loc = Loc;
+    this->OpaqueValueExprBits.hasSourceExpr = false;
+    if (SourceExpr) {
+      this->SourceExpr = SourceExpr;
+      this->OpaqueValueExprBits.hasSourceExpr = true;
+    }
     setDependence(computeDependence(this));
   }
 
@@ -1198,16 +1205,16 @@ public:
     : Expr(OpaqueValueExprClass, Empty) {}
 
   /// Retrieve the location of this expression.
-  SourceLocation getLocation() const { return Loc; }
+  SourceLocation getLocation() const { return getExprLoc(); }
 
   SourceLocation getBeginLoc() const LLVM_READONLY {
-    return SourceExpr ? SourceExpr->getBeginLoc() : getLocation();
+    return OpaqueValueExprBits.hasSourceExpr ? SourceExpr->getBeginLoc() : getLocation();
   }
   SourceLocation getEndLoc() const LLVM_READONLY {
-    return SourceExpr ? SourceExpr->getEndLoc() : getLocation();
+    return OpaqueValueExprBits.hasSourceExpr ? SourceExpr->getEndLoc() : getLocation();
   }
   SourceLocation getExprLoc() const LLVM_READONLY {
-    return SourceExpr ? SourceExpr->getExprLoc() : getLocation();
+    return OpaqueValueExprBits.hasSourceExpr ? SourceExpr->getExprLoc() : Loc;
   }
 
   child_range children() {
@@ -1226,7 +1233,7 @@ public:
   /// The source expression is typically set when building the
   /// expression which binds the opaque value expression in the first
   /// place.
-  Expr *getSourceExpr() const { return SourceExpr; }
+  Expr *getSourceExpr() const { return OpaqueValueExprBits.hasSourceExpr ? SourceExpr : nullptr;}
 
   void setIsUnique(bool V) {
     assert((!V || SourceExpr) &&

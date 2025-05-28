@@ -1386,7 +1386,9 @@ protected:
     /// bit is set to true.
     LLVM_PREFERRED_TYPE(bool)
     unsigned IsUnique : 1;
-
+    
+    LLVM_PREFERRED_TYPE(bool)
+    unsigned hasSourceExpr : 1;
   };
 
   class ConvertVectorExprBitfields {
