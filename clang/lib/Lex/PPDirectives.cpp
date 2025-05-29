@@ -519,7 +519,7 @@ void Preprocessor::SkipExcludedConditionalBlock(SourceLocation HashTokenLoc,
          "calling SkipExcludedConditionalBlock recursively");
   llvm::SaveAndRestore SARSkipping(SkippingExcludedConditionalBlock, true);
 
-  ++NumSkipped;
+  // ++NumSkipped;
   assert(!CurTokenLexer && "Conditional PP block cannot appear in a macro!");
   assert(CurPPLexer && "Conditional PP block must be in a file!");
   assert(CurLexer && "Conditional PP block but no current lexer set!");
@@ -3177,7 +3177,7 @@ static bool isObjCProtectedMacro(const IdentifierInfo *II) {
 /// line then lets the caller lex the next real token.
 void Preprocessor::HandleDefineDirective(
     Token &DefineTok, const bool ImmediatelyAfterHeaderGuard) {
-  ++NumDefined;
+  // ++NumDefined;
 
   Token MacroNameTok;
   bool MacroShadowsKeyword;
@@ -3325,7 +3325,7 @@ void Preprocessor::HandleDefineDirective(
 /// HandleUndefDirective - Implements \#undef.
 ///
 void Preprocessor::HandleUndefDirective() {
-  ++NumUndefined;
+  // ++NumUndefined;
 
   Token MacroNameTok;
   ReadMacroName(MacroNameTok, MU_Undef);
@@ -3383,7 +3383,7 @@ void Preprocessor::HandleIfdefDirective(Token &Result,
                                         const Token &HashToken,
                                         bool isIfndef,
                                         bool ReadAnyTokensBeforeDirective) {
-  ++NumIf;
+  // ++NumIf;
   Token DirectiveTok = Result;
 
   Token MacroNameTok;
@@ -3460,7 +3460,7 @@ void Preprocessor::HandleIfdefDirective(Token &Result,
 void Preprocessor::HandleIfDirective(Token &IfToken,
                                      const Token &HashToken,
                                      bool ReadAnyTokensBeforeDirective) {
-  ++NumIf;
+  // ++NumIf;
 
   // Parse and evaluate the conditional expression.
   IdentifierInfo *IfNDefMacro = nullptr;
@@ -3510,7 +3510,7 @@ void Preprocessor::HandleIfDirective(Token &IfToken,
 /// HandleEndifDirective - Implements the \#endif directive.
 ///
 void Preprocessor::HandleEndifDirective(Token &EndifToken) {
-  ++NumEndif;
+  // ++NumEndif;
 
   // Check that this is the whole directive.
   CheckEndOfDirective("endif");
@@ -3536,7 +3536,7 @@ void Preprocessor::HandleEndifDirective(Token &EndifToken) {
 /// HandleElseDirective - Implements the \#else directive.
 ///
 void Preprocessor::HandleElseDirective(Token &Result, const Token &HashToken) {
-  ++NumElse;
+  // ++NumElse;
 
   // #else directive in a non-skipping conditional... start skipping.
   CheckEndOfDirective("else");
@@ -3581,7 +3581,7 @@ void Preprocessor::HandleElifFamilyDirective(Token &ElifToken,
   PPElifDiag DirKind = Kind == tok::pp_elif      ? PED_Elif
                        : Kind == tok::pp_elifdef ? PED_Elifdef
                                                  : PED_Elifndef;
-  ++NumElse;
+  // ++NumElse;
 
   // Warn if using `#elifdef` & `#elifndef` in not C23 & C++23 mode.
   switch (DirKind) {

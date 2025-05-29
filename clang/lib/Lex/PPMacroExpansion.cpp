@@ -504,9 +504,9 @@ bool Preprocessor::HandleMacroExpandedIdentifier(Token &Identifier,
     // If there was an error parsing the arguments, bail out.
     if (!Args) return true;
 
-    ++NumFnMacroExpanded;
+    // ++NumFnMacroExpanded;
   } else {
-    ++NumMacroExpanded;
+    // ++NumMacroExpanded;
   }
 
   // Notice that this macro has been used.
@@ -562,7 +562,7 @@ bool Preprocessor::HandleMacroExpandedIdentifier(Token &Identifier,
     // a macro context.
     Identifier.setFlag(Token::LeadingEmptyMacro);
     PropagateLineStartLeadingSpaceInfo(Identifier);
-    ++NumFastMacroExpanded;
+    // ++NumFastMacroExpanded;
     return false;
   } else if (MI->getNumTokens() == 1 &&
              isTrivialSingleTokenExpansion(MI, Identifier.getIdentifierInfo(),
@@ -608,7 +608,7 @@ bool Preprocessor::HandleMacroExpandedIdentifier(Token &Identifier,
 
     // Since this is not an identifier token, it can't be macro expanded, so
     // we're done.
-    ++NumFastMacroExpanded;
+    // ++NumFastMacroExpanded;
     return true;
   }
 
@@ -1639,7 +1639,7 @@ void Preprocessor::ExpandBuiltinMacro(Token &Tok) {
   else if (II == Ident__pragma) // in non-MS mode this is null
     return HandleMicrosoft__pragma(Tok);
 
-  ++NumBuiltinMacroExpanded;
+  // ++NumBuiltinMacroExpanded;
 
   SmallString<128> TmpBuffer;
   llvm::raw_svector_ostream OS(TmpBuffer);

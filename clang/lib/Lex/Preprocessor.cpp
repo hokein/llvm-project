@@ -215,7 +215,7 @@ void Preprocessor::Initialize(const TargetInfo &Target,
 }
 
 void Preprocessor::InitializeForModelFile() {
-  NumEnteredSourceFiles = 0;
+  // NumEnteredSourceFiles = 0;
 
   // Reset pragmas
   PragmaHandlersBackup = std::move(PragmaHandlers);
@@ -227,7 +227,7 @@ void Preprocessor::InitializeForModelFile() {
 }
 
 void Preprocessor::FinalizeForModelFile() {
-  NumEnteredSourceFiles = 1;
+  // NumEnteredSourceFiles = 1;
 
   PragmaHandlers = std::move(PragmaHandlersBackup);
 }
@@ -274,23 +274,23 @@ void Preprocessor::DumpMacro(const MacroInfo &MI) const {
 void Preprocessor::PrintStats() {
   llvm::errs() << "\n*** Preprocessor Stats:\n";
   llvm::errs() << NumDirectives << " directives found:\n";
-  llvm::errs() << "  " << NumDefined << " #define.\n";
-  llvm::errs() << "  " << NumUndefined << " #undef.\n";
-  llvm::errs() << "  #include/#include_next/#import:\n";
-  llvm::errs() << "    " << NumEnteredSourceFiles << " source files entered.\n";
-  llvm::errs() << "    " << MaxIncludeStackDepth << " max include stack depth\n";
-  llvm::errs() << "  " << NumIf << " #if/#ifndef/#ifdef.\n";
-  llvm::errs() << "  " << NumElse << " #else/#elif/#elifdef/#elifndef.\n";
-  llvm::errs() << "  " << NumEndif << " #endif.\n";
-  llvm::errs() << "  " << NumPragma << " #pragma.\n";
-  llvm::errs() << NumSkipped << " #if/#ifndef#ifdef regions skipped\n";
+  // llvm::errs() << "  " << NumDefined << " #define.\n";
+  // llvm::errs() << "  " << NumUndefined << " #undef.\n";
+  // llvm::errs() << "  #include/#include_next/#import:\n";
+  // llvm::errs() << "    " << NumEnteredSourceFiles << " source files entered.\n";
+  // llvm::errs() << "    " << MaxIncludeStackDepth << " max include stack depth\n";
+  // llvm::errs() << "  " << NumIf << " #if/#ifndef/#ifdef.\n";
+  // llvm::errs() << "  " << NumElse << " #else/#elif/#elifdef/#elifndef.\n";
+  // llvm::errs() << "  " << NumEndif << " #endif.\n";
+  // llvm::errs() << "  " << NumPragma << " #pragma.\n";
+  // llvm::errs() << NumSkipped << " #if/#ifndef#ifdef regions skipped\n";
 
-  llvm::errs() << NumMacroExpanded << "/" << NumFnMacroExpanded << "/"
-             << NumBuiltinMacroExpanded << " obj/fn/builtin macros expanded, "
-             << NumFastMacroExpanded << " on the fast path.\n";
-  llvm::errs() << (NumFastTokenPaste+NumTokenPaste)
-             << " token paste (##) operations performed, "
-             << NumFastTokenPaste << " on the fast path.\n";
+  // llvm::errs() << NumMacroExpanded << "/" << NumFnMacroExpanded << "/"
+  //            << NumBuiltinMacroExpanded << " obj/fn/builtin macros expanded, "
+  //            << NumFastMacroExpanded << " on the fast path.\n";
+  // llvm::errs() << (NumFastTokenPaste+NumTokenPaste)
+  //            << " token paste (##) operations performed, "
+  //            << NumFastTokenPaste << " on the fast path.\n";
 
   llvm::errs() << "\nPreprocessor Memory: " << getTotalMemory() << "B total";
 
@@ -545,7 +545,7 @@ void Preprocessor::EnterMainSourceFile() {
   // We do not allow the preprocessor to reenter the main file.  Doing so will
   // cause FileID's to accumulate information from both runs (e.g. #line
   // information) and predefined macros aren't guaranteed to be set properly.
-  assert(NumEnteredSourceFiles == 0 && "Cannot reenter the main file!");
+  // assert(NumEnteredSourceFiles == 0 && "Cannot reenter the main file!");
   FileID MainFileID = SourceMgr.getMainFileID();
 
   // If MainFileID is loaded it means we loaded an AST file, no need to enter

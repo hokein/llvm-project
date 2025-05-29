@@ -69,10 +69,10 @@ bool Preprocessor::EnterSourceFile(FileID FID, ConstSearchDirIterator CurDir,
                                    SourceLocation Loc,
                                    bool IsFirstIncludeOfFile) {
   assert(!CurTokenLexer && "Cannot #include a file inside a macro!");
-  ++NumEnteredSourceFiles;
+  // ++NumEnteredSourceFiles;
 
-  if (MaxIncludeStackDepth < IncludeMacroStack.size())
-    MaxIncludeStackDepth = IncludeMacroStack.size();
+  // if (MaxIncludeStackDepth < IncludeMacroStack.size())
+  //   MaxIncludeStackDepth = IncludeMacroStack.size();
 
   // Get the MemoryBuffer for this FID, if it fails, we fail.
   std::optional<llvm::MemoryBufferRef> InputFile =

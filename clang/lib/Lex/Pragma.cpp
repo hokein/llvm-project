@@ -167,7 +167,7 @@ void Preprocessor::HandlePragmaDirective(PragmaIntroducer Introducer) {
   if (!PragmasEnabled)
     return;
 
-  ++NumPragma;
+  // ++NumPragma;
 
   // Invoke the first level of pragma handlers which reads the namespace id.
   Token Tok;
