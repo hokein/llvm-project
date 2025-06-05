@@ -996,10 +996,11 @@ static void updateConsecutiveMacroArgTokens(SourceManager &SM,
     // The maximum distance between two consecutive tokens in a partition.
     // This is an important trick to avoid using too much SourceLocation address
     // space!
-    static constexpr SourceLocation::IntTy MaxDistance = 50;
-    auto Distance = Loc.getRawEncoding() - Last.getRawEncoding();
-    Last = Loc;
-    return Distance <= MaxDistance;
+    return true;
+    // static constexpr SourceLocation::IntTy MaxDistance = 50;
+    // auto Distance = Loc.getRawEncoding() - Last.getRawEncoding();
+    // Last = Loc;
+    // return Distance <= MaxDistance;
   };
 
   // Partition the tokens by their FileID.
