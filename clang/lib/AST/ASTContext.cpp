@@ -248,7 +248,7 @@ RawComment *ASTContext::getRawCommentForDeclNoCacheImpl(
 
   // Decompose the location for the declaration and find the beginning of the
   // file buffer.
-  const std::pair<FileID, unsigned> DeclLocDecomp =
+  auto DeclLocDecomp =
       SourceMgr.getDecomposedLoc(RepresentativeLocForDecl);
 
   // Slow path.

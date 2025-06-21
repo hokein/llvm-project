@@ -185,7 +185,8 @@ ClangAsmParserCallback::translateLocation(const llvm::SourceMgr &LSM,
   if (TokIndex < AsmToks.size()) {
     const Token &Tok = AsmToks[TokIndex];
     Loc = Tok.getLocation();
-    Loc = Loc.getLocWithOffset(Offset - TokOffset);
+    Loc = Loc.getLocWithOffset(static_cast<SourceLocation::UIntTy>(Offset) -
+                               TokOffset);
   }
   return Loc;
 }
@@ -399,7 +400,7 @@ StmtResult Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
     ++NumTokensRead;
   } else {
     // Single-line inline asm; compute which line it is on.
-    std::pair<FileID, unsigned> ExpAsmLoc =
+    auto ExpAsmLoc =
         SrcMgr.getDecomposedExpansionLoc(EndLoc);
     FID = ExpAsmLoc.first;
     LineNo = SrcMgr.getLineNumber(FID, ExpAsmLoc.second);
@@ -427,7 +428,7 @@ StmtResult Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
       InAsmComment = true;
       if (!SingleLineMode) {
         // Compute which line the comment is on.
-        std::pair<FileID, unsigned> ExpSemiLoc =
+        auto ExpSemiLoc =
             SrcMgr.getDecomposedExpansionLoc(TokLoc);
         FID = ExpSemiLoc.first;
         LineNo = SrcMgr.getLineNumber(FID, ExpSemiLoc.second);
@@ -435,7 +436,7 @@ StmtResult Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
     } else if (SingleLineMode || InAsmComment) {
       // If end-of-line is significant, check whether this token is on a
       // new line.
-      std::pair<FileID, unsigned> ExpLoc =
+      auto ExpLoc =
           SrcMgr.getDecomposedExpansionLoc(TokLoc);
       if (ExpLoc.first != FID ||
           SrcMgr.getLineNumber(ExpLoc.first, ExpLoc.second) != LineNo) {

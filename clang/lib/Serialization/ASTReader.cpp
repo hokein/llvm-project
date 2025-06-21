@@ -6975,7 +6975,7 @@ void ASTReader::ReadPragmaDiagnosticMappings(DiagnosticsEngine &Diag) {
       auto &F = Diag.DiagStatesByLoc.Files[FID];
       F.StateTransitions.reserve(F.StateTransitions.size() + Transitions);
       for (unsigned I = 0; I != Transitions; ++I) {
-        unsigned Offset = Record[Idx++];
+        SourceLocation::UIntTy Offset = Record[Idx++];
         auto *State = ReadDiagState(*FirstState, false);
         F.StateTransitions.push_back({State, Offset});
       }
@@ -10190,7 +10190,7 @@ void ASTReader::ReadComments() {
     for (RawComment *C : Comments) {
       SourceLocation CommentLoc = C->getBeginLoc();
       if (CommentLoc.isValid()) {
-        std::pair<FileID, unsigned> Loc =
+        auto Loc =
             SourceMgr.getDecomposedLoc(CommentLoc);
         if (Loc.first.isValid())
           Context.Comments.OrderedComments[Loc.first].emplace(Loc.second, C);

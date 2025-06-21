@@ -276,6 +276,6 @@ StringRef FullSourceLoc::getBufferData(bool *Invalid) const {
   return SrcMgr->getBufferData(SrcMgr->getFileID(*this), Invalid);
 }
 
-std::pair<FileID, unsigned> FullSourceLoc::getDecomposedLoc() const {
+std::pair<FileID, SourceLocation::UIntTy> FullSourceLoc::getDecomposedLoc() const {
   return SrcMgr->getDecomposedLoc(*this);
 }

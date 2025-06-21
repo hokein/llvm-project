@@ -100,6 +100,7 @@ private:
   uint64_t ID = 0;
 
   enum : UIntTy { MacroIDBit = 1ULL << (8 * sizeof(UIntTy) - 1) };
+    // enum : UIntTy { MacroIDBit = 1ULL << 40 };
 
 public:
   bool isFileID() const  { return (ID & MacroIDBit) == 0; }
@@ -424,7 +425,7 @@ public:
   ///
   /// The first element is the FileID, the second is the offset from the
   /// start of the buffer of the location.
-  std::pair<FileID, unsigned> getDecomposedLoc() const;
+  std::pair<FileID, SourceLocation::UIntTy> getDecomposedLoc() const;
 
   bool isInSystemHeader() const;
 
