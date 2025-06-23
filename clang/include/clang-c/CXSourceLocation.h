@@ -43,7 +43,7 @@ LLVM_CLANG_C_EXTERN_C_BEGIN
  */
 typedef struct {
   const void *ptr_data[2];
-  unsigned long long int_data;
+  unsigned int_data;
 } CXSourceLocation;
 
 /**
@@ -54,8 +54,8 @@ typedef struct {
  */
 typedef struct {
   const void *ptr_data[2];
-  unsigned long begin_int_data;
-  unsigned long end_int_data;
+  unsigned begin_int_data;
+  unsigned end_int_data;
 } CXSourceRange;
 
 /**

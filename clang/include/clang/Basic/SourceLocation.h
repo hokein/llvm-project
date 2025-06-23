@@ -159,6 +159,23 @@ public:
     return X;
   }
 
+  static SourceLocation getFromRawEncoding32(const SourceManager &SM,
+                                             uint32_t Encoding32);
+
+  bool getRawEncoding32(uint32_t &Result) const {
+    // A mask that isolates this check to the required range (31-62) of bits (starting from 0).
+    static constexpr uint64_t RangeMask = 0x7FFFFFFF80000000;
+    // Check if the 64-bit ID can be safely compressed.
+    // The truncation is only possible if bits 31 through 62 of the ID are all identical:
+    //   all 0s for the local offset, or all 1s for loaded offset
+    if ((ID ^ (ID << 1)) & RangeMask)
+      return false; // won't fit
+    uint32_t TruncatedValue = ID & 0x7FFFFFFF;
+    // Set the top IsMacro bit.
+    Result = TruncatedValue | ((ID & 0x8000000000000000) >> 32);
+    return true;
+  }
+
   /// When a SourceLocation itself cannot be used, this returns
   /// an (opaque) pointer encoding for it.
   ///

@@ -179,20 +179,20 @@ SourceLocationEncoding::encode(SourceLocation Loc, UIntTy BaseOffset,
 
   // 16 bits should be sufficient to store the module file index.
   assert(BaseModuleFileIndex < (1 << 16));
-  Encoded |= (RawLocEncoding)BaseModuleFileIndex << 32;
+  Encoded |= (RawLocEncoding)BaseModuleFileIndex << 48;
   return Encoded;
 }
 inline std::pair<SourceLocation, unsigned>
 SourceLocationEncoding::decode(RawLocEncoding Encoded,
                                SourceLocationSequence *Seq) {
-  unsigned ModuleFileIndex = Encoded >> 32;
+  unsigned ModuleFileIndex = Encoded >> 48;
 
   if (!ModuleFileIndex)
     return {Seq ? Seq->decode(Encoded)
                 : SourceLocation::getFromRawEncoding(decodeRaw(Encoded)),
             ModuleFileIndex};
 
-  Encoded &= llvm::maskTrailingOnes<RawLocEncoding>(32);
+  Encoded &= llvm::maskTrailingOnes<RawLocEncoding>(48);
   SourceLocation Loc = SourceLocation::getFromRawEncoding(decodeRaw(Encoded));
 
   return {Loc, ModuleFileIndex};
