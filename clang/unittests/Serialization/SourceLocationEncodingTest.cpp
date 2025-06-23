@@ -32,7 +32,7 @@ void roundTrip(SourceLocation::UIntTy Loc,
   SourceLocation::UIntTy DecodedEncoded =
       SourceLocationEncoding::decode(ActualEncoded).first.getRawEncoding();
   ASSERT_EQ(DecodedEncoded, Loc) << "Decoding " << ActualEncoded;
-}
+} 
 
 // As above, but use sequence encoding for a series of locations.
 void roundTrip(std::vector<SourceLocation::UIntTy> Locs,
@@ -63,7 +63,7 @@ void roundTrip(std::vector<SourceLocation::UIntTy> Locs,
 
 constexpr SourceLocation::UIntTy MacroBit =
     1ull << (sizeof(SourceLocation::UIntTy) * CHAR_BIT - 1);
-constexpr SourceLocation::UIntTy Big = MacroBit >> 1;
+constexpr SourceLocation::UIntTy Big = 1ull << 43;
 constexpr SourceLocation::UIntTy Biggest = -1;
 
 TEST(SourceLocationEncoding, Individual) {
