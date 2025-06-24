@@ -276,10 +276,8 @@ bool CursorVisitor::visitFileRegion() {
   ASTUnit *Unit = cxtu::getASTUnit(TU);
   SourceManager &SM = Unit->getSourceManager();
 
-  std::pair<FileID, unsigned> Begin = SM.getDecomposedLoc(
-                                  SM.getFileLoc(RegionOfInterest.getBegin())),
-                              End = SM.getDecomposedLoc(
-                                  SM.getFileLoc(RegionOfInterest.getEnd()));
+  auto Begin = SM.getDecomposedLoc(SM.getFileLoc(RegionOfInterest.getBegin())),
+       End = SM.getDecomposedLoc(SM.getFileLoc(RegionOfInterest.getEnd()));
 
   if (End.first != Begin.first) {
     // If the end does not reside in the same file, try to recover by
@@ -7769,7 +7767,7 @@ CXToken *clang_getToken(CXTranslationUnit TU, CXSourceLocation Location) {
   if (Begin.isInvalid())
     return nullptr;
   SourceManager &SM = CXXUnit->getSourceManager();
-  std::pair<FileID, unsigned> DecomposedEnd = SM.getDecomposedLoc(Begin);
+  auto DecomposedEnd = SM.getDecomposedLoc(Begin);
   DecomposedEnd.second +=
       Lexer::MeasureTokenLength(Begin, SM, CXXUnit->getLangOpts());
 
