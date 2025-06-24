@@ -96,7 +96,7 @@ class SourceLocation {
 public:
   using UIntTy = uint64_t;
   using IntTy = int64_t;
-  static constexpr unsigned Bits = 64;
+  static constexpr unsigned Bits = 48;
 
 private:
   uint64_t ID : Bits;
