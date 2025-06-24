@@ -96,10 +96,10 @@ class SourceLocation {
 public:
   using UIntTy = uint64_t;
   using IntTy = int64_t;
-  static constexpr unsigned Bits = 48;
+  static constexpr unsigned Bits = 40;
 
 private:
-  uint64_t ID : Bits;
+  uint64_t ID = 0;
 
   enum : UIntTy { MacroIDBit = 1ULL << (Bits - 1) };
 
@@ -134,7 +134,6 @@ private:
   }
 
 public:
-  SourceLocation() : ID(0) {}
   /// Return a source location with the specified offset from this
   /// SourceLocation.
   SourceLocation getLocWithOffset(IntTy Offset) const {
