@@ -2909,7 +2909,7 @@ class CallExpr : public Expr {
   // A bit in CallExprBitfields indicates if source locations are present.
 
 protected:
-  static constexpr unsigned OffsetToTrailingObjects = 32;
+  static constexpr unsigned OffsetToTrailingObjects = 40;
   template <typename T>
   static constexpr unsigned
   sizeToAllocateForCallExprSubclass(unsigned SizeOfTrailingObjects) {
