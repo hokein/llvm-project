@@ -49,10 +49,12 @@ class SourceLocationEncoding {
   constexpr static unsigned UIntBits = CHAR_BIT * sizeof(UIntTy);
 
   static UIntTy encodeRaw(UIntTy Raw) {
-    return (Raw << 1) | (Raw >> (UIntBits - 1));
+    return ((Raw & llvm::maskTrailingOnes<uint64_t>(SourceLocation::Bits - 1))
+            << 1) |
+           (Raw >> (SourceLocation::Bits - 1));
   }
   static UIntTy decodeRaw(UIntTy Raw) {
-    return (Raw >> 1) | (Raw << (UIntBits - 1));
+    return (Raw >> 1) | ((Raw & 1) << (SourceLocation::Bits - 1));
   }
   friend SourceLocationSequence;
 

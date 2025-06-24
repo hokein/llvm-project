@@ -17,6 +17,7 @@
 #include "clang/Basic/FileEntry.h"
 #include "clang/Basic/LLVM.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/MathExtras.h"
 #include <cassert>
 #include <cstdint>
 #include <string>
@@ -95,12 +96,12 @@ class SourceLocation {
 public:
   using UIntTy = uint64_t;
   using IntTy = int64_t;
+  static constexpr unsigned Bits = 40;
 
 private:
-  uint64_t ID = 0;
+  uint64_t ID : Bits;
 
-  enum : UIntTy { MacroIDBit = 1ULL << (8 * sizeof(UIntTy) - 1) };
-    // enum : UIntTy { MacroIDBit = 1ULL << 40 };
+  enum : UIntTy { MacroIDBit = 1ULL << (Bits - 1) };
 
 public:
   bool isFileID() const  { return (ID & MacroIDBit) == 0; }
@@ -133,6 +134,7 @@ private:
   }
 
 public:
+  SourceLocation() : ID(0) {}
   /// Return a source location with the specified offset from this
   /// SourceLocation.
   SourceLocation getLocWithOffset(IntTy Offset) const {
@@ -163,16 +165,17 @@ public:
                                              uint32_t Encoding32);
 
   bool getRawEncoding32(uint32_t &Result) const {
-    // A mask that isolates this check to the required range (31-62) of bits (starting from 0).
-    static constexpr uint64_t RangeMask = 0x7FFFFFFF80000000;
-    // Check if the 64-bit ID can be safely compressed.
-    // The truncation is only possible if bits 31 through 62 of the ID are all identical:
+    // A mask that isolates this check to the required range higher of bits.
+    static constexpr uint64_t RangeMask = llvm::maskTrailingOnes<uint64_t>(Bits - 32) << 31;
+
+    // Check if the ID can be safely compressed to a 32-bit integer.
+    // The truncation is only possible if all higher bits of the ID are all identical:
     //   all 0s for the local offset, or all 1s for loaded offset
     if ((ID ^ (ID << 1)) & RangeMask)
       return false; // won't fit
-    uint32_t TruncatedValue = ID & 0x7FFFFFFF;
-    // Set the top IsMacro bit.
-    Result = TruncatedValue | ((ID & 0x8000000000000000) >> 32);
+    uint32_t Lower31Bits = ID & llvm::maskTrailingOnes<uint32_t>(31);
+    // Restore the top macro bit.
+    Result = Lower31Bits | ((ID & MacroIDBit) >> (Bits - 32));
     return true;
   }
 
