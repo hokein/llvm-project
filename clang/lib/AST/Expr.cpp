@@ -4422,7 +4422,7 @@ GenericSelectionExpr::GenericSelectionExpr(
          " and TypeSourceInfo!");
   assert(ResultIndex < NumAssocs && "ResultIndex is out-of-bounds!");
 
-  this->GenericLoc = GenericLoc;
+  GenericSelectionExprBits.GenericLoc = GenericLoc.getRawEncoding();
   getTrailingObjects<Stmt *>()[getIndexOfControllingExpression()] =
       ControllingExpr;
   llvm::copy(AssocExprs,
@@ -4449,7 +4449,7 @@ GenericSelectionExpr::GenericSelectionExpr(
          " and TypeSourceInfo!");
   assert(ResultIndex < NumAssocs && "ResultIndex is out-of-bounds!");
 
-  this->GenericLoc = GenericLoc;
+  GenericSelectionExprBits.GenericLoc = GenericLoc.getRawEncoding();
   getTrailingObjects<TypeSourceInfo *>()[getIndexOfControllingType()] =
       ControllingType;
   llvm::copy(AssocExprs,
@@ -4473,7 +4473,7 @@ GenericSelectionExpr::GenericSelectionExpr(
          "Must have the same number of association expressions"
          " and TypeSourceInfo!");
 
-  this->GenericLoc = GenericLoc;
+  GenericSelectionExprBits.GenericLoc = GenericLoc.getRawEncoding();
   getTrailingObjects<Stmt *>()[getIndexOfControllingExpression()] =
       ControllingExpr;
   llvm::copy(AssocExprs,
@@ -4497,7 +4497,7 @@ GenericSelectionExpr::GenericSelectionExpr(
          "Must have the same number of association expressions"
          " and TypeSourceInfo!");
 
-  this->GenericLoc = GenericLoc;
+  GenericSelectionExprBits.GenericLoc = GenericLoc.getRawEncoding();
   getTrailingObjects<TypeSourceInfo *>()[getIndexOfControllingType()] =
       ControllingType;
   llvm::copy(AssocExprs,
