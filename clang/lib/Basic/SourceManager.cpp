@@ -29,6 +29,7 @@
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -855,30 +856,27 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
       break;
   }
 
-  NumProbes = 0;
-  while (LessIndex < GreaterIndex) {
-    ++NumProbes;
+  // --- Branchless Search Setup ---
+  // 1. Find the smallest power of 2 >= Count for a fixed number of iterations.
+  // This is a fast way to get ceil(log2(Count)).
+  unsigned Step = llvm::PowerOf2Ceil(GreaterIndex - LessIndex);
+  unsigned ResultIndex = LessIndex;
 
-    unsigned MiddleIndex = LessIndex + (GreaterIndex - LessIndex) / 2;
+  while (Step > 0) {
+    ++NumBinaryProbes;
+    unsigned MiddleIndex = ResultIndex + Step;
 
-    SourceLocation::UIntTy MidOffset =
-        getLocalSLocEntry(MiddleIndex).getOffset();
+    bool ShouldAdvance =
+        (MiddleIndex < GreaterIndex) &&
+        (getLocalSLocEntry(MiddleIndex).getOffset() <= SLocOffset);
 
-    if (MidOffset <= SLocOffset) {
-      LessIndex = MiddleIndex + 1;
-    } else {
-      GreaterIndex = MiddleIndex;
-    }
+    ResultIndex += ShouldAdvance ? Step : 0;
+    Step >>= 1;
   }
 
-  // The loop terminates when LessIndex == GreaterIndex. At this point,
-  // `LessIndex` is the index of the *first element greater than* SLocOffset.
-  // The element we are actually looking for is the one immediately before it.
-  unsigned ResultIndex = LessIndex - 1;
-
   FileID Res = FileID::get(ResultIndex);
+
   LastFileIDLookup = Res;
-  NumBinaryProbes += NumProbes;
   return Res;
 }
 
