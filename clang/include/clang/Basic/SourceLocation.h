@@ -224,7 +224,7 @@ inline bool operator<=(const SourceLocation &LHS, const SourceLocation &RHS) {
 inline bool operator>=(const SourceLocation &LHS, const SourceLocation &RHS) {
   return LHS.getRawEncoding() >= RHS.getRawEncoding();
 }
-using FileIDAndOffset = std::pair<FileID, SourceLocation::UIntTy>;
+using FileIDAndOffset = std::pair<FileID, unsigned>;
 
 /// A trivial tuple used to represent a source range.
 class SourceRange {
