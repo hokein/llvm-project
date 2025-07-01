@@ -216,8 +216,7 @@ public:
   bool overwriteChangedFiles();
 
 private:
-  SourceLocation::UIntTy getLocationOffsetAndFileID(SourceLocation Loc,
-                                                    FileID &FID) const;
+  unsigned getLocationOffsetAndFileID(SourceLocation Loc, FileID &FID) const;
 };
 
 } // namespace clang
