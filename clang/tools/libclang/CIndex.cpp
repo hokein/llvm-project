@@ -7644,8 +7644,7 @@ CXString clang_getTokenSpelling(CXTranslationUnit TU, CXToken CXTok) {
     return cxstring::createEmpty();
 
   SourceLocation Loc = SourceLocation::getFromRawEncoding32(CXXUnit->getSourceManager(), CXTok.int_data[1]);
-  auto LocInfo =
-      CXXUnit->getSourceManager().getDecomposedSpellingLoc(Loc);
+  auto LocInfo = CXXUnit->getSourceManager().getDecomposedSpellingLoc(Loc);
   bool Invalid = false;
   StringRef Buffer =
       CXXUnit->getSourceManager().getBufferData(LocInfo.first, &Invalid);

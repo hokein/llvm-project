@@ -154,7 +154,7 @@ protected:
     /// floating-point features.
     LLVM_PREFERRED_TYPE(bool)
     unsigned HasFPFeatures : 1;
-  
+
     unsigned NumStmts;
   };
 
@@ -1097,7 +1097,7 @@ protected:
     /// the trailing objects.
     LLVM_PREFERRED_TYPE(bool)
     uint64_t HasFirstQualifierFoundInScope : 1;
-    
+
     /// The location of the '->' or '.' operator.
     LLVM_PREFERRED_TYPE(SourceLocation)
     uint64_t OperatorLoc : SourceLocation::Bits;
@@ -1175,7 +1175,7 @@ protected:
   class SubstNonTypeTemplateParmExprBitfields {
     friend class ASTStmtReader;
     friend class SubstNonTypeTemplateParmExpr;
-    
+
     LLVM_PREFERRED_TYPE(ExprBitfields)
     uint64_t : NumExprBits;
 
@@ -1313,8 +1313,8 @@ protected:
     /// bit is set to true.
     LLVM_PREFERRED_TYPE(bool)
     uint64_t IsUnique : 1;
-    
-     /// The location of the non-type template parameter reference.
+
+    /// The location of the non-type template parameter reference.
     LLVM_PREFERRED_TYPE(SourceLocation)
     uint64_t Loc : SourceLocation::Bits;
   };

@@ -2043,7 +2043,8 @@ void ASTStmtReader::VisitCXXDependentScopeMemberExpr(
   else
     E->Base = nullptr;
 
-  E->CXXDependentScopeMemberExprBits.OperatorLoc = readSourceLocation().getRawEncoding();
+  E->CXXDependentScopeMemberExprBits.OperatorLoc =
+      readSourceLocation().getRawEncoding();
 
   if (HasFirstQualifierFoundInScope)
     *E->getTrailingObjects<NamedDecl *>() = readDeclAs<NamedDecl>();
@@ -2230,7 +2231,8 @@ void ASTStmtReader::VisitSubstNonTypeTemplateParmExpr(
   E->Index = CurrentUnpackingBits->getNextBits(/*Width=*/12);
   E->PackIndex = Record.readUnsignedOrNone().toInternalRepresentation();
   E->Final = CurrentUnpackingBits->getNextBit();
-  E->SubstNonTypeTemplateParmExprBits.NameLoc = readSourceLocation().getRawEncoding();
+  E->SubstNonTypeTemplateParmExprBits.NameLoc =
+      readSourceLocation().getRawEncoding();
   E->Replacement = Record.readSubExpr();
 }
 

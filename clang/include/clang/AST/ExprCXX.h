@@ -3929,7 +3929,8 @@ public:
 
   /// Retrieve the location of the '->' or '.' operator.
   SourceLocation getOperatorLoc() const {
-    return SourceLocation::getFromRawEncoding(CXXDependentScopeMemberExprBits.OperatorLoc);
+    return SourceLocation::getFromRawEncoding(
+        CXXDependentScopeMemberExprBits.OperatorLoc);
   }
 
   /// Retrieve the nested-name-specifier that qualifies the member name.
@@ -4656,7 +4657,8 @@ public:
   }
 
   SourceLocation getNameLoc() const {
-    return SourceLocation::getFromRawEncoding(SubstNonTypeTemplateParmExprBits.NameLoc);
+    return SourceLocation::getFromRawEncoding(
+        SubstNonTypeTemplateParmExprBits.NameLoc);
   }
   SourceLocation getBeginLoc() const { return getNameLoc(); }
   SourceLocation getEndLoc() const { return getNameLoc(); }

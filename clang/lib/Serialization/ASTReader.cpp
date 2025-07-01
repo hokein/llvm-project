@@ -9793,7 +9793,7 @@ ASTRecordReader::readDeclarationNameLoc(DeclarationName Name) {
 
   case DeclarationName::CXXOperatorName:
     return DeclarationNameLoc::makeCXXOperatorNameLoc(
-      getASTContext().getCXXOperatorSourceInfo(readSourceRange()));
+        getASTContext().getCXXOperatorSourceInfo(readSourceRange()));
 
   case DeclarationName::CXXLiteralOperatorName:
     return DeclarationNameLoc::makeCXXLiteralOperatorNameLoc(

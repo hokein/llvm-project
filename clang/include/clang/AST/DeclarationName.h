@@ -703,7 +703,7 @@ class DeclarationNameLoc {
 
   // The location (if any) of the operator keyword is stored elsewhere.
   struct CXXOpName {
-    CXXOperatorSourceInfo* OInfo;
+    CXXOperatorSourceInfo *OInfo;
   };
 
   // The location (if any) of the operator keyword is stored elsewhere.
@@ -772,7 +772,7 @@ public:
     DNL.setNamedTypeLoc(TInfo);
     return DNL;
   }
-  
+
   /// Construct location information for a non-literal C++ operator.
   static DeclarationNameLoc
   makeCXXOperatorNameLoc(CXXOperatorSourceInfo *OInfo) {
@@ -837,7 +837,7 @@ public:
       return nullptr;
     return LocInfo.getNamedTypeInfo();
   }
-  
+
   /// setNamedTypeInfo - Sets the source type info associated to
   /// the name. Assumes it is a constructor, destructor or conversion.
   void setNamedTypeInfo(TypeSourceInfo *TInfo) {

@@ -7104,7 +7104,8 @@ ASTContext::getNameForTemplate(TemplateName Name,
     } else {
       DName = DeclarationNames.getCXXOperatorName(TN.getOperator());
       // DNInfo work in progress: FIXME: source locations?
-      DeclarationNameLoc DNLoc = DeclarationNameLoc::makeCXXOperatorNameLoc(nullptr);
+      DeclarationNameLoc DNLoc =
+          DeclarationNameLoc::makeCXXOperatorNameLoc(nullptr);
       return DeclarationNameInfo(DName, NameLoc, DNLoc);
     }
   }

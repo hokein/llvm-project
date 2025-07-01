@@ -1195,7 +1195,9 @@ public:
     : Expr(OpaqueValueExprClass, Empty) {}
 
   /// Retrieve the location of this expression.
-  SourceLocation getLocation() const { return SourceLocation::getFromRawEncoding(OpaqueValueExprBits.Loc); }
+  SourceLocation getLocation() const {
+    return SourceLocation::getFromRawEncoding(OpaqueValueExprBits.Loc);
+  }
 
   SourceLocation getBeginLoc() const LLVM_READONLY {
     return SourceExpr ? SourceExpr->getBeginLoc() : getLocation();
