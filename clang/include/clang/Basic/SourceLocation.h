@@ -85,7 +85,9 @@ private:
 /// In addition, one bit of SourceLocation is used for quick access to the
 /// information whether the location is in a file or a macro expansion.
 ///
-/// It is important that this type remains small. It is currently 32 bits wide.
+/// It is important that this type remains small.
+/// SourceLocation is 8 bytes, and internally only the lower `Bits` bits are
+/// used. This means the total addressable source space to 2^(Bits - 1).
 class SourceLocation {
   friend class ASTReader;
   friend class ASTWriter;
@@ -96,6 +98,7 @@ class SourceLocation {
 public:
   using UIntTy = uint64_t;
   using IntTy = int64_t;
+  // Number of bits used for the source space, one bit is preserved for MacroID.
   static constexpr unsigned Bits = 40;
 
 private:
@@ -144,7 +147,7 @@ public:
   }
 
   /// When a SourceLocation itself cannot be used, this returns
-  /// an (opaque) 32-bit integer encoding for it.
+  /// an (opaque) 64-bit integer encoding for it.
   ///
   /// This should only be passed to SourceLocation::getFromRawEncoding, it
   /// should not be inspected directly.
@@ -160,23 +163,16 @@ public:
     return X;
   }
 
+  // APIs for 32-bit source location conversion.
+  // !! These are used *only* by libclang for backward compatibility.
+  //
+  // Returns true if this SourceLocation can be losslessly represented as
+  // a 32-bit integer.
+  bool getRawEncoding32(uint32_t &Result) const;
+  // Constructs a 64-bit SourceLocation from a 32-bit raw-encoded value,
+  // using the given SourceManager context.
   static SourceLocation getFromRawEncoding32(const SourceManager &SM,
                                              uint32_t Encoding32);
-
-  bool getRawEncoding32(uint32_t &Result) const {
-    // A mask that isolates this check to the required range higher of bits.
-    static constexpr uint64_t RangeMask = llvm::maskTrailingOnes<uint64_t>(Bits - 32) << 31;
-
-    // Check if the ID can be safely compressed to a 32-bit integer.
-    // The truncation is only possible if all higher bits of the ID are all identical:
-    //   all 0s for the local offset, or all 1s for loaded offset
-    if ((ID ^ (ID << 1)) & RangeMask)
-      return false; // won't fit
-    uint32_t Lower31Bits = ID & llvm::maskTrailingOnes<uint32_t>(31);
-    // Restore the top macro bit.
-    Result = Lower31Bits | ((ID & MacroIDBit) >> (Bits - 32));
-    return true;
-  }
 
   /// When a SourceLocation itself cannot be used, this returns
   /// an (opaque) pointer encoding for it.

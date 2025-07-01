@@ -63,12 +63,27 @@ SourceLocation SourceLocation::getFromRawEncoding32(const SourceManager &SM,
     return getFromRawEncoding(Raw64);
   }
   // Offset of loaded source location.
-  //   2^63 -> 2^31
-  //   2^63 - 1 -> 2^31 - 1
+  //   2^40 -> 2^31
+  //   2^40 - 1 -> 2^31 - 1
   static constexpr uint64_t RangeMask =
       llvm::maskTrailingOnes<uint64_t>(Bits - 32) << 31;
-  UIntTy Raw64 = (RangeMask + Lower31Bits) | MacroBit;
-  return getFromRawEncoding(Raw64);
+  return getFromRawEncoding(RangeMask | Lower31Bits | MacroBit);
+}
+
+bool clang::SourceLocation::getRawEncoding32(uint32_t &Result) const {
+  // A mask that isolates this check to the required range higher of bits.
+  static constexpr uint64_t RangeMask =
+      llvm::maskTrailingOnes<uint64_t>(Bits - 32) << 31;
+
+  // Check if the ID can be safely compressed to a 32-bit integer.
+  // The truncation is only possible if all higher bits of the ID are all
+  // identical:
+  //   all 0s for the local offset, or all 1s for loaded offset
+  if ((ID ^ (ID << 1)) & RangeMask)
+    return false; // won't fit
+  uint32_t Lower31Bits = ID & llvm::maskTrailingOnes<uint32_t>(31);
+  // Restore the top macro bit.
+  return Result = Lower31Bits | ((ID & MacroIDBit) >> (Bits - 32));
 }
 
 unsigned SourceLocation::getHashValue() const {
