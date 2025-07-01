@@ -328,6 +328,7 @@ SourceManager::~SourceManager() {
 void SourceManager::clearIDTables() {
   MainFileID = FileID();
   LocalSLocEntryTable.clear();
+  LocalLocOffsetTable.clear();
   LoadedSLocEntryTable.clear();
   SLocEntryLoaded.clear();
   SLocEntryOffsetLoaded.clear();
@@ -636,9 +637,11 @@ FileID SourceManager::createFileIDImpl(ContentCache &File, StringRef Filename,
     noteSLocAddressSpaceUsage(Diag);
     return FileID();
   }
+  assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size());
   LocalSLocEntryTable.push_back(
       SLocEntry::get(NextLocalOffset,
                      FileInfo::get(IncludePos, File, FileCharacter, Filename)));
+  LocalLocOffsetTable.push_back(NextLocalOffset);
   // We do a +1 here because we want a SourceLocation that means "the end of the
   // file", e.g. for the "no newline at the end of the file" diagnostic.
   NextLocalOffset += FileSize + 1;
@@ -690,7 +693,9 @@ SourceManager::createExpansionLocImpl(const ExpansionInfo &Info,
     SLocEntryLoaded[Index] = SLocEntryOffsetLoaded[Index] = true;
     return SourceLocation::getMacroLoc(LoadedOffset);
   }
+  assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size());
   LocalSLocEntryTable.push_back(SLocEntry::get(NextLocalOffset, Info));
+  LocalLocOffsetTable.push_back(NextLocalOffset);
   if (NextLocalOffset + Length + 1 <= NextLocalOffset ||
       NextLocalOffset + Length + 1 > CurrentLoadedOffset) {
     Diag.Report(diag::err_sloc_space_too_large);
@@ -813,7 +818,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   assert(SLocOffset < NextLocalOffset && "Bad function choice");
   assert(SLocOffset >= LocalSLocEntryTable[0].getOffset() &&
          "Invalid SLocOffset");
-
+  assert(LocalSLocEntryTable.size() == LocalLocOffsetTable.size());
   // After the first and second level caches, I see two common sorts of
   // behavior: 1) a lot of searched FileID's are "near" the cached file
   // location or are "near" the cached expansion location. 2) others are just
@@ -831,10 +836,10 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   // SLocOffset.
   unsigned LessIndex = 0;
   // upper bound of the search range.
-  unsigned GreaterIndex = LocalSLocEntryTable.size();
+  unsigned GreaterIndex = LocalLocOffsetTable.size();
   if (LastFileIDLookup.ID >= 0) {
     // Use the LastFileIDLookup to prune the search space.
-    if (LocalSLocEntryTable[LastFileIDLookup.ID].getOffset() < SLocOffset)
+    if (LocalLocOffsetTable[LastFileIDLookup.ID] < SLocOffset)
       LessIndex = LastFileIDLookup.ID;
     else
       GreaterIndex = LastFileIDLookup.ID;
@@ -844,8 +849,8 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   unsigned NumProbes = 0;
   while (true) {
     --GreaterIndex;
-    assert(GreaterIndex < LocalSLocEntryTable.size());
-    if (LocalSLocEntryTable[GreaterIndex].getOffset() <= SLocOffset) {
+    assert(GreaterIndex < LocalLocOffsetTable.size());
+    if (LocalLocOffsetTable[GreaterIndex] <= SLocOffset) {
       FileID Res = FileID::get(int(GreaterIndex));
       // Remember it.  We have good locality across FileID lookups.
       LastFileIDLookup = Res;
@@ -860,11 +865,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
     ++NumBinaryProbes;
 
     unsigned MiddleIndex = LessIndex + (GreaterIndex - LessIndex) / 2;
-
-    SourceLocation::UIntTy MidOffset =
-        LocalSLocEntryTable[MiddleIndex].getOffset();
-
-    if (MidOffset <= SLocOffset)
+    if (LocalLocOffsetTable[MiddleIndex] <= SLocOffset)
       LessIndex = MiddleIndex + 1;
     else
       GreaterIndex = MiddleIndex;
