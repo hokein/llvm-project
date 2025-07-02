@@ -946,7 +946,6 @@ class ObjCContainerDecl : public NamedDecl, public DeclContext {
   // This class stores some data in DeclContext::ObjCContainerDeclBits
   // to save some space. Use the provided accessors to access it.
 
-  SourceLocation AtStart;
   // These two locations in the range mark the end of the method container.
   // The first points to the '@' token, and the second to the 'end' token.
   SourceRange AtEnd;
@@ -1091,10 +1090,12 @@ public:
   /// Note, the superclass's properties are not included in the list.
   virtual void collectPropertiesToImplement(PropertyMap &PM) const {}
 
-  SourceLocation getAtStartLoc() const { return AtStart; }
+  SourceLocation getAtStartLoc() const {
+    return SourceLocation::getFromRawEncoding(ObjCContainerDeclBits.AtStart);
+  }
 
   void setAtStartLoc(SourceLocation Loc) {
-    AtStart = Loc;
+    ObjCContainerDeclBits.AtStart = Loc.getRawEncoding();
   }
 
   // Marks the end of the container.

@@ -1952,11 +1952,13 @@ protected:
     friend class ObjCContainerDecl;
     /// For the bits in DeclContextBitfields
     LLVM_PREFERRED_TYPE(DeclContextBitfields)
-    uint32_t : NumDeclContextBits;
+    uint64_t : NumDeclContextBits;
+
+    uint64_t AtStart: SourceLocation::Bits;
   };
 
   /// Number of inherited and non-inherited bits in ObjCContainerDeclBitfields.
-  enum { NumObjCContainerDeclBits = NumDeclContextBits };
+  enum { NumObjCContainerDeclBits = NumDeclContextBits + SourceLocation::Bits };
 
   /// Stores the bits used by LinkageSpecDecl.
   /// If modified NumLinkageSpecDeclBits and the accessor
