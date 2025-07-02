@@ -719,7 +719,9 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// Positive FileIDs are indexes into this table. Entry 0 indicates an invalid
   /// expansion.
   SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
-
+  /// An in-parallel offset table, merely used for speeding up FileID lookup.Add commentMore actions
+  SmallVector<SourceLocation::UIntTy> LocalLocOffsetTable;
+  
   /// The table of SLocEntries that are loaded from other modules.
   ///
   /// Negative FileIDs are indexes into this table. To get from ID to an index,

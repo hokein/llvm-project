@@ -328,6 +328,7 @@ SourceManager::~SourceManager() {
 void SourceManager::clearIDTables() {
   MainFileID = FileID();
   LocalSLocEntryTable.clear();
+  LocalLocOffsetTable.clear();
   LoadedSLocEntryTable.clear();
   SLocEntryLoaded.clear();
   SLocEntryOffsetLoaded.clear();
@@ -640,6 +641,8 @@ FileID SourceManager::createFileIDImpl(ContentCache &File, StringRef Filename,
   LocalSLocEntryTable.push_back(
       SLocEntry::get(NextLocalOffset,
                      FileInfo::get(IncludePos, File, FileCharacter, Filename)));
+  LocalLocOffsetTable.push_back(NextLocalOffset);
+
   LastLookupStartOffset = NextLocalOffset;
   // We do a +1 here because we want a SourceLocation that means "the end of the
   // file", e.g. for the "no newline at the end of the file" diagnostic.
@@ -694,6 +697,7 @@ SourceManager::createExpansionLocImpl(const ExpansionInfo &Info,
     return SourceLocation::getMacroLoc(LoadedOffset);
   }
   LocalSLocEntryTable.push_back(SLocEntry::get(NextLocalOffset, Info));
+  LocalLocOffsetTable.push_back(NextLocalOffset);
   if (NextLocalOffset + Length + 1 <= NextLocalOffset ||
       NextLocalOffset + Length + 1 > CurrentLoadedOffset) {
     Diag.Report(diag::err_sloc_space_too_large);
@@ -845,15 +849,15 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   while (true) {
     --GreaterIndex;
     assert(GreaterIndex < LocalSLocEntryTable.size());
-    if (LocalSLocEntryTable[GreaterIndex].getOffset() <= SLocOffset) {
+    if (LocalLocOffsetTable[GreaterIndex] <= SLocOffset) {
       FileID Res = FileID::get(int(GreaterIndex));
       // Remember it.  We have good locality across FileID lookups.
       LastFileIDLookup = Res;
-      LastLookupStartOffset = LocalSLocEntryTable[GreaterIndex].getOffset();
+      LastLookupStartOffset = LocalLocOffsetTable[GreaterIndex];
       LastLookupEndOffset =
-          GreaterIndex + 1 == LocalSLocEntryTable.size()
+          GreaterIndex + 1 == LocalLocOffsetTable.size()
               ? NextLocalOffset
-              : LocalSLocEntryTable[GreaterIndex + 1].getOffset();
+              : LocalLocOffsetTable[GreaterIndex + 1];
       NumLinearScans += NumProbes + 1;
       return Res;
     }
@@ -867,7 +871,7 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
     unsigned MiddleIndex = LessIndex + (GreaterIndex - LessIndex) / 2;
 
     SourceLocation::UIntTy MidOffset =
-        LocalSLocEntryTable[MiddleIndex].getOffset();
+        LocalLocOffsetTable[MiddleIndex];
 
     if (MidOffset <= SLocOffset)
       LessIndex = MiddleIndex + 1;
@@ -878,8 +882,8 @@ FileID SourceManager::getFileIDLocal(SourceLocation::UIntTy SLocOffset) const {
   // At this point, LessIndex is the index of the *first element greater than*
   // SLocOffset. The element we are actually looking for is the one immediately
   // before it.
-  LastLookupStartOffset = LocalSLocEntryTable[LessIndex-1].getOffset();
-  LastLookupEndOffset = LocalSLocEntryTable[LessIndex].getOffset();
+  LastLookupStartOffset = LocalLocOffsetTable[LessIndex-1];
+  LastLookupEndOffset = LocalLocOffsetTable[LessIndex];
   return LastFileIDLookup = FileID::get(LessIndex - 1);
 }
 
