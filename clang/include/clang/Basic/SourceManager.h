@@ -1776,7 +1776,7 @@ public:
   }
 
   const SrcMgr::SLocEntry &getSLocEntry(FileID FID,
-                                        bool *Invalid = nullptr) const {
+                                        bool *Invalid) const {
     return const_cast<SourceManager *>(this)->getSLocEntry(FID, Invalid);
   }
 
@@ -1786,6 +1786,13 @@ public:
       return LocalSLocEntryTable[0];
     }
     return getSLocEntryByID(FID.ID, Invalid);
+  }
+
+   const SrcMgr::SLocEntry &getSLocEntry(FileID FID) const {
+    if (FID.ID == 0 || FID.ID == -1) {
+      return LocalSLocEntryTable[0];
+    }
+    return getSLocEntryByID(FID.ID);
   }
 
   SourceLocation::UIntTy getNextLocalOffset() const { return NextLocalOffset; }
