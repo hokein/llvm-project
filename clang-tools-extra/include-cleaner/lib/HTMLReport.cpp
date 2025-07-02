@@ -145,7 +145,7 @@ class Reporter {
   // Points within the main file that reference a Symbol.
   // Implicit refs will be marked with a symbol just before the token.
   struct Ref {
-    uint64_t Offset;
+    unsigned Offset;
     RefType Type;
     Symbol Sym;
     SmallVector<SymbolLocation> Locations = {};
