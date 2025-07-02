@@ -454,9 +454,9 @@ private:
     /// modifications done through the command-line.
     struct DiagStatePoint {
       DiagState *State;
-      SourceLocation::UIntTy Offset;
+      unsigned Offset;
 
-      DiagStatePoint(DiagState *State, SourceLocation::UIntTy Offset)
+      DiagStatePoint(DiagState *State, unsigned Offset)
           : State(State), Offset(Offset) {}
     };
 
@@ -469,7 +469,7 @@ private:
       File *Parent = nullptr;
 
       /// The offset of this file within its parent.
-      SourceLocation::UIntTy ParentOffset = 0;
+      unsigned ParentOffset = 0;
 
       /// Whether this file has any local (not imported from an AST file)
       /// diagnostic state transitions.
@@ -479,7 +479,7 @@ private:
       /// be at least one of these (the state on entry to the file).
       llvm::SmallVector<DiagStatePoint, 4> StateTransitions;
 
-      DiagState *lookup(SourceLocation::UIntTy Offset) const;
+      DiagState *lookup(unsigned Offset) const;
     };
 
     /// The diagnostic states for each file.
