@@ -926,18 +926,9 @@ SourceLocation SourceManager::getFileLocSlowCase(SourceLocation Loc) const {
 FileIDAndOffset SourceManager::getDecomposedExpansionLocSlowCase(
     const SrcMgr::SLocEntry *E) const {
   // If this is an expansion record, walk through all the expansion points.
-  FileID FID;
-  SourceLocation Loc;
-  unsigned Offset;
-  do {
-    Loc = E->getExpansion().getExpansionLocStart();
-
-    FID = getFileID(Loc);
-    E = &getSLocEntry(FID);
-    Offset = Loc.getOffset()-E->getOffset();
-  } while (!Loc.isFileID());
-
-  return std::make_pair(FID, Offset);
+  auto Loc = getExpansionLoc(E->getExpansion().getExpansionLocStart());
+  auto FID = getFileID(Loc);
+  return std::make_pair(FID, Loc.getOffset()-getSLocEntry(FID).getOffset());
 }
 
 FileIDAndOffset
