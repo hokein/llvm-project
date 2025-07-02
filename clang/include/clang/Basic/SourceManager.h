@@ -720,7 +720,7 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// expansion.
   SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
   /// An in-parallel offset table, merely used for speeding up FileID lookup.
-  SmallVector<SourceLocation::UIntTy> LocalLocOffsetTable;
+  SmallVector<SourceLocation::UIntTy, 0> LocalLocOffsetTable;
 
   /// The table of SLocEntries that are loaded from other modules.
   ///
