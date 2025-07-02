@@ -931,7 +931,7 @@ FileIDAndOffset SourceManager::getDecomposedExpansionLocSlowCase(
   // If this is an expansion record, walk through all the expansion points.
   FileID FID;
   SourceLocation Loc;
-  SourceLocation::UIntTy Offset;
+  unsigned Offset;
   do {
     Loc = E->getExpansion().getExpansionLocStart();
 
@@ -945,7 +945,7 @@ FileIDAndOffset SourceManager::getDecomposedExpansionLocSlowCase(
 
 FileIDAndOffset
 SourceManager::getDecomposedSpellingLocSlowCase(const SrcMgr::SLocEntry *E,
-                                                SourceLocation::UIntTy Offset) const {
+                                                unsigned Offset) const {
   // If this is an expansion record, walk through all the expansion points.
   FileID FID;
   SourceLocation Loc;

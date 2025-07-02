@@ -1257,8 +1257,7 @@ public:
   SourceLocation getImmediateSpellingLoc(SourceLocation Loc) const;
 
   /// Form a SourceLocation from a FileID and Offset pair.
-  SourceLocation getComposedLoc(FileID FID,
-                                SourceLocation::UIntTy Offset) const {
+  SourceLocation getComposedLoc(FileID FID, unsigned Offset) const {
     auto *Entry = getSLocEntryOrNull(FID);
     if (!Entry)
       return SourceLocation();
@@ -1290,7 +1289,7 @@ public:
     if (!E)
       return std::make_pair(FileID(), 0);
 
-    auto Offset = Loc.getOffset()-E->getOffset();
+    unsigned Offset = Loc.getOffset()-E->getOffset();
     if (Loc.isFileID())
       return std::make_pair(FID, Offset);
 
@@ -1307,7 +1306,7 @@ public:
     if (!E)
       return std::make_pair(FileID(), 0);
 
-    auto Offset = Loc.getOffset()-E->getOffset();
+    unsigned Offset = Loc.getOffset()-E->getOffset();
     if (Loc.isFileID())
       return std::make_pair(FID, Offset);
     return getDecomposedSpellingLocSlowCase(E, Offset);
@@ -1321,7 +1320,7 @@ public:
   /// specified SourceLocation represents.
   ///
   /// This is not very meaningful for a macro ID.
-  SourceLocation::UIntTy getFileOffset(SourceLocation SpellingLoc) const {
+  unsigned getFileOffset(SourceLocation SpellingLoc) const {
     return getDecomposedLoc(SpellingLoc).second;
   }
 
@@ -1983,7 +1982,7 @@ private:
   getDecomposedExpansionLocSlowCase(const SrcMgr::SLocEntry *E) const;
   FileIDAndOffset
   getDecomposedSpellingLocSlowCase(const SrcMgr::SLocEntry *E,
-                                   SourceLocation::UIntTy Offset) const;
+                                   unsigned Offset) const;
   void computeMacroArgsCache(MacroArgsMap &MacroArgsCache, FileID FID) const;
   void associateFileChunkWithMacroArgExp(MacroArgsMap &MacroArgsCache,
                                          FileID FID,
