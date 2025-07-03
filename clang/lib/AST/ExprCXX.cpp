@@ -621,8 +621,10 @@ CXXOperatorCallExpr::Create(const ASTContext &Ctx,
       Ctx.Allocate(sizeToAllocateForCallExprSubclass<CXXOperatorCallExpr>(
                        SizeOfTrailingObjects),
                    alignof(CXXOperatorCallExpr));
-  return new (Mem) CXXOperatorCallExpr(OpKind, Fn, Args, Ty, VK, OperatorLoc,
+  auto * E = new (Mem) CXXOperatorCallExpr(OpKind, Fn, Args, Ty, VK, OperatorLoc,
                                        FPFeatures, UsesADL);
+  E->updateTrailingSourceLoc();
+                                       return E;
 }
 
 CXXOperatorCallExpr *CXXOperatorCallExpr::CreateEmpty(const ASTContext &Ctx,

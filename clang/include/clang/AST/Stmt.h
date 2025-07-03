@@ -549,7 +549,8 @@ protected:
 
   class CallExprBitfields {
     friend class CallExpr;
-
+    friend class CXXOperatorCallExpr;
+    
     LLVM_PREFERRED_TYPE(ExprBitfields)
     unsigned : NumExprBits;
 

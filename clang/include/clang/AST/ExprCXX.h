@@ -156,7 +156,15 @@ public:
                : getOperatorLoc();
   }
 
-  SourceLocation getBeginLoc() const { return getSourceRangeImpl().getBegin(); }
+  SourceLocation getBeginLoc() const {
+    if (CallExprBits.HasTrailingSourceLoc) {
+      static_assert(sizeof(CallExpr) <=
+                    OffsetToTrailingObjects + sizeof(SourceLocation));
+      return *reinterpret_cast<const SourceLocation *>(
+          reinterpret_cast<const char *>(this + 1));
+    }
+    return getSourceRangeImpl().getBegin();
+  }
   SourceLocation getEndLoc() const { return getSourceRangeImpl().getEnd(); }
   SourceRange getSourceRange() const { return getSourceRangeImpl(); }
 

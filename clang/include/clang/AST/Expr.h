@@ -3225,7 +3225,7 @@ public:
 
   SourceLocation getEndLoc() const { return getRParenLoc(); }
 
-private:
+protected:
   friend class ASTStmtReader;
   bool hasTrailingSourceLoc() const {
     return CallExprBits.HasTrailingSourceLoc;
@@ -3234,7 +3234,7 @@ private:
   void updateTrailingSourceLoc() {
     assert(!CallExprBits.HasTrailingSourceLoc &&
            "Trailing source loc already set?");
-    assert(getStmtClass() == CallExprClass &&
+    assert((getStmtClass() == CallExprClass || getStmtClass() == CXXOperatorCallExprClass) &&
            "Calling setTrailingSourceLocs on a subclass of CallExpr");
     static_assert(sizeof(CallExpr) <=
                   OffsetToTrailingObjects + sizeof(SourceLocation));
