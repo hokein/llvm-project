@@ -3234,7 +3234,7 @@ protected:
   void updateTrailingSourceLoc() {
     assert(!CallExprBits.HasTrailingSourceLoc &&
            "Trailing source loc already set?");
-    assert((getStmtClass() == CallExprClass || getStmtClass() == CXXOperatorCallExprClass) &&
+    assert((getStmtClass() == CallExprClass || getStmtClass() == CXXOperatorCallExprClass || getStmtClass() == CXXMemberCallExprClass) &&
            "Calling setTrailingSourceLocs on a subclass of CallExpr");
     static_assert(sizeof(CallExpr) <=
                   OffsetToTrailingObjects + sizeof(SourceLocation));

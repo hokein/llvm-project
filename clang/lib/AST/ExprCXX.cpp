@@ -600,6 +600,13 @@ CXXOperatorCallExpr::CXXOperatorCallExpr(OverloadedOperatorKind OpKind,
   assert(
       (CXXOperatorCallExprBits.OperatorKind == static_cast<unsigned>(OpKind)) &&
       "OperatorKind overflow!");
+  // static_assert(sizeof(CallExpr) <=
+  //                 OffsetToTrailingObjects + sizeof(SourceLocation));
+
+    SourceLocation *Locs =
+        reinterpret_cast<SourceLocation *>(reinterpret_cast<char *>(this + 1));
+    new (Locs) SourceLocation(getBeginLoc());
+    CallExprBits.HasTrailingSourceLoc = true;
 }
 
 CXXOperatorCallExpr::CXXOperatorCallExpr(unsigned NumArgs, bool HasFPFeatures,
@@ -623,7 +630,8 @@ CXXOperatorCallExpr::Create(const ASTContext &Ctx,
                    alignof(CXXOperatorCallExpr));
   auto * E = new (Mem) CXXOperatorCallExpr(OpKind, Fn, Args, Ty, VK, OperatorLoc,
                                        FPFeatures, UsesADL);
-  E->updateTrailingSourceLoc();
+  // E->updateTrailingSourceLoc();
+  
                                        return E;
 }
 
@@ -671,7 +679,9 @@ CXXMemberCallExpr::CXXMemberCallExpr(Expr *Fn, ArrayRef<Expr *> Args,
                                      FPOptionsOverride FPOptions,
                                      unsigned MinNumArgs)
     : CallExpr(CXXMemberCallExprClass, Fn, /*PreArgs=*/{}, Args, Ty, VK, RP,
-               FPOptions, MinNumArgs, NotADL) {}
+               FPOptions, MinNumArgs, NotADL) {
+    updateTrailingSourceLoc();
+               }
 
 CXXMemberCallExpr::CXXMemberCallExpr(unsigned NumArgs, bool HasFPFeatures,
                                      EmptyShell Empty)
