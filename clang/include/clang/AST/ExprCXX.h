@@ -176,15 +176,27 @@ public:
 /// arguments are the arguments within the parentheses (not including
 /// the object argument).
 class CXXMemberCallExpr final : public CallExpr {
+  friend class ASTStmtReader;
+  friend class ASTStmtWriter;
+
+  SourceLocation ExprLoc;
+
   // CXXMemberCallExpr has some trailing objects belonging
   // to CallExpr. See CallExpr for the details.
-  SourceLocation ExprLoc;
 
   CXXMemberCallExpr(Expr *Fn, ArrayRef<Expr *> Args, QualType Ty,
                     ExprValueKind VK, SourceLocation RP,
                     FPOptionsOverride FPOptions, unsigned MinNumArgs);
 
   CXXMemberCallExpr(unsigned NumArgs, bool HasFPFeatures, EmptyShell Empty);
+  
+  SourceLocation getExprLocImpl() const LLVM_READONLY {
+    SourceLocation CLoc = getCallee()->getExprLoc();
+    if (CLoc.isValid())
+      return CLoc;
+
+    return getBeginLoc();
+  }
 
 public:
   static CXXMemberCallExpr *Create(const ASTContext &Ctx, Expr *Fn,
@@ -219,14 +231,6 @@ public:
 
   SourceLocation getExprLoc() const LLVM_READONLY {
     return ExprLoc;
-  }
-
-  SourceLocation getExprLocImpl() const LLVM_READONLY {
-    SourceLocation CLoc = getCallee()->getExprLoc();
-    if (CLoc.isValid())
-      return CLoc;
-
-    return getBeginLoc();
   }
 
   static bool classof(const Stmt *T) {

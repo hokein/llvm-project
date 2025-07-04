@@ -675,7 +675,9 @@ CXXMemberCallExpr::CXXMemberCallExpr(Expr *Fn, ArrayRef<Expr *> Args,
                                      FPOptionsOverride FPOptions,
                                      unsigned MinNumArgs)
     : CallExpr(CXXMemberCallExprClass, Fn, /*PreArgs=*/{}, Args, Ty, VK, RP,
-               FPOptions, MinNumArgs, NotADL) {}
+               FPOptions, MinNumArgs, NotADL) {
+    ExprLoc = getExprLocImpl();
+}
 
 CXXMemberCallExpr::CXXMemberCallExpr(unsigned NumArgs, bool HasFPFeatures,
                                      EmptyShell Empty)
@@ -697,7 +699,7 @@ CXXMemberCallExpr *CXXMemberCallExpr::Create(const ASTContext &Ctx, Expr *Fn,
                            alignof(CXXMemberCallExpr));
   auto* E =  new (Mem)
       CXXMemberCallExpr(Fn, Args, Ty, VK, RP, FPFeatures, MinNumArgs);
-  E->ExprLoc = E->getExprLocImpl();
+  // E->ExprLoc = E->getExprLocImpl();
   return E;
 }
 

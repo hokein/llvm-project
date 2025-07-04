@@ -1049,6 +1049,7 @@ void ASTStmtReader::VisitCallExpr(CallExpr *E) {
 
 void ASTStmtReader::VisitCXXMemberCallExpr(CXXMemberCallExpr *E) {
   VisitCallExpr(E);
+  E->ExprLoc = Record.readSourceLocation();
 }
 
 void ASTStmtReader::VisitMemberExpr(MemberExpr *E) {
