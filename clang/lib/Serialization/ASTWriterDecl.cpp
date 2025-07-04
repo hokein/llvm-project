@@ -2949,6 +2949,7 @@ void ASTWriter::WriteDeclAbbrevs() {
   Abv->Add(BitCodeAbbrevOp(0));                       // ADLCallKind
   Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // Source Location
   // CXXMemberCallExpr
+  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // Source Location
   CXXMemberCallExprAbbrev = Stream.EmitAbbrev(std::move(Abv));
 
   // Abbreviation for STMT_COMPOUND

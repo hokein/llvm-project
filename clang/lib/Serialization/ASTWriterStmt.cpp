@@ -1712,6 +1712,7 @@ void ASTStmtWriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
 
 void ASTStmtWriter::VisitCXXMemberCallExpr(CXXMemberCallExpr *E) {
   VisitCallExpr(E);
+  Record.AddSourceLocation(E->ExprLoc);
 
   if (!E->hasStoredFPFeatures() && !static_cast<bool>(E->getADLCallKind()))
     AbbrevToUse = Writer.getCXXMemberCallExprAbbrev();
