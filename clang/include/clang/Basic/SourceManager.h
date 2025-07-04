@@ -1926,21 +1926,32 @@ private:
   /// specified SourceLocation offset.  This is a very hot method.
   inline bool isOffsetInFileID(FileID FID,
                                SourceLocation::UIntTy SLocOffset) const {
-    const SrcMgr::SLocEntry &Entry = getSLocEntry(FID);
-    // If the entry is after the offset, it can't contain it.
-    if (SLocOffset < Entry.getOffset()) return false;
+    SourceLocation::UIntTy StartOffset;
+    SourceLocation::UIntTy EndOffset;
 
-    // If this is the very last entry then it does.
-    if (FID.ID == -2)
-      return true;
+    if (FID.ID >= 0) {
+      StartOffset = LocalSLocEntryTable[FID.ID].getOffset();
+      
+      // Determine the end offset for the local entry.
+      if (FID.ID + 1 == static_cast<int>(LocalSLocEntryTable.size()))
+        EndOffset = NextLocalOffset;
+      else
+        EndOffset = LocalSLocEntryTable[FID.ID + 1].getOffset();
 
-    // If it is the last local entry, then it does if the location is local.
-    if (FID.ID+1 == static_cast<int>(LocalSLocEntryTable.size()))
-      return SLocOffset < NextLocalOffset;
+    } else { // Handle loaded FileIDs.
+      // The -2 ID is a special case for the last loaded entry.
+      if (FID.ID == -2) {
+        StartOffset = LoadedSLocEntryTable[0].getOffset();
+        // Return true if the offset is anywhere after the start.
+        return SLocOffset >= StartOffset;
+      }
+      
+      auto getLoadedIndex = [](int id) { return -id - 2; };
 
-    // Otherwise, the entry after it has to not include it. This works for both
-    // local and loaded entries.
-    return SLocOffset < getSLocEntryByID(FID.ID+1).getOffset();
+      StartOffset = LoadedSLocEntryTable[getLoadedIndex(FID.ID)].getOffset();
+      EndOffset = LoadedSLocEntryTable[getLoadedIndex(FID.ID + 1)].getOffset();
+    }
+    return SLocOffset >= StartOffset && SLocOffset < EndOffset;
   }
 
   /// Returns the previous in-order FileID or an invalid FileID if there
