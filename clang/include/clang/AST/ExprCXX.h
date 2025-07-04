@@ -90,8 +90,6 @@ class CXXOperatorCallExpr final : public CallExpr {
   // to CallExpr. See CallExpr for the details.
 
   SourceRange getSourceRangeImpl() const LLVM_READONLY;
-  SourceLocation getBeginLocImpl() const LLVM_READONLY;
-  SourceLocation getEndLocImpl() const LLVM_READONLY;
 
   CXXOperatorCallExpr(OverloadedOperatorKind OpKind, Expr *Fn,
                       ArrayRef<Expr *> Args, QualType Ty, ExprValueKind VK,
@@ -161,8 +159,8 @@ public:
   }
 
   SourceLocation getBeginLoc() const { return BeginLoc; }
-  SourceLocation getEndLoc() const { return getEndLocImpl(); }
-  SourceRange getSourceRange() const { return {getBeginLoc(), getEndLoc()}; }
+  SourceLocation getEndLoc() const { return getSourceRangeImpl().getEnd(); }
+  SourceRange getSourceRange() const { return getSourceRangeImpl(); }
 
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == CXXOperatorCallExprClass;

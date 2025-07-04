@@ -669,54 +669,6 @@ SourceRange CXXOperatorCallExpr::getSourceRangeImpl() const {
   }
 }
 
-SourceLocation CXXOperatorCallExpr::getBeginLocImpl() const {
-  OverloadedOperatorKind Kind = getOperator();
-  if (Kind == OO_PlusPlus || Kind == OO_MinusMinus) {
-    if (getNumArgs() == 1)
-      // Prefix operator
-      return getOperatorLoc();
-    else
-      // Postfix operator
-      return getArg(0)->getBeginLoc();
-  } else if (Kind == OO_Arrow) {
-    return getArg(0)->getBeginLoc();
-  } else if (Kind == OO_Call) {
-    return getArg(0)->getBeginLoc();
-  } else if (Kind == OO_Subscript) {
-    return getArg(0)->getBeginLoc();
-  } else if (getNumArgs() == 1) {
-    return getOperatorLoc();
-  } else if (getNumArgs() == 2) {
-    return getArg(0)->getBeginLoc();
-  } else {
-    return getOperatorLoc();
-  }
-}
-
-SourceLocation CXXOperatorCallExpr::getEndLocImpl() const {
-  OverloadedOperatorKind Kind = getOperator();
-  if (Kind == OO_PlusPlus || Kind == OO_MinusMinus) {
-    if (getNumArgs() == 1)
-      // Prefix operator
-      return getArg(0)->getEndLoc();
-    else
-      // Postfix operator
-      return getOperatorLoc();
-  } else if (Kind == OO_Arrow) {
-    return getOperatorLoc();
-  } else if (Kind == OO_Call) {
-    return getRParenLoc();
-  } else if (Kind == OO_Subscript) {
-    return getRParenLoc();
-  } else if (getNumArgs() == 1) {
-    return getArg(0)->getEndLoc();
-  } else if (getNumArgs() == 2) {
-    return getArg(1)->getEndLoc();
-  } else {
-    return getOperatorLoc();
-  }
-}
-
 CXXMemberCallExpr::CXXMemberCallExpr(Expr *Fn, ArrayRef<Expr *> Args,
                                      QualType Ty, ExprValueKind VK,
                                      SourceLocation RP,
