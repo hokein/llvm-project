@@ -638,7 +638,11 @@ CXXOperatorCallExpr *CXXOperatorCallExpr::CreateEmpty(const ASTContext &Ctx,
       Ctx.Allocate(sizeToAllocateForCallExprSubclass<CXXOperatorCallExpr>(
                        SizeOfTrailingObjects),
                    alignof(CXXOperatorCallExpr));
-  return new (Mem) CXXOperatorCallExpr(NumArgs, HasFPFeatures, Empty);
+  auto *E = new (Mem) CXXOperatorCallExpr(NumArgs, HasFPFeatures, Empty);
+
+  // E->BeginLoc = E->getSourceRangeImpl().getBegin();
+  return E;
+  // return new (Mem) CXXOperatorCallExpr(NumArgs, HasFPFeatures, Empty);
 }
 
 SourceRange CXXOperatorCallExpr::getSourceRangeImpl() const {
