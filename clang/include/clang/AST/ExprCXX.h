@@ -176,6 +176,7 @@ public:
 class CXXMemberCallExpr final : public CallExpr {
   // CXXMemberCallExpr has some trailing objects belonging
   // to CallExpr. See CallExpr for the details.
+  SourceLocation ExprLoc;
 
   CXXMemberCallExpr(Expr *Fn, ArrayRef<Expr *> Args, QualType Ty,
                     ExprValueKind VK, SourceLocation RP,
@@ -215,6 +216,10 @@ public:
   CXXRecordDecl *getRecordDecl() const;
 
   SourceLocation getExprLoc() const LLVM_READONLY {
+    return ExprLoc;
+  }
+  
+  SourceLocation getExprLocImpl() const LLVM_READONLY {
     SourceLocation CLoc = getCallee()->getExprLoc();
     if (CLoc.isValid())
       return CLoc;

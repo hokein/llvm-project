@@ -689,8 +689,10 @@ CXXMemberCallExpr *CXXMemberCallExpr::Create(const ASTContext &Ctx, Expr *Fn,
   void *Mem = Ctx.Allocate(sizeToAllocateForCallExprSubclass<CXXMemberCallExpr>(
                                SizeOfTrailingObjects),
                            alignof(CXXMemberCallExpr));
-  return new (Mem)
+  auto* E =  new (Mem)
       CXXMemberCallExpr(Fn, Args, Ty, VK, RP, FPFeatures, MinNumArgs);
+  E->ExprLoc = E->getExprLocImpl();
+  return E;
 }
 
 CXXMemberCallExpr *CXXMemberCallExpr::CreateEmpty(const ASTContext &Ctx,
