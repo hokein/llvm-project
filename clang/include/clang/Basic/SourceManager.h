@@ -1901,8 +1901,8 @@ private:
 
   FileID getFileID(SourceLocation::UIntTy SLocOffset) const {
     // If our one-entry cache covers this offset, just return it.
-    if (isOffsetInFileID(LastFileIDLookup, SLocOffset))
-      return LastFileIDLookup;
+    // if (isOffsetInFileID(LastFileIDLookup, SLocOffset))
+    //   return LastFileIDLookup;
 
     return getFileIDSlow(SLocOffset);
   }
