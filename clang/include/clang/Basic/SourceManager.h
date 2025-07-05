@@ -1931,32 +1931,32 @@ private:
       return SLocOffset >= LastLookupStartOffset &&
              SLocOffset < LastLookupEndOffset;
     
-    // if (FID.ID >= 0) {
-    //   if (SLocOffset < LocalSLocEntryTable[FID.ID].getOffset())
-    //     return false;
-    //   return FID.ID+1 == static_cast<int>(LocalSLocEntryTable.size()) ? 
-    //     SLocOffset < NextLocalOffset :  SLocOffset < LocalSLocEntryTable[FID.ID+1].getOffset();
-    // }
-    // if (SLocOffset < LoadedSLocEntryTable[-FID.ID-2].getOffset())
-    //   return false;
-    // if (FID.ID == -2)
-    //   return true;
-    // return SLocOffset < LoadedSLocEntryTable[-FID.ID-3].getOffset();
-    const SrcMgr::SLocEntry &Entry = getSLocEntry(FID);
-    // If the entry is after the offset, it can't contain it.
-    if (SLocOffset < Entry.getOffset()) return false;
-
-    // If this is the very last entry then it does.
+    if (FID.ID >= 0) {
+      if (SLocOffset < LocalSLocEntryTable[FID.ID].getOffset())
+        return false;
+      return FID.ID+1 == static_cast<int>(LocalSLocEntryTable.size()) ? 
+        SLocOffset < NextLocalOffset :  SLocOffset < LocalSLocEntryTable[FID.ID+1].getOffset();
+    }
+    if (SLocOffset < LoadedSLocEntryTable[-FID.ID-2].getOffset())
+      return false;
     if (FID.ID == -2)
       return true;
+    return SLocOffset < LoadedSLocEntryTable[-FID.ID-3].getOffset();
+    // const SrcMgr::SLocEntry &Entry = getSLocEntry(FID);
+    // // If the entry is after the offset, it can't contain it.
+    // if (SLocOffset < Entry.getOffset()) return false;
 
-    // If it is the last local entry, then it does if the location is local.
-    if (FID.ID+1 == static_cast<int>(LocalSLocEntryTable.size()))
-      return SLocOffset < NextLocalOffset;
+    // // If this is the very last entry then it does.
+    // if (FID.ID == -2)
+    //   return true;
 
-    // Otherwise, the entry after it has to not include it. This works for both
-    // local and loaded entries.
-    return SLocOffset < getSLocEntryByID(FID.ID+1).getOffset();
+    // // If it is the last local entry, then it does if the location is local.
+    // if (FID.ID+1 == static_cast<int>(LocalSLocEntryTable.size()))
+    //   return SLocOffset < NextLocalOffset;
+
+    // // Otherwise, the entry after it has to not include it. This works for both
+    // // local and loaded entries.
+    // return SLocOffset < getSLocEntryByID(FID.ID+1).getOffset();
   }
 
   /// Returns the previous in-order FileID or an invalid FileID if there
