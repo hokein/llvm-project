@@ -1927,9 +1927,9 @@ private:
   /// specified SourceLocation offset.  This is a very hot method.
   inline bool isOffsetInFileID(FileID FID,
                                SourceLocation::UIntTy SLocOffset) const {
-    if (FID == LastFileIDLookup)
-      return SLocOffset >= LastLookupStartOffset &&
-             SLocOffset < LastLookupEndOffset;
+    // if (FID == LastFileIDLookup)
+    //   return SLocOffset >= LastLookupStartOffset &&
+    //          SLocOffset < LastLookupEndOffset;
     
     if (FID.ID >= 0) {
       if (SLocOffset < LocalSLocEntryTable[FID.ID].getOffset())
