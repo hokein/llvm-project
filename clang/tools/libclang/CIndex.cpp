@@ -7716,7 +7716,6 @@ static bool getTokens(ASTUnit *CXXUnit, SourceRange Range,
     CXToken CXTok;
 
     //   - Common fields
-    // CXTok.int_data[1] = Tok.getLocation().getRawEncoding();
     uint32_t TokLocRaw;
     if (!Tok.getLocation().getRawEncoding32(TokLocRaw))
       return false; // location is too big for libclang ABI
