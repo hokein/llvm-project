@@ -15,19 +15,20 @@
 // To achieve this, we need to encode the index of the module file into the
 // encoding of the source location. The encoding of the source location may be:
 //
-//      |-----------------------|-----------------------|
-//      |          A            |         B         | C |
+//      |---------------|---------------------------|
+//      |        A      |           B           | C |
 //
-//  * A: 32 bit. The index of the module file in the module manager + 1. The +1
+//  * A: 24 bit. The index of the module file in the module manager + 1. The +1
 //  here is necessary since we wish 0 stands for the current module file.
-//  * B: 31 bit. The offset of the source location to the module file containing
+//  * B: 39 bit. The offset of the source location to the module file containing
 //  it.
 //  * C: The macro bit. We rotate it to the lowest bit so that we can save some
 //  space in case the index of the module file is 0.
 //
-// Specially, if the index of the module file is 0, we allow to encode a
-// sequence of locations we store only differences between successive elements.
+// Together, B and C form SourceLocation::Bits (40 bits total).
 //
+// Currently, only the lower 16 bits of A are used to store the module file
+// index, leaving the upper 8 bits of A unused (reserved for future use).
 //===----------------------------------------------------------------------===//
 
 #include "clang/Basic/SourceLocation.h"
@@ -38,7 +39,6 @@
 #define LLVM_CLANG_SERIALIZATION_SOURCELOCATIONENCODING_H
 
 namespace clang {
-class SourceLocationSequence;
 
 /// Serialized encoding of SourceLocations without context.
 /// Optimized to have small unsigned values (=> small after VBR encoding).
@@ -46,127 +46,37 @@ class SourceLocationSequence;
 // Macro locations have the top bit set, we rotate by one so it is the low bit.
 class SourceLocationEncoding {
   using UIntTy = SourceLocation::UIntTy;
-  constexpr static unsigned UIntBits = CHAR_BIT * sizeof(UIntTy);
 
   static UIntTy encodeRaw(UIntTy Raw) {
-    return (Raw << 1) | (Raw >> (UIntBits - 1));
+    return ((Raw & llvm::maskTrailingOnes<uint64_t>(SourceLocation::Bits - 1))
+            << 1) |
+           (Raw >> (SourceLocation::Bits - 1));
   }
   static UIntTy decodeRaw(UIntTy Raw) {
-    return (Raw >> 1) | (Raw << (UIntBits - 1));
+    return (Raw >> 1) | ((Raw & 1) << (SourceLocation::Bits - 1));
   }
-  friend SourceLocationSequence;
 
 public:
   using RawLocEncoding = uint64_t;
+  // 16 bits should be sufficient to store the module file index.
+  constexpr static unsigned ModuleFileIndexBits = 16;
+  constexpr static unsigned SourceLocationEncodingBits = SourceLocation::Bits;
+  static_assert(ModuleFileIndexBits + SourceLocationEncodingBits <
+                    sizeof(RawLocEncoding) * CHAR_BIT,
+                "Insufficient encoding bits");
 
   static RawLocEncoding encode(SourceLocation Loc, UIntTy BaseOffset,
-                               unsigned BaseModuleFileIndex,
-                               SourceLocationSequence * = nullptr);
-  static std::pair<SourceLocation, unsigned>
-  decode(RawLocEncoding, SourceLocationSequence * = nullptr);
-};
-
-/// Serialized encoding of a sequence of SourceLocations.
-///
-/// Optimized to produce small values when locations with the sequence are
-/// similar. Each element can be delta-encoded against the last nonzero element.
-///
-/// Sequences should be started by creating a SourceLocationSequence::State,
-/// and then passed around as SourceLocationSequence*. Example:
-///
-///   // establishes a sequence
-///   void EmitTopLevelThing() {
-///     SourceLocationSequence::State Seq;
-///     EmitContainedThing(Seq);
-///     EmitRecursiveThing(Seq);
-///   }
-///
-///   // optionally part of a sequence
-///   void EmitContainedThing(SourceLocationSequence *Seq = nullptr) {
-///     Record.push_back(SourceLocationEncoding::encode(SomeLoc, Seq));
-///   }
-///
-///   // establishes a sequence if there isn't one already
-///   void EmitRecursiveThing(SourceLocationSequence *ParentSeq = nullptr) {
-///     SourceLocationSequence::State Seq(ParentSeq);
-///     Record.push_back(SourceLocationEncoding::encode(SomeLoc, Seq));
-///     EmitRecursiveThing(Seq);
-///   }
-///
-class SourceLocationSequence {
-  using UIntTy = SourceLocation::UIntTy;
-  using EncodedTy = uint64_t;
-  constexpr static auto UIntBits = SourceLocationEncoding::UIntBits;
-  static_assert(sizeof(EncodedTy) > sizeof(UIntTy), "Need one extra bit!");
-
-  // Prev stores the rotated last nonzero location.
-  UIntTy &Prev;
-
-  // Zig-zag encoding turns small signed integers into small unsigned integers.
-  // 0 => 0, -1 => 1, 1 => 2, -2 => 3, ...
-  static UIntTy zigZag(UIntTy V) {
-    UIntTy Sign = (V & (1 << (UIntBits - 1))) ? UIntTy(-1) : UIntTy(0);
-    return Sign ^ (V << 1);
-  }
-  static UIntTy zagZig(UIntTy V) { return (V >> 1) ^ -(V & 1); }
-
-  SourceLocationSequence(UIntTy &Prev) : Prev(Prev) {}
-
-  EncodedTy encodeRaw(UIntTy Raw) {
-    if (Raw == 0)
-      return 0;
-    UIntTy Rotated = SourceLocationEncoding::encodeRaw(Raw);
-    if (Prev == 0)
-      return Prev = Rotated;
-    UIntTy Delta = Rotated - Prev;
-    Prev = Rotated;
-    // Exactly one 33 bit value is possible! (1 << 32).
-    // This is because we have two representations of zero: trivial & relative.
-    return 1 + EncodedTy{zigZag(Delta)};
-  }
-  UIntTy decodeRaw(EncodedTy Encoded) {
-    if (Encoded == 0)
-      return 0;
-    if (Prev == 0)
-      return SourceLocationEncoding::decodeRaw(Prev = Encoded);
-    return SourceLocationEncoding::decodeRaw(Prev += zagZig(Encoded - 1));
-  }
-
-public:
-  SourceLocation decode(EncodedTy Encoded) {
-    return SourceLocation::getFromRawEncoding(decodeRaw(Encoded));
-  }
-  EncodedTy encode(SourceLocation Loc) {
-    return encodeRaw(Loc.getRawEncoding());
-  }
-
-  class State;
-};
-
-/// This object establishes a SourceLocationSequence.
-class SourceLocationSequence::State {
-  UIntTy Prev = 0;
-  SourceLocationSequence Seq;
-
-public:
-  // If Parent is provided and non-null, then this root becomes part of that
-  // enclosing sequence instead of establishing a new one.
-  State(SourceLocationSequence *Parent = nullptr)
-      : Seq(Parent ? Parent->Prev : Prev) {}
-
-  // Implicit conversion for uniform use of roots vs propagated sequences.
-  operator SourceLocationSequence *() { return &Seq; }
+                               unsigned BaseModuleFileIndex);
+  static std::pair<SourceLocation, unsigned> decode(RawLocEncoding);
 };
 
 inline SourceLocationEncoding::RawLocEncoding
 SourceLocationEncoding::encode(SourceLocation Loc, UIntTy BaseOffset,
-                               unsigned BaseModuleFileIndex,
-                               SourceLocationSequence *Seq) {
+                               unsigned BaseModuleFileIndex) {
   // If the source location is a local source location, we can try to optimize
   // the similar sequences to only record the differences.
   if (!BaseOffset)
-    return Seq ? Seq->encode(Loc) : encodeRaw(Loc.getRawEncoding());
-
+    return encodeRaw(Loc.getRawEncoding());
   if (Loc.isInvalid())
     return 0;
 
@@ -177,22 +87,19 @@ SourceLocationEncoding::encode(SourceLocation Loc, UIntTy BaseOffset,
   Loc = Loc.getLocWithOffset(-BaseOffset);
   RawLocEncoding Encoded = encodeRaw(Loc.getRawEncoding());
 
-  // 16 bits should be sufficient to store the module file index.
-  assert(BaseModuleFileIndex < (1 << 16));
-  Encoded |= (RawLocEncoding)BaseModuleFileIndex << 32;
+  assert(BaseModuleFileIndex < (1 << ModuleFileIndexBits));
+  Encoded |= (RawLocEncoding)BaseModuleFileIndex << SourceLocation::Bits;
   return Encoded;
 }
 inline std::pair<SourceLocation, unsigned>
-SourceLocationEncoding::decode(RawLocEncoding Encoded,
-                               SourceLocationSequence *Seq) {
-  unsigned ModuleFileIndex = Encoded >> 32;
+SourceLocationEncoding::decode(RawLocEncoding Encoded) {
+  unsigned ModuleFileIndex = Encoded >> SourceLocation::Bits;
 
   if (!ModuleFileIndex)
-    return {Seq ? Seq->decode(Encoded)
-                : SourceLocation::getFromRawEncoding(decodeRaw(Encoded)),
+    return {SourceLocation::getFromRawEncoding(decodeRaw(Encoded)),
             ModuleFileIndex};
 
-  Encoded &= llvm::maskTrailingOnes<RawLocEncoding>(32);
+  Encoded &= llvm::maskTrailingOnes<RawLocEncoding>(SourceLocation::Bits);
   SourceLocation Loc = SourceLocation::getFromRawEncoding(decodeRaw(Encoded));
 
   return {Loc, ModuleFileIndex};

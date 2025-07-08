@@ -1022,7 +1022,7 @@ void ASTDeclWriter::VisitObjCTypeParamDecl(ObjCTypeParamDecl *D) {
 }
 
 void ASTDeclWriter::VisitObjCContainerDecl(ObjCContainerDecl *D) {
-  static_assert(DeclContext::NumObjCContainerDeclBits == 64,
+  static_assert(DeclContext::NumObjCContainerDeclBits == 53,
                 "You need to update the serializer after you change the "
                 "ObjCContainerDeclBits");
 
@@ -2941,7 +2941,6 @@ void ASTWriter::WriteDeclAbbrevs() {
   Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // Source Location
   // CXXOperatorCallExpr
   Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // Operator Kind
-  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // Source Location
   Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // Source Location
   CXXOperatorCallExprAbbrev = Stream.EmitAbbrev(std::move(Abv));
 

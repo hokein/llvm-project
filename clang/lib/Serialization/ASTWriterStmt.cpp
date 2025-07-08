@@ -514,7 +514,7 @@ void ASTStmtWriter::VisitRequiresExpr(RequiresExpr *E) {
   VisitExpr(E);
   Record.push_back(E->getLocalParameters().size());
   Record.push_back(E->getRequirements().size());
-  Record.AddSourceLocation(E->RequiresExprBits.RequiresKWLoc);
+  Record.AddSourceLocation(E->getRequiresKWLoc());
   Record.push_back(E->RequiresExprBits.IsSatisfied);
   Record.AddDeclRef(E->getBody());
   for (ParmVarDecl *P : E->getLocalParameters())
@@ -1702,7 +1702,7 @@ void ASTStmtWriter::VisitMSDependentExistsStmt(MSDependentExistsStmt *S) {
 void ASTStmtWriter::VisitCXXOperatorCallExpr(CXXOperatorCallExpr *E) {
   VisitCallExpr(E);
   Record.push_back(E->getOperator());
-  Record.AddSourceRange(E->Range);
+  Record.AddSourceLocation(E->BeginLoc);
 
   if (!E->hasStoredFPFeatures() && !static_cast<bool>(E->getADLCallKind()))
     AbbrevToUse = Writer.getCXXOperatorCallExprAbbrev();
