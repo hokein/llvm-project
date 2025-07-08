@@ -7642,15 +7642,9 @@ CXString clang_getTokenSpelling(CXTranslationUnit TU, CXToken CXTok) {
   if (!CXXUnit)
     return cxstring::createEmpty();
 
-<<<<<<< HEAD
-  SourceLocation Loc = SourceLocation::getFromRawEncoding(CXTok.int_data[1]);
-  std::pair<FileID, unsigned> LocInfo =
-      CXXUnit->getSourceManager().getDecomposedSpellingLoc(Loc);
-=======
   SourceLocation Loc = SourceLocation::getFromRawEncoding32(
       CXXUnit->getSourceManager(), CXTok.int_data[1]);
   auto LocInfo = CXXUnit->getSourceManager().getDecomposedSpellingLoc(Loc);
->>>>>>> de04b79aa72e (64-bit source location)
   bool Invalid = false;
   StringRef Buffer =
       CXXUnit->getSourceManager().getBufferData(LocInfo.first, &Invalid);
