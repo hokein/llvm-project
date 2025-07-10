@@ -1996,7 +1996,7 @@ InBeforeInTUCacheEntry &SourceManager::getInBeforeInTUCache(FileID LFID,
   // derived from a small Objective-C project (where the cache filled
   // out to ~250 items).  We can make it larger if necessary.
   // FIXME: this is almost certainly full these days. Use an LRU cache?
-  enum { MagicCacheSize = 300 };
+  enum { MagicCacheSize = 500 };
   IsBeforeInTUCacheKey Key(LFID, RFID);
 
   // If the cache size isn't too large, do a lookup and if necessary default
