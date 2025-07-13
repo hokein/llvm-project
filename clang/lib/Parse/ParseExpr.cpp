@@ -760,9 +760,12 @@ Parser::ParseCastExpression(CastParseKind ParseKind, bool isAddressOfOperand,
     }
     ParsedType CastTy;
     SourceLocation RParenLoc;
-    Res = ParseParenExpression(ParenExprType, /*StopIfCastExr=*/false,
-                               ParenExprKind::Unknown, CorrectionBehavior,
-                               CastTy, RParenLoc);
+    // StackHandler.runWithSufficientStackSpace(Tok.getLocation(), [&]() {
+      Res = ParseParenExpression(ParenExprType, /*StopIfCastExr=*/false,
+                                 ParenExprKind::Unknown, CorrectionBehavior,
+                                 CastTy, RParenLoc);
+    
+    // });
 
     // FIXME: What should we do if a vector literal is followed by a
     // postfix-expression suffix? Usually postfix operators are permitted on

@@ -394,7 +394,7 @@ ObjCTypeParamList *Parser::parseObjCTypeParamListOrProtocolRefs(
   assert(Tok.is(tok::less) && "Not at the beginning of a type parameter list");
 
   // Within the type parameter list, don't treat '>' as an operator.
-  GreaterThanIsOperatorScope G(GreaterThanIsOperator, false);
+  GreaterThanIsOperatorScope G(*this, false);
 
   // Local function to "flush" the protocol identifiers, turning them into
   // type parameters.

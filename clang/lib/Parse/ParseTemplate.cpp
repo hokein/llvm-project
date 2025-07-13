@@ -835,7 +835,7 @@ Parser::ParseNonTypeTemplateParameter(unsigned Depth, unsigned Position) {
       //   template-parameter, the first non-nested > is taken as the
       //   end of the template-parameter-list rather than a greater-than
       //   operator.
-      GreaterThanIsOperatorScope G(GreaterThanIsOperator, false);
+      GreaterThanIsOperatorScope G(*this, false);
 
       // The default argument may declare template parameters, notably
       // if it contains a generic lambda, so we need to increase
@@ -1051,7 +1051,7 @@ bool Parser::ParseTemplateIdAfterTemplateName(bool ConsumeLastToken,
   // Parse the optional template-argument-list.
   bool Invalid = false;
   {
-    GreaterThanIsOperatorScope G(GreaterThanIsOperator, false);
+    GreaterThanIsOperatorScope G(*this, false);
     if (!Tok.isOneOf(tok::greater, tok::greatergreater,
                      tok::greatergreatergreater, tok::greaterequal,
                      tok::greatergreaterequal))

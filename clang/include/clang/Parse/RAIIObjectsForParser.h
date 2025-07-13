@@ -15,10 +15,14 @@
 #define LLVM_CLANG_PARSE_RAIIOBJECTSFORPARSER_H
 
 #include "clang/Basic/DiagnosticParse.h"
+#include "clang/Basic/TokenKinds.h"
 #include "clang/Parse/Parser.h"
 #include "clang/Sema/DelayedDiagnostic.h"
 #include "clang/Sema/ParsedTemplate.h"
 #include "clang/Sema/Sema.h"
+#include "llvm/ADT/PointerIntPair.h"
+#include "llvm/Support/Signals.h"
+#include <cstdint>
 
 namespace clang {
   // TODO: move ParsingClassDefinition here.
@@ -271,18 +275,25 @@ namespace clang {
   /// restores it when destroyed.  This says that "foo:" should not be
   /// considered a possible typo for "foo::" for error recovery purposes.
   class ColonProtectionRAIIObject {
-    Parser &P;
-    bool OldVal;
+    // Parser &P;
+    // bool OldVal;
+    llvm::PointerIntPair<Parser*, 1, bool> ColonIsSacred;
+
   public:
-    ColonProtectionRAIIObject(Parser &p, bool Value = true)
-      : P(p), OldVal(P.ColonIsSacred) {
-      P.ColonIsSacred = Value;
+    ColonProtectionRAIIObject(Parser &p, bool Value = true) {
+      // : P(&p), OldVal(P.ColonIsSacred) {
+      ColonIsSacred.setPointerAndInt(&p, p.ColonIsSacred);
+      p.ColonIsSacred = Value;
     }
+    //   : P(p), OldVal(P.ColonIsSacred) {
+    //   P.ColonIsSacred = Value;
+    // }
 
     /// restore - This can be used to restore the state early, before the dtor
     /// is run.
     void restore() {
-      P.ColonIsSacred = OldVal;
+      ColonIsSacred.getPointer()->ColonIsSacred = ColonIsSacred.getInt();
+      //P.ColonIsSacred = OldVal;
     }
 
     ~ColonProtectionRAIIObject() {
@@ -331,32 +342,41 @@ namespace clang {
   /// RAII object that makes '>' behave either as an operator
   /// or as the closing angle bracket for a template argument list.
   class GreaterThanIsOperatorScope {
-    bool &GreaterThanIsOperator;
-    bool OldGreaterThanIsOperator;
+    // bool &GreaterThanIsOperator;
+    llvm::PointerIntPair<Parser*, 1, bool> GreaterThanIsOperator;
+  protected:
+    Parser& getParser() const {
+      return *GreaterThanIsOperator.getPointer();
+    }
+    // bool OldGreaterThanIsOperator;
   public:
-    GreaterThanIsOperatorScope(bool &GTIO, bool Val)
-    : GreaterThanIsOperator(GTIO), OldGreaterThanIsOperator(GTIO) {
-      GreaterThanIsOperator = Val;
+    GreaterThanIsOperatorScope(Parser &P, bool Val) {
+    // : GreaterThanIsOperator(GTIO), OldGreaterThanIsOperator(GTIO) {
+      GreaterThanIsOperator.setPointerAndInt(&P, P.GreaterThanIsOperator);
+      P.GreaterThanIsOperator = Val;
     }
 
     ~GreaterThanIsOperatorScope() {
-      GreaterThanIsOperator = OldGreaterThanIsOperator;
+      GreaterThanIsOperator.getPointer()->GreaterThanIsOperator = GreaterThanIsOperator.getInt();
     }
   };
 
   class InMessageExpressionRAIIObject {
-    bool &InMessageExpression;
-    bool OldValue;
+    // bool &InMessageExpression;
+    // bool OldValue;
+    llvm::PointerIntPair<Parser*, 1, bool> InMessageExpression;
 
   public:
-    InMessageExpressionRAIIObject(Parser &P, bool Value)
-      : InMessageExpression(P.InMessageExpression),
-        OldValue(P.InMessageExpression) {
-      InMessageExpression = Value;
+    InMessageExpressionRAIIObject(Parser &P, bool Value) {
+      // : InMessageExpression(P.InMessageExpression),
+      //   OldValue(P.InMessageExpression) {
+      // InMessageExpression = Value;
+      InMessageExpression.setPointerAndInt(&P, P.InMessageExpression);
+      P.InMessageExpression = Value;
     }
 
     ~InMessageExpressionRAIIObject() {
-      InMessageExpression = OldValue;
+     InMessageExpression.getPointer()->InMessageExpression = InMessageExpression.getInt();
     }
   };
 
@@ -418,16 +438,21 @@ namespace clang {
   /// RAII class that helps handle the parsing of an open/close delimiter
   /// pair, such as braces { ... } or parentheses ( ... ).
   class BalancedDelimiterTracker : public GreaterThanIsOperatorScope {
-    Parser& P;
-    tok::TokenKind Kind, Close, FinalToken;
-    SourceLocation (Parser::*Consumer)();
-    SourceLocation LOpen, LClose;
+    // tok::TokenKind Kind, Close, FinalToken;
+    uint64_t Kind : 2;
+    uint64_t FinalToken : 16;
+    uint64_t LOpen : SourceLocation::Bits;
+    uint64_t LClose : SourceLocation::Bits;
 
+    // Parser& P;
+    // SourceLocation (Parser::*Consumer)();
+    // SourceLocation LOpen, LClose;
+    
     unsigned short &getDepth() {
-      switch (Kind) {
-        case tok::l_brace: return P.BraceCount;
-        case tok::l_square: return P.BracketCount;
-        case tok::l_paren: return P.ParenCount;
+      switch (getKind()) {
+        case tok::l_brace: return getParser().BraceCount;
+        case tok::l_square: return getParser().BracketCount;
+        case tok::l_paren: return getParser().ParenCount;
         default: llvm_unreachable("Wrong token kind");
       }
     }
@@ -438,37 +463,90 @@ namespace clang {
   public:
     BalancedDelimiterTracker(Parser& p, tok::TokenKind k,
                              tok::TokenKind FinalToken = tok::semi)
-      : GreaterThanIsOperatorScope(p.GreaterThanIsOperator, true),
-        P(p), Kind(k), FinalToken(FinalToken)
+      : GreaterThanIsOperatorScope(p, true),
+       FinalToken(FinalToken)
     {
-      switch (Kind) {
+   switch (k) {
         default: llvm_unreachable("Unexpected balanced token");
         case tok::l_brace:
-          Close = tok::r_brace;
-          Consumer = &Parser::ConsumeBrace;
+          Kind = 0;
+          // Consumer = &Parser::ConsumeBrace;
           break;
         case tok::l_paren:
-          Close = tok::r_paren;
-          Consumer = &Parser::ConsumeParen;
+            Kind = 1;
+          // Consumer = &Parser::ConsumeParen;
           break;
 
         case tok::l_square:
-          Close = tok::r_square;
-          Consumer = &Parser::ConsumeBracket;
+           Kind = 2;
+          // Consumer = &Parser::ConsumeBracket;
           break;
       }
+      // static int cnt = 0;
+      // if (cnt == 50) {
+      //   // llvm::sys::PrintStackTrace(llvm::errs());
+      //   // exit(1);
+      // }
+      // // llvm::errs() << "DEBUG construct blance tracker: " << ++cnt << "\n";
+      // switch (Kind) {
+      //   default: llvm_unreachable("Unexpected balanced token");
+      //   case tok::l_brace:
+      //     Close = tok::r_brace;
+      //     // Consumer = &Parser::ConsumeBrace;
+      //     break;
+      //   case tok::l_paren:
+      //     Close = tok::r_paren;
+      //     // Consumer = &Parser::ConsumeParen;
+      //     break;
+
+      //   case tok::l_square:
+      //     Close = tok::r_square;
+      //     // Consumer = &Parser::ConsumeBracket;
+      //     break;
+      // }
+    }
+    tok::TokenKind getKind() const { 
+      if (Kind == 0)
+        return tok::l_brace; 
+      if (Kind == 1)
+        return tok::l_paren; 
+      if (Kind == 2)
+        return tok::l_square;
+      llvm_unreachable("Unexpected balanced token");    
     }
 
-    SourceLocation getOpenLocation() const { return LOpen; }
-    SourceLocation getCloseLocation() const { return LClose; }
-    SourceRange getRange() const { return SourceRange(LOpen, LClose); }
+    tok::TokenKind getClose() const {
+      if (Kind == 0)
+        return tok::r_brace; 
+      if (Kind == 1)
+        return tok::r_paren;
+      if (Kind == 2)
+        return tok::r_square;
+      llvm_unreachable("Unexpected balanced token");   
+    }
+    SourceLocation consume() {
+      switch (getKind()) {
+        case tok::l_brace:
+          return getParser().ConsumeBrace();
+        case tok::l_paren:
+          return getParser().ConsumeParen();
+        case tok::l_square:
+          return getParser().ConsumeBracket();
+        default:
+          llvm_unreachable("Unexpected balanced token");
+      }
+    }
+    SourceLocation getOpenLocation() const { return SourceLocation::getFromRawEncoding(LOpen); }
+    SourceLocation getCloseLocation() const { return SourceLocation::getFromRawEncoding(LClose); }
+    SourceRange getRange() const { return SourceRange(getOpenLocation(), getCloseLocation()); }
 
     bool consumeOpen() {
-      if (!P.Tok.is(Kind))
+      if (!getParser().Tok.is(getKind()))
         return true;
 
-      if (getDepth() < P.getLangOpts().BracketDepth) {
-        LOpen = (P.*Consumer)();
+      if (getDepth() < getParser().getLangOpts().BracketDepth) {
+        // LOpen = (P.*Consumer)();
+        LOpen = consume().getRawEncoding();
         return false;
       }
 
@@ -479,14 +557,17 @@ namespace clang {
                           const char *Msg = "",
                           tok::TokenKind SkipToTok = tok::unknown);
     bool consumeClose() {
-      if (P.Tok.is(Close)) {
-        LClose = (P.*Consumer)();
+      auto& P = getParser();
+      if (P.Tok.is(getClose())) {
+        // LClose = (P.*Consumer)();
+        LClose = consume().getRawEncoding();
         return false;
-      } else if (P.Tok.is(tok::semi) && P.NextToken().is(Close)) {
+      } else if (P.Tok.is(tok::semi) && P.NextToken().is(getClose())) {
         SourceLocation SemiLoc = P.ConsumeToken();
         P.Diag(SemiLoc, diag::err_unexpected_semi)
-            << Close << FixItHint::CreateRemoval(SourceRange(SemiLoc, SemiLoc));
-        LClose = (P.*Consumer)();
+            << getClose() << FixItHint::CreateRemoval(SourceRange(SemiLoc, SemiLoc));
+        // LClose = (P.*Consumer)();
+        LClose = consume().getRawEncoding();
         return false;
       }
 

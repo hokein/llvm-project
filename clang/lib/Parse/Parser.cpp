@@ -2627,6 +2627,7 @@ void Parser::diagnoseUseOfC11Keyword(const Token &Tok) {
 }
 
 bool BalancedDelimiterTracker::diagnoseOverflow() {
+  auto& P = getParser();
   P.Diag(P.Tok, diag::err_bracket_depth_exceeded)
     << P.getLangOpts().BracketDepth;
   P.Diag(P.Tok, diag::note_bracket_depth);
@@ -2637,8 +2638,9 @@ bool BalancedDelimiterTracker::diagnoseOverflow() {
 bool BalancedDelimiterTracker::expectAndConsume(unsigned DiagID,
                                                 const char *Msg,
                                                 tok::TokenKind SkipToTok) {
-  LOpen = P.Tok.getLocation();
-  if (P.ExpectAndConsume(Kind, DiagID, Msg)) {
+  auto& P = getParser();
+  LOpen = P.Tok.getLocation().getRawEncoding();
+  if (P.ExpectAndConsume(getKind(), DiagID, Msg)) {
     if (SkipToTok != tok::unknown)
       P.SkipUntil(SkipToTok, Parser::StopAtSemi);
     return true;
@@ -2651,26 +2653,28 @@ bool BalancedDelimiterTracker::expectAndConsume(unsigned DiagID,
 }
 
 bool BalancedDelimiterTracker::diagnoseMissingClose() {
+  auto& P = getParser();
+  auto Close =getClose();
   assert(!P.Tok.is(Close) && "Should have consumed closing delimiter");
 
   if (P.Tok.is(tok::annot_module_end))
-    P.Diag(P.Tok, diag::err_missing_before_module_end) << Close;
+    P.Diag(P.Tok, diag::err_missing_before_module_end) << getClose();
   else
-    P.Diag(P.Tok, diag::err_expected) << Close;
-  P.Diag(LOpen, diag::note_matching) << Kind;
+    P.Diag(P.Tok, diag::err_expected) << getClose();
+  P.Diag(SourceLocation::getFromRawEncoding(LOpen), diag::note_matching) << getKind();
 
   // If we're not already at some kind of closing bracket, skip to our closing
   // token.
   if (P.Tok.isNot(tok::r_paren) && P.Tok.isNot(tok::r_brace) &&
       P.Tok.isNot(tok::r_square) &&
-      P.SkipUntil(Close, FinalToken,
+      P.SkipUntil(getClose(), (tok::TokenKind)FinalToken,
                   Parser::StopAtSemi | Parser::StopBeforeMatch) &&
       P.Tok.is(Close))
-    LClose = P.ConsumeAnyToken();
+    LClose = P.ConsumeAnyToken().getRawEncoding();
   return true;
 }
 
 void BalancedDelimiterTracker::skipToEnd() {
-  P.SkipUntil(Close, Parser::StopBeforeMatch);
+  getParser().SkipUntil(getClose(), Parser::StopBeforeMatch);
   consumeClose();
 }
