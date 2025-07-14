@@ -808,7 +808,7 @@ public:
 
 class ParsedAttributesView {
   friend class AttributePool;
-  using VecTy = llvm::SmallVector<ParsedAttr *>;
+  using VecTy = llvm::SmallVector<ParsedAttr *, 4>;
   using SizeType = decltype(std::declval<VecTy>().size());
 
 public:
