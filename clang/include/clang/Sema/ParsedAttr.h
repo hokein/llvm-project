@@ -678,7 +678,7 @@ class AttributePool {
   friend class AttributeFactory;
   friend class ParsedAttributes;
   AttributeFactory &Factory;
-  llvm::SmallVector<ParsedAttr *> Attrs;
+  llvm::SmallVector<ParsedAttr *, 1> Attrs;
 
   void *allocate(size_t size) {
     return Factory.allocate(size);
