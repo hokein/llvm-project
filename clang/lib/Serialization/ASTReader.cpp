@@ -9725,10 +9725,6 @@ bool ASTReader::wasThisDeclarationADefinition(const FunctionDecl *FD) {
   return ThisDeclarationWasADefinitionSet.contains(FD);
 }
 
-bool ASTReader::hasInitializerWithSideEffects(const VarDecl *VD) const {
-  return InitSideEffectVars.count(VD);
-}
-
 Selector ASTReader::getLocalSelector(ModuleFile &M, unsigned LocalID) {
   return DecodeSelector(getGlobalSelectorID(M, LocalID));
 }
@@ -9792,7 +9788,8 @@ ASTRecordReader::readDeclarationNameLoc(DeclarationName Name) {
     return DeclarationNameLoc::makeNamedTypeLoc(readTypeSourceInfo());
 
   case DeclarationName::CXXOperatorName:
-    return DeclarationNameLoc::makeCXXOperatorNameLoc(readSourceRange());
+    return DeclarationNameLoc::makeCXXOperatorNameLoc(
+        getASTContext().getCXXOperatorSourceInfo(readSourceRange()));
 
   case DeclarationName::CXXLiteralOperatorName:
     return DeclarationNameLoc::makeCXXLiteralOperatorNameLoc(

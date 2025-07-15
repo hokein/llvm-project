@@ -719,6 +719,8 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// Positive FileIDs are indexes into this table. Entry 0 indicates an invalid
   /// expansion.
   SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
+  /// An in-parallel offset table, merely used for speeding up FileID lookup.
+  SmallVector<SourceLocation::UIntTy> LocalLocOffsetTable;
 
   /// The table of SLocEntries that are loaded from other modules.
   ///
@@ -742,10 +744,10 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// not have been loaded, so that value would be unknown.
   SourceLocation::UIntTy CurrentLoadedOffset;
 
-  /// The highest possible offset is 2^31-1 (2^63-1 for 64-bit source
-  /// locations), so CurrentLoadedOffset starts at 2^31 (2^63 resp.).
+  /// The highest possible offset is 2^(Bits-1)-1, so CurrentLoadedOffset starts
+  /// at 2^(Bits-1).
   static const SourceLocation::UIntTy MaxLoadedOffset =
-      1ULL << (8 * sizeof(SourceLocation::UIntTy) - 1);
+      1ULL << (SourceLocation::Bits - 1);
 
   /// A bitmap that indicates whether the entries of LoadedSLocEntryTable
   /// have already been loaded from the external source.
@@ -767,6 +769,8 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// LastFileIDLookup records the last FileID looked up or created, because it
   /// is very common to look up many tokens from the same file.
   mutable FileID LastFileIDLookup;
+  mutable SourceLocation::UIntTy LastLookupStartOffset;
+  mutable SourceLocation::UIntTy LastLookupEndOffset; // exclude
 
   /// Holds information for \#line directives.
   ///
@@ -1904,9 +1908,8 @@ private:
 
   FileID getFileID(SourceLocation::UIntTy SLocOffset) const {
     // If our one-entry cache covers this offset, just return it.
-    if (isOffsetInFileID(LastFileIDLookup, SLocOffset))
+    if (SLocOffset >= LastLookupStartOffset && SLocOffset < LastLookupEndOffset)
       return LastFileIDLookup;
-
     return getFileIDSlow(SLocOffset);
   }
 

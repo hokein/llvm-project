@@ -72,7 +72,7 @@ public:
   void CompleteRedeclChain(const Decl *D) override;
 
   /// Resolve a selector ID into a selector.
-  Selector GetExternalSelector(uint32_t ID) override;
+  Selector GetExternalSelector(uint64_t ID) override;
 
   /// Returns the number of selectors known to the external AST
   /// source.
@@ -93,8 +93,6 @@ public:
   ExtKind hasExternalDefinitions(const Decl *D) override;
 
   bool wasThisDeclarationADefinition(const FunctionDecl *FD) override;
-
-  bool hasInitializerWithSideEffects(const VarDecl *VD) const override;
 
   /// Find all declarations with the given name in the
   /// given context.

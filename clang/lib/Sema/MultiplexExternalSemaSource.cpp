@@ -58,7 +58,7 @@ void MultiplexExternalSemaSource::CompleteRedeclChain(const Decl *D) {
     Sources[i]->CompleteRedeclChain(D);
 }
 
-Selector MultiplexExternalSemaSource::GetExternalSelector(uint32_t ID) {
+Selector MultiplexExternalSemaSource::GetExternalSelector(uint64_t ID) {
   Selector Sel;
   for(size_t i = 0; i < Sources.size(); ++i) {
     Sel = Sources[i]->GetExternalSelector(ID);
@@ -111,14 +111,6 @@ bool MultiplexExternalSemaSource::wasThisDeclarationADefinition(
     const FunctionDecl *FD) {
   for (const auto &S : Sources)
     if (S->wasThisDeclarationADefinition(FD))
-      return true;
-  return false;
-}
-
-bool MultiplexExternalSemaSource::hasInitializerWithSideEffects(
-    const VarDecl *VD) const {
-  for (const auto &S : Sources)
-    if (S->hasInitializerWithSideEffects(VD))
       return true;
   return false;
 }

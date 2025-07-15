@@ -110,7 +110,7 @@ public:
   /// returns non-zero for GetNumKnownSelectors().
   ///
   /// The default implementation of this method is a no-op.
-  virtual Selector GetExternalSelector(uint32_t ID);
+  virtual Selector GetExternalSelector(uint64_t ID);
 
   /// Returns the number of selectors known to the external AST
   /// source.
@@ -195,10 +195,6 @@ public:
   /// True if this function declaration was a definition before in its own
   /// module.
   virtual bool wasThisDeclarationADefinition(const FunctionDecl *FD);
-
-  virtual bool hasInitializerWithSideEffects(const VarDecl *VD) const {
-    return false;
-  }
 
   /// Finds all declarations lexically contained within the given
   /// DeclContext, after applying an optional filter predicate.
@@ -430,17 +426,6 @@ public:
       assert(Source &&
              "Cannot deserialize a lazy pointer without an AST source");
       SetPtr((Source->*Get)(OffsT(GetU64() >> 1)));
-    }
-    return GetPtr();
-  }
-
-  /// Retrieve the pointer to the AST node that this lazy pointer points to,
-  /// if it can be done without triggering deserialization.
-  ///
-  /// \returns a pointer to the AST node, or null if not yet deserialized.
-  T *getWithoutDeserializing() const {
-    if (isOffset()) {
-      return nullptr;
     }
     return GetPtr();
   }
