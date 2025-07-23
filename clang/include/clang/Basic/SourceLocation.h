@@ -98,10 +98,12 @@ class SourceLocation {
   friend class SourceLocationEncoding;
 
 public:
-  using UIntTy = uint64_t;
-  using IntTy = int64_t;
+  // using UIntTy = uint64_t;
+  // using IntTy = int64_t;
+  using UIntTy = uint32_t;
+  using IntTy = int32_t;
   // Number of bits used for the source space, one bit is preserved for MacroID.
-  static constexpr unsigned Bits = 40;
+  static constexpr unsigned Bits = 32;
 
 private:
   uint64_t ID = 0;
