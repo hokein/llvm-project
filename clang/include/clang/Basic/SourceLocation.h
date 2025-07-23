@@ -106,7 +106,7 @@ public:
   static constexpr unsigned Bits = 32;
 
 private:
-  uint64_t ID = 0;
+  uint32_t ID = 0;
 
   enum : UIntTy { MacroIDBit = 1ULL << (Bits - 1) };
 
