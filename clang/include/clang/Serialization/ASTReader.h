@@ -2528,6 +2528,10 @@ public:
     // translated or refactor the code to make it clear that
     // TranslateSourceLocation won't be called with translated source location.
 
+    auto I = ModuleFile.ReusedSLocRemap.find(Loc.getOffset());
+    if (I != ModuleFile.ReusedSLocRemap.end())
+      return Loc.getLocWithOffset(I->second);
+
     return Loc.getLocWithOffset(ModuleFile.SLocEntryBaseOffset - 2);
   }
 

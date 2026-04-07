@@ -676,6 +676,16 @@ class SourceManager : public RefCountedBase<SourceManager> {
   /// non-null, FileEntry pointers.
   llvm::DenseMap<FileEntryRef, SrcMgr::ContentCache*> FileInfos;
 
+  /// Map from ContentCache (representing a file) to its allocated
+  /// global SLoc offset and size, used for recycling source locations
+  /// across modules.
+  llvm::DenseMap<const SrcMgr::ContentCache *,
+                 std::pair<SourceLocation::UIntTy, unsigned>>
+      ReusedSLocSlabs;
+
+  /// Total size of SLoc address space actively saved by recycling.
+  unsigned RecycledSLocSpaceSaved = 0;
+
   /// True if the ContentCache for files that are overridden by other
   /// files, should report the original file name. Defaults to true.
   bool OverridenFilesKeepOriginalName = true;
@@ -984,6 +994,25 @@ public:
     if (auto B = getMemoryBufferForFileOrNone(File))
       return *B;
     return getFakeBufferForRecovery();
+  }
+
+  /// Register a reused source location slab for a file.
+  void registerReusedSLocSlab(const SrcMgr::ContentCache *Cache,
+                              SourceLocation::UIntTy Offset, unsigned Size) {
+    ReusedSLocSlabs[Cache] = {Offset, Size};
+  }
+
+  /// Get the reused source location slab for a file, if any.
+  std::optional<std::pair<SourceLocation::UIntTy, unsigned>>
+  getReusedSLocSlab(const SrcMgr::ContentCache *Cache) const {
+    auto I = ReusedSLocSlabs.find(Cache);
+    if (I != ReusedSLocSlabs.end())
+      return I->second;
+    return std::nullopt;
+  }
+
+  void addRecycledSLocSpaceSaved(unsigned Size) {
+    RecycledSLocSpaceSaved += Size;
   }
 
   /// Override the contents of the given source file by providing an

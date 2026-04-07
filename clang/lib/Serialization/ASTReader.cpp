@@ -4159,6 +4159,10 @@ llvm::Error ASTReader::ReadASTBlock(ModuleFile &F,
       F.LocalNumSLocEntries = Record[0];
       SourceLocation::UIntTy SLocSpaceSize = Record[1];
       F.SLocEntryOffsetsBase = Record[2] + F.SourceManagerBlockStartOffset;
+      
+      // Adjust size based on recycled space!
+      SLocSpaceSize -= F.RecycledSLocSize;
+
       std::tie(F.SLocEntryBaseID, F.SLocEntryBaseOffset) =
           SourceMgr.AllocateLoadedSLocEntries(F.LocalNumSLocEntries,
                                               SLocSpaceSize);
@@ -4183,6 +4187,57 @@ llvm::Error ASTReader::ReadASTBlock(ModuleFile &F,
                            - SLocSpaceSize,&F));
 
       TotalNumSLocEntries += F.LocalNumSLocEntries;
+
+      // Populate ReusedSLocRemap and register new slabs.
+      if (F.FileSLocMapping) {
+        for (unsigned I = 0; I < F.NumFileSLocMappings; ++I) {
+          unsigned InputFileID = F.FileSLocMapping[I * 3];
+          unsigned StartOffset = F.FileSLocMapping[I * 3 + 1];
+          unsigned Size = F.FileSLocMapping[I * 3 + 2];
+
+          InputFile IF = getInputFile(F, InputFileID);
+          if (auto FE = IF.getFile()) {
+            SrcMgr::ContentCache &Cache =
+                SourceMgr.getOrCreateContentCache(*FE);
+
+            if (auto Slab = SourceMgr.getReusedSLocSlab(&Cache)) {
+              // Duplicate!
+              F.ReusedSLocRemap.insert(std::make_pair(
+                  StartOffset, Slab->first - StartOffset));
+              // Restore default shift at the end of the slab.
+              F.ReusedSLocRemap.insert(std::make_pair(
+                  StartOffset + Size, F.SLocEntryBaseOffset));
+            } else {
+              // Not a duplicate. Register it!
+              SourceMgr.registerReusedSLocSlab(&Cache, F.SLocEntryBaseOffset + StartOffset, Size);
+            }
+          }
+        }
+      }
+
+      break;
+    }
+
+    case FILE_SLOC_MAPPING: {
+      F.FileSLocMapping = (const uint32_t *)Blob.data();
+      F.NumFileSLocMappings = Record[0];
+
+      F.RecycledSLocSize = 0;
+      for (unsigned I = 0; I < F.NumFileSLocMappings; ++I) {
+        unsigned InputFileID = F.FileSLocMapping[I * 3];
+        unsigned Size = F.FileSLocMapping[I * 3 + 2];
+
+        InputFile IF = getInputFile(F, InputFileID);
+        if (auto FE = IF.getFile()) {
+          SrcMgr::ContentCache &Cache =
+              SourceMgr.getOrCreateContentCache(*FE);
+
+          if (SourceMgr.getReusedSLocSlab(&Cache)) {
+            F.RecycledSLocSize += Size;
+          }
+        }
+      }
+      SourceMgr.addRecycledSLocSpaceSaved(F.RecycledSLocSize);
       break;
     }
 

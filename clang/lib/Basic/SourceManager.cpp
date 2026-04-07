@@ -2126,6 +2126,15 @@ void SourceManager::PrintStats() const {
                << MaxLoadedOffset - CurrentLoadedOffset
                << "B of SLoc address space used.\n";
 
+  unsigned RecycledSpace = 0;
+  for (const auto &Entry : ReusedSLocSlabs) {
+    RecycledSpace += Entry.second.second;
+  }
+  if (RecycledSpace > 0) {
+    llvm::errs() << RecycledSpace << "B of SLoc address space registered for recycling.\n";
+    llvm::errs() << RecycledSLocSpaceSaved << "B of SLoc address space actively saved.\n";
+  }
+
   unsigned NumLineNumsComputed = 0;
   unsigned NumFileBytesMapped = 0;
   for (fileinfo_iterator I = fileinfo_begin(), E = fileinfo_end(); I != E; ++I){
