@@ -330,6 +330,17 @@ public:
   /// AST file.
   const uint32_t *SLocEntryOffsets = nullptr;
 
+  /// Array of {InputFileID, StartOffset, Size} triplets.
+  const uint32_t *FileSLocMapping = nullptr;
+  unsigned NumFileSLocMappings = 0;
+
+  /// Total size of SLoc address space recycled for duplicate files.
+  SourceLocation::UIntTy RecycledSLocSize = 0;
+
+  /// Mapping from local SLoc offset to global SLoc offset for reused slabs.
+  ContinuousRangeMap<SourceLocation::UIntTy, SourceLocation::UIntTy, 2>
+      ReusedSLocRemap;
+
   // === Identifiers ===
 
   /// The number of identifiers in this AST file.

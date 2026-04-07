@@ -751,6 +751,9 @@ enum ASTRecordTypes {
 
   /// Record code for extname-redefined undeclared identifiers.
   EXTNAME_UNDECLARED_IDENTIFIERS = 79,
+
+  /// Record code for mapping from input file ID to SLocEntry ID.
+  FILE_SLOC_MAPPING = 80,
 };
 
 /// Record types used within a source manager block.

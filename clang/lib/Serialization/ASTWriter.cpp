@@ -2380,6 +2380,14 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
   std::vector<uint32_t> SLocEntryOffsets;
   uint64_t SLocEntryOffsetsBase = Stream.GetCurrentBitNo();
   SLocEntryOffsets.reserve(SourceMgr.local_sloc_entry_size() - 1);
+  
+  struct FileSLocMappingEntry {
+    unsigned InputFileID;
+    unsigned StartOffset;
+    unsigned Size;
+  };
+  std::vector<FileSLocMappingEntry> FileSLocMapping;
+
   for (unsigned I = 1, N = SourceMgr.local_sloc_entry_size();
        I != N; ++I) {
     // Get this source location entry.
@@ -2425,6 +2433,9 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
         // The source location entry is a file. Emit input file ID.
         assert(InputFileIDs[*Content->OrigEntry] != 0 && "Missed file entry");
         Record.push_back(InputFileIDs[*Content->OrigEntry]);
+        FileSLocMapping.push_back({InputFileIDs[*Content->OrigEntry],
+                                   getAdjustedOffset(SLoc->getOffset()) - 2,
+                                   SourceMgr.getFileIDSize(FID)});
 
         Record.push_back(getAdjustedNumCreatedFIDs(FID));
 
@@ -2499,6 +2510,29 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
   // table is used for lazily loading source-location information.
   using namespace llvm;
 
+  // Write the file to SLoc mapping.
+  if (!FileSLocMapping.empty()) {
+    auto Abbrev = std::make_shared<BitCodeAbbrev>();
+    Abbrev->Add(BitCodeAbbrevOp(FILE_SLOC_MAPPING));
+    Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 16)); // # of entries
+    Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Blob)); // mapping
+    unsigned FileSLocMappingAbbrev = Stream.EmitAbbrev(std::move(Abbrev));
+
+    std::vector<uint32_t> FlattenedMapping;
+    FlattenedMapping.reserve(FileSLocMapping.size() * 3);
+    for (auto &E : FileSLocMapping) {
+      FlattenedMapping.push_back(E.InputFileID);
+      FlattenedMapping.push_back(E.StartOffset);
+      
+      FlattenedMapping.push_back(E.Size);
+    }
+
+    RecordData::value_type Record[] = {FILE_SLOC_MAPPING,
+                                       FileSLocMapping.size()};
+    Stream.EmitRecordWithBlob(FileSLocMappingAbbrev, Record,
+                              bytes(FlattenedMapping));
+  }
+
   auto Abbrev = std::make_shared<BitCodeAbbrev>();
   Abbrev->Add(BitCodeAbbrevOp(SOURCE_LOCATION_OFFSETS));
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 16)); // # of slocs
@@ -2514,6 +2548,8 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr) {
     Stream.EmitRecordWithBlob(SLocOffsetsAbbrev, Record,
                               bytes(SLocEntryOffsets));
   }
+
+
 
   // Write the line table. It depends on remapping working, so it must come
   // after the source location offsets.
